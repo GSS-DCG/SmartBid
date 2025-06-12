@@ -1,0 +1,114 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dm>
+  <initData>
+    <projectName>Proyecto1</projectName>
+    <client>Total</client>
+    <location>
+      <country>Spain</country>
+      <region>Castile and León</region>
+      <province>Castile and León</province>
+      <city>Medina de Rioseco</city>
+      <postalCode>47800</postalCode>
+      <coordinates unit="decimal degrees">
+        <latitude>41.8647495</latitude>
+        <longitude>-4.9999958</longitude>
+      </coordinates>
+    </location>
+    <projectSize unit="MW">150</projectSize>
+    <product>TS1P</product>
+    <kam>nombre.apellido@gsolarsteel.com</kam>
+  </initData>
+  <utils>
+    <utilsData>
+      <projectFolder>25_0014_Total_Proyecto1</projectFolder>
+    </utilsData>
+    <!--Primera revisión-->
+    <rev_01>
+      <requestInfo Type="create">
+        <createdBy>admin@admin.com</createdBy>
+        <inputFolder>Total_Proyecto1_150</inputFolder>
+      </requestInfo>
+      <deliveryDocs>
+        <doc>DEMO</doc>
+      </deliveryDocs>
+      <inputDocs>
+        <doc>Fichero 1</doc>
+        <doc>Fichero 2</doc>
+        <doc>Fichero 3</doc>
+        <doc>Fichero 4</doc>
+      </inputDocs>
+    </rev_01>
+  </utils>
+  <data>
+    <A>
+      <revision>
+        <rev01>set01</rev01>
+      </revision>
+      <set01>
+        <value>AA- value: 29</value>
+        <origin>prepTool+10-12:06</origin>
+        <note>Valor leído del documento de acuerdo con la descripción: descripción  AA</note>
+        <origin>prepTool+10-12:06</origin>
+        <note>Valor leído del documento de acuerdo con la descripción: descripción  AA</note>
+        <origin>prepTool+21-23:24</origin>
+      </set01>
+    </A>
+    <B>
+      <revision>
+        <rev01>set01</rev01>
+      </revision>
+      <set01>
+        <value>BB- value: 455</value>
+        <origin>prepTool+10-12:06</origin>
+        <note>Valor leído del documento de acuerdo con la descripción: descripción  BB</note>
+        <origin>prepTool+10-12:06</origin>
+        <note>Valor leído del documento de acuerdo con la descripción: descripción  BB</note>
+        <origin>prepTool+21-23:24</origin>
+      </set01>
+    </B>
+    <C>
+      <revision>
+        <rev01>set01</rev01>
+      </revision>
+      <set01>
+        <value>CC- value: 825</value>
+        <origin>prepTool+10-12:06</origin>
+        <note>Valor leído del documento de acuerdo con la descripción: descripción  CC</note>
+        <origin>prepTool+10-12:06</origin>
+        <note>Valor leído del documento de acuerdo con la descripción: descripción  CC</note>
+        <origin>prepTool+21-23:24</origin>
+      </set01>
+    </C>
+    <tabla1>
+      <revision>
+        <rev01>set01</rev01>
+      </revision>
+      <set01>
+        <value>
+          <t>
+            <r>
+              <c>11</c>
+              <c>12</c>
+              <c>13</c>
+            </r>
+            <r>
+              <c>21</c>
+              <c>22</c>
+              <c>23</c>
+            </r>
+            <r>
+              <c>31</c>
+              <c>32</c>
+              <c>33</c>
+            </r>
+          </t>
+        </value>
+        <origin>prepTool+10-12:06</origin>
+        <note>Valor leído del documento de acuerdo con la descripción: tabla creada en prep</note>
+        <origin>prepTool+10-12:06</origin>
+        <note>Valor leído del documento de acuerdo con la descripción: tabla creada en prep</note>
+        <origin>prepTool+21-23:24</origin>
+      </set01>
+    </tabla1>
+  </data>
+</dm>

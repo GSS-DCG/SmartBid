@@ -1,0 +1,7 @@
+C:\InSync\SmartBid\publish\SmartBid.pdb
+C:\InSync\SmartBid\publish\comerr64.dll
+C:\InSync\SmartBid\publish\gssapi64.dll
+C:\InSync\SmartBid\publish\k5sprt64.dll
+C:\InSync\SmartBid\publish\krb5_64.dll
+C:\InSync\SmartBid\publish\krbcc64.dll
+C:\InSync\SmartBid\publish\SmartBid.exe

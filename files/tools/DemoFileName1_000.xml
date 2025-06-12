@@ -1,0 +1,11 @@
+<doc fileName="DemoFileName1_000.XLSX" GSS_GSSCode="DEMO1" GSS_Version="000" GSS_Build="00" date="06/10/25_12:51">
+  <variable source="PREP" inOut="in" call="1">B</variable>
+  <variable source="PREP" inOut="in" call="1">C</variable>
+  <variable source="DEMO2" inOut="in" call="2">G</variable>
+  <variable source="PREP" inOut="in" call="2">I</variable>
+  <variable source="PREP" inOut="in" call="1">tabla1</variable>
+  <variable source="DEMO1_Call2" inOut="out" call="2">H</variable>
+  <variable source="DEMO1" inOut="out" call="1">D</variable>
+  <variable source="DEMO1" inOut="out" call="1">E</variable>
+  <variable source="DEMO1" inOut="out" call="1">tabla2</variable>
+</doc>

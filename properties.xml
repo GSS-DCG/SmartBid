@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<root>
+	<!-- String de conexión a la base de datos -->
+	<DBConnextion>server=10.25.3.189;port=3306;database=SmartBid;user=SB_user01;password=_0000_</DBConnextion>
+	<DBConnextion>server=localhost;port=3306;database=SmartBid;user=SB_user01;password=_0000_</DBConnextion>
+
+
+	<!-- Mapa de directorios -->
+
+	<callsPath>C:\InSync\SmartBid\files\calls</callsPath>  <!-- Directorio de escucha -->
+	<storagePath>C:\InSync\SmartBid\files\processed</storagePath>  <!-- Directorio de salida -->
+
+	<VarMap>C:\InSync\SmartBid\files\tools\ResourcesMap2.xlsx</VarMap>  <!-- Excel con el mapa de variables y de herramientas -->
+	<PreparationTool>C:\InSync\Preparation\publish\Preparation.exe</PreparationTool>  <!-- applicacion de preparación .exe  -->
+	<ToolsPath>C:\InSync\SmartBid\files\tools\</ToolsPath>  <!-- Carpeta donde encontrar las herramientas -->
+	<TemplatesPath>C:\InSync\SmartBid\files\templates\</TemplatesPath>  <!-- Carpeta donde encontrar las plantillas -->
+
+	<!--  -->
+	<IN_VarPrefix>sbIN_</IN_VarPrefix>  <!-- prefijo que indica las variables de entrada en las herramientas excel-->
+	<OUT_VarPrefix>sbOUT_</OUT_VarPrefix>  <!-- prefijo que indica la variables de salida en las herramientas excel -->
+	<VarPrefix>SB_</VarPrefix>  <!-- Prefijo que marca las variables en las plantillas -->
+	<tableStyle>MyStyle</tableStyle>  <!-- Nombre del formato que se dará a las tablas insertadas en los Templates -->
+
+	<!--  -->
+	<logLevel>2</logLevel>  <!-- Nivel de anotaciones en el Log: 0-Todo 5-Mínimo -->
+	<printLevel>3</printLevel>  <!-- Nivel de printouts en consola: 0-Todo 5-Mínimo -->
+</root>

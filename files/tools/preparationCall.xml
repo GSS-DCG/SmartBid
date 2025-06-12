@@ -1,0 +1,30 @@
+<root>
+  <variable ID="A" varName="var 1" Source="PREP" critic="True" mandatory="True" deep="0" area="area 1" type="text">
+    <description>descripción  AA</description>
+    <default>AA</default>
+  </variable>
+  <variable ID="B" varName="var 2" Source="PREP" critic="True" mandatory="True" deep="0" area="area 1" type="code">
+    <description>descripción  BB</description>
+    <default>BB</default>
+  </variable>
+  <variable ID="C" varName="var 3" Source="PREP" critic="True" mandatory="True" deep="0" area="area 1" type="num">
+    <description>descripción  CC</description>
+    <default>CC</default>
+  </variable>
+  <variable ID="I" varName="var 9" Source="PREP" critic="True" mandatory="True" deep="0" area="area 1" type="num" unit="GRADOS (°)">
+    <description>descripción  II</description>
+    <allowableRange>
+      <value>-90: +91</value>
+    </allowableRange>
+    <default>II</default>
+  </variable>
+  <variable ID="tabla1" varName="tabla 1" Source="PREP" critic="True" mandatory="True" deep="0" area="area 1" type="table">
+    <description>tabla creada en prep</description>
+    <default> &lt;t&gt; 
+  &lt;r&gt;&lt;c&gt;11000&lt;/c&gt;&lt;c&gt;12000&lt;/c&gt;&lt;c&gt;13000&lt;/c&gt;&lt;/r&gt;
+  &lt;r&gt;&lt;c&gt;21000&lt;/c&gt;&lt;c&gt;22000&lt;/c&gt;&lt;c&gt;23000&lt;/c&gt;&lt;/r&gt;
+  &lt;r&gt;&lt;c&gt;31000&lt;/c&gt;&lt;c&gt;32000&lt;/c&gt;&lt;c&gt;33000&lt;/c&gt;&lt;/r&gt;
+  &lt;r&gt;&lt;c&gt;41000&lt;/c&gt;&lt;c&gt;42000&lt;/c&gt;&lt;c&gt;43000&lt;/c&gt;&lt;/r&gt;
+ &lt;/t&gt;</default>
+  </variable>
+</root>

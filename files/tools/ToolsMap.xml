@@ -1,0 +1,7 @@
+<root>
+  <tool resource="TOOL" code="PREP" call="1" name="PrepTool" fileType="EXE" version="000" description="Preparation Tool" fileName="PrepTool_000.EXE" />
+  <tool resource="TOOL" code="DEMO1" call="1" name="DemoFileName1" fileType="XLSX" version="000" description="Fake Tool 1" fileName="DemoFileName1_000.XLSX" />
+  <tool resource="TOOL" code="DEMO2" call="1" name="DemoFileName2" fileType="XLSX" version="000" description="Fake Tool 2" fileName="DemoFileName2_000.XLSX" />
+  <tool resource="TOOL" code="DEMO1_Call2" call="2" name="DemoFileName1" fileType="XLSX" version="000" description="Fake Tool 1 segunda llamada" fileName="DemoFileName1_000.XLSX" />
+  <tool resource="TEMPLATE" code="DEMO" call="1" name="DemoTemplate" fileType="DOCX" version="000" description="Fake Report 2" fileName="DemoTemplate_000.DOCX" />
+</root>

@@ -1,0 +1,171 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\InSync\\SmartBid\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{43396AF1-9861-481D-9590-83F9B5B54F63}|SmartBid.csproj|c:\\insync\\smartbid\\h.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{43396AF1-9861-481D-9590-83F9B5B54F63}|SmartBid.csproj|solutionrelative:h.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{43396AF1-9861-481D-9590-83F9B5B54F63}|SmartBid.csproj|c:\\insync\\smartbid\\calculator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{43396AF1-9861-481D-9590-83F9B5B54F63}|SmartBid.csproj|solutionrelative:calculator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{43396AF1-9861-481D-9590-83F9B5B54F63}|SmartBid.csproj|c:\\insync\\smartbid\\properties.xml||{FA3CD31E-987B-443A-9B81-186104E8DAC1}",
+      "RelativeMoniker": "D:0:0:{43396AF1-9861-481D-9590-83F9B5B54F63}|SmartBid.csproj|solutionrelative:properties.xml||{FA3CD31E-987B-443A-9B81-186104E8DAC1}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{43396AF1-9861-481D-9590-83F9B5B54F63}|SmartBid.csproj|c:\\insync\\smartbid\\toolsmap.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{43396AF1-9861-481D-9590-83F9B5B54F63}|SmartBid.csproj|solutionrelative:toolsmap.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{43396AF1-9861-481D-9590-83F9B5B54F63}|SmartBid.csproj|c:\\insync\\smartbid\\datamaster.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{43396AF1-9861-481D-9590-83F9B5B54F63}|SmartBid.csproj|solutionrelative:datamaster.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{43396AF1-9861-481D-9590-83F9B5B54F63}|SmartBid.csproj|c:\\insync\\smartbid\\sb_main.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{43396AF1-9861-481D-9590-83F9B5B54F63}|SmartBid.csproj|solutionrelative:sb_main.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{43396AF1-9861-481D-9590-83F9B5B54F63}|SmartBid.csproj|c:\\insync\\smartbid\\dbtools.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{43396AF1-9861-481D-9590-83F9B5B54F63}|SmartBid.csproj|solutionrelative:dbtools.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{43396AF1-9861-481D-9590-83F9B5B54F63}|SmartBid.csproj|c:\\insync\\smartbid\\variablesmap.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{43396AF1-9861-481D-9590-83F9B5B54F63}|SmartBid.csproj|solutionrelative:variablesmap.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{43396AF1-9861-481D-9590-83F9B5B54F63}|SmartBid.csproj|c:\\insync\\smartbid\\mirrorxml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{43396AF1-9861-481D-9590-83F9B5B54F63}|SmartBid.csproj|solutionrelative:mirrorxml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 3,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Calculator.cs",
+              "DocumentMoniker": "C:\\InSync\\SmartBid\\Calculator.cs",
+              "RelativeDocumentMoniker": "Calculator.cs",
+              "ToolTip": "C:\\InSync\\SmartBid\\Calculator.cs",
+              "RelativeToolTip": "Calculator.cs",
+              "ViewState": "AgIAACcAAAAAAAAAAAAswEgAAAAgAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-10T15:08:12.048Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "properties.xml",
+              "DocumentMoniker": "C:\\InSync\\SmartBid\\properties.xml",
+              "RelativeDocumentMoniker": "properties.xml",
+              "ToolTip": "C:\\InSync\\SmartBid\\properties.xml",
+              "RelativeToolTip": "properties.xml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABgAAAAMAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003576|",
+              "WhenOpened": "2025-06-09T15:54:17.437Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "DBtools.cs",
+              "DocumentMoniker": "C:\\InSync\\SmartBid\\DBtools.cs",
+              "RelativeDocumentMoniker": "DBtools.cs",
+              "ToolTip": "C:\\InSync\\SmartBid\\DBtools.cs",
+              "RelativeToolTip": "DBtools.cs",
+              "ViewState": "AgIAAGYAAAAAAAAAAAAqwM8AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-31T10:11:28.464Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "H.cs",
+              "DocumentMoniker": "C:\\InSync\\SmartBid\\H.cs",
+              "RelativeDocumentMoniker": "H.cs",
+              "ToolTip": "C:\\InSync\\SmartBid\\H.cs*",
+              "RelativeToolTip": "H.cs*",
+              "ViewState": "AgIAAD0AAAAAAAAAAAAiwEwAAABEAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-28T12:23:38.502Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "MirrorXML.cs",
+              "DocumentMoniker": "C:\\InSync\\SmartBid\\MirrorXML.cs",
+              "RelativeDocumentMoniker": "MirrorXML.cs",
+              "ToolTip": "C:\\InSync\\SmartBid\\MirrorXML.cs",
+              "RelativeToolTip": "MirrorXML.cs",
+              "ViewState": "AgIAAAwAAAAAAAAAAAAxwBgAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-22T16:32:24.491Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "VariablesMap.cs",
+              "DocumentMoniker": "C:\\InSync\\SmartBid\\VariablesMap.cs",
+              "RelativeDocumentMoniker": "VariablesMap.cs",
+              "ToolTip": "C:\\InSync\\SmartBid\\VariablesMap.cs",
+              "RelativeToolTip": "VariablesMap.cs",
+              "ViewState": "AgIAAJkAAAAAAAAAAAAQwK0AAAAiAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-21T17:12:20.561Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "DataMaster.cs",
+              "DocumentMoniker": "C:\\InSync\\SmartBid\\DataMaster.cs",
+              "RelativeDocumentMoniker": "DataMaster.cs",
+              "ToolTip": "C:\\InSync\\SmartBid\\DataMaster.cs",
+              "RelativeToolTip": "DataMaster.cs",
+              "ViewState": "AgIAAH8AAAAAAAAAAAAhwMEAAAAcAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-10T13:05:52.211Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "ToolsMap.cs",
+              "DocumentMoniker": "C:\\InSync\\SmartBid\\ToolsMap.cs",
+              "RelativeDocumentMoniker": "ToolsMap.cs",
+              "ToolTip": "C:\\InSync\\SmartBid\\ToolsMap.cs",
+              "RelativeToolTip": "ToolsMap.cs",
+              "ViewState": "AgIAANIBAAAAAAAAAAApwH4BAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-21T17:11:40.153Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "SB_Main.cs",
+              "DocumentMoniker": "C:\\InSync\\SmartBid\\SB_Main.cs",
+              "RelativeDocumentMoniker": "SB_Main.cs",
+              "ToolTip": "C:\\InSync\\SmartBid\\SB_Main.cs",
+              "RelativeToolTip": "SB_Main.cs",
+              "ViewState": "AgIAAFoAAAAAAAAAAAAywHsAAAAYAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-20T15:33:57.301Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

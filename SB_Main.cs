@@ -5,9 +5,6 @@ using System.Xml;
 using Windows.Services.Store;
 using System.Threading;
 
-
-
-
 namespace SmartBid
 {
     class SB_Main
@@ -123,6 +120,9 @@ namespace SmartBid
             H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--***************************************--");
             H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--****||PROJECT: {dm.GetInnerText(@"dm/utils/utilsData/projectFolder")} DONE||****--");
             H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--***************************************--");
+            
+            H.DeleteBookmarkText("ES_Informe de corrosión_Rev0.0.docx", "Ruta_05", dm,"OUTPUT");
+            H.EnviarMail(dm);
 
             //por el momento borramos el fichero de entrada.... luego lo guardaremos en función del nivel de log que tengamos.
         }

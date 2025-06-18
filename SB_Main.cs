@@ -1,9 +1,15 @@
 ﻿using System.Collections.Concurrent;
 using System.Media;
+using System.Runtime.InteropServices.Marshalling;
+using System.Security.Cryptography;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Xml;
 using Windows.Services.Store;
-using System.Threading;
+using Windows.UI.ViewManagement;
+
+
+
 
 namespace SmartBid
 {
@@ -16,11 +22,6 @@ namespace SmartBid
 
         static void Main()
         {
-
-
-            Console.Beep(1000, 400);
-
-
             string path = H.GetSProperty("callsPath");
 
             watcher = new FileSystemWatcher
@@ -53,7 +54,7 @@ namespace SmartBid
             {
                 if (Console.KeyAvailable && Console.ReadKey(true).Key == ConsoleKey.Q)
                 {
-                    H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", "Salida solicitada... deteniendo el watcher.");
+                    H.PrintLog(5, "Main", "myEvent", "Salida solicitada... deteniendo el watcher.");
                     watcher.EnableRaisingEvents = false; // Detiene la detección de archivos nuevos
                     _stopRequested = true;
                     break;
@@ -73,7 +74,6 @@ namespace SmartBid
                 while (_fileQueue.TryDequeue(out string filePath))
                 {
                     // Procesamiento paralelo de cada archivo
-
                     _ = Task.Run(() =>
                     {
                         ThreadContext.CurrentThreadInfo.Value = null;
@@ -100,35 +100,32 @@ namespace SmartBid
 
             H.PrintLog(5, userName, "ProcessFile", $"Procesando archivo: {filePath}");
 
-
-
-            string inputFilesFolder = xmlCall.SelectSingleNode(@"request/requestInfo/inputFolder")?.InnerText ?? "";
-            inputFilesFolder = Path.Combine(H.GetSProperty("callsPath"), inputFilesFolder);
-
             int callID = DBtools.InsertCallStart(xmlCall); // Report starting process to DB
 
             DataMaster dm = CreateDataMaster(xmlCall); //Create New DataMaster
 
-            StoreInputFiles(dm, 1, inputFilesFolder, filePath); // Moves call and input files to final storage folder
+            ProcessInputFiles(dm, 1); // checks that all files declare exits and stores the checksum of the file for comparison
+
+            if (H.GetBProperty("storeXmlCall")) //Stores de call file in case configuration says so
+                StoreCallFile(filePath);
 
             Calculator calculator = new Calculator(dm, xmlCall);
 
             calculator.RunCalculations(xmlCall);
 
+            ReturnRemoveFiles(dm); // Returns or removes files depending on configuration
+
             DBtools.UpdateCallRegistry(callID, "DONE", "OK");
 
             H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--***************************************--");
-            H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--****||PROJECT: {dm.GetInnerText(@"dm/utils/utilsData/projectFolder")} DONE||****--");
+            H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--****||PROJECT: {dm.GetInnerText(@"dm/utils/utilsData/opportunityFolder")} DONE||****--");
             H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--***************************************--");
-            
-            H.DeleteBookmarkText("ES_Informe de corrosión_Rev0.0.docx", "Ruta_05", dm,"OUTPUT");
-            H.EnviarMail(dm);
 
-            //por el momento borramos el fichero de entrada.... luego lo guardaremos en función del nivel de log que tengamos.
+            H.DeleteBookmarkText("ES_Informe de corrosión_Rev0.0.docx", "Ruta_05", dm, "OUTPUT");
+            H.EnviarMail(dm);
         }
 
-
-        static DataMaster CreateDataMaster(XmlDocument xmlCall) //Creamos el datamaster
+        private static DataMaster CreateDataMaster(XmlDocument xmlCall) //Creamos el datamaster
         {
             H.PrintXML(xmlCall); //Print the XML call for debugging
 
@@ -136,8 +133,7 @@ namespace SmartBid
             DataMaster dm = new DataMaster(xmlCall);
 
             //Creating the projectFolder in the storage directory
-
-            string projectFolder = Path.Combine(H.GetSProperty("storagePath"), dm.DM.SelectSingleNode(@"dm/utils/utilsData/projectFolder")?.InnerText ?? "");
+            string projectFolder = Path.Combine(H.GetSProperty("processPath"), dm.DM.SelectSingleNode(@"dm/utils/utilsData/opportunityFolder")?.InnerText ?? "");
 
             if (!Directory.Exists(projectFolder))
                 _ = Directory.CreateDirectory(projectFolder);
@@ -146,55 +142,103 @@ namespace SmartBid
 
             return dm;
         }
-
-        static void StoreInputFiles (DataMaster dm, int rev, string inputFilesFolder, string callPath = "")
-
+        private static void ProcessInputFiles(DataMaster dm, int rev)
         {
-            string targetDir = Path.Combine(H.GetSProperty("storagePath"), dm.DM.SelectSingleNode(@"dm/utils/utilsData/projectFolder")?.InnerText ?? "", "DOC");
+            string inputPath = Path.Combine(H.GetSProperty("oppsPath"), dm.DM.SelectSingleNode(@"dm/utils/utilsData/opportunityFolder")?.InnerText ?? "");
 
-
-            if (!Directory.Exists(targetDir))
-                _ = Directory.CreateDirectory(targetDir);
-
-            //AÑADIR LA FUNCIONALIDAD DE COMPROBAR QUE TODOS LOS FICHEROS ANUNCIADOS EN CALL SON CORRECTAMENTE MOVIDOS AL DIRECTORIO DE DESTINO
-
-
-
-            foreach (string filePath in Directory.GetFiles(inputFilesFolder))
+            foreach (XmlElement doc in dm.DM.SelectNodes(@$"dm/utils/rev_{rev.ToString("D2")}/inputDocs/doc"))
             {
-                string fileName = Path.GetFileName(filePath);
-                string destinationPath = Path.Combine(targetDir, fileName);
+                string fileName = Path.Combine(inputPath, "1.DOC", doc.GetAttribute("type"), doc.InnerText);
 
-                try
+                if (!File.Exists(fileName))
                 {
-                    File.Move(filePath, destinationPath);
-                    H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"Archivo '{fileName}' movido a '{targetDir}'.");
+                    H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - ProcessFile", $"⚠️ El archivo '{fileName}' no existe.");
+                    continue; // Saltar este documento y seguir con los demás
                 }
-                catch (Exception ex)
-                {
-                    H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error", $"Error al mover '{fileName}': {ex.Message}");
-                }
+                string hash = CalcularMD5(fileName); // Calculate MD5 hash for the file
+                string lastModified = File.GetLastWriteTime(fileName).ToString("yyyy-MM-dd HH:mm:ss");
+
+                doc.SetAttribute("hash", hash); // Set the hash attribute in the XML
+                doc.SetAttribute("lastModified", lastModified); // Set the hash attribute in the XML
+
+                DBtools.InsertFileHash(fileName, doc.GetAttribute("type"), hash, lastModified); // Store the file hash in the database
+
+                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"Archivo '{fileName}' registered");
+
             }
-            H.PrintLog(3, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"All input files moved to '{targetDir}'.");
+            H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"All input files have been registered'.");
 
-            if (!string.IsNullOrEmpty(callPath)) 
-            {
-                targetDir = Path.GetDirectoryName(targetDir) ?? targetDir; // Ensure targetDir is not null
-
-                try
-                {
-                    File.Move(callPath, Path.Combine(targetDir, Path.GetFileName(callPath)));
-                    H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"Archivo '{callPath}' movido a '{targetDir}'.");
-                }
-                catch (Exception ex)
-                {
-                    H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error", $"Error al mover '{callPath}': {ex.Message}");
-                }
-            }
-
-            Directory.Delete(inputFilesFolder, true);
 
         }
+        private static void StoreCallFile(string callFile)
+        {
+            if (!string.IsNullOrEmpty(callFile))
+            {
+                try
+                {
+                    string fileName = $"{DateTime.Now:yyMMdd-HHmmss}_{Path.GetFileName(callFile)}";
+                    string targetDir = Path.Combine(H.GetSProperty("oppsPath"), "calls");
+
+                    File.Move(callFile, Path.Combine(targetDir, fileName));
+
+                    H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "StoreCallFile", $"Archivo '{callFile}' movido a '{targetDir}'.");
+                }
+                catch (Exception ex)
+                {
+                    H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - StoreCallFile", $"Error al mover '{callFile}': {ex.Message}");
+                }
+            }
+        }
+        private static string CalcularMD5(string path)
+        {
+            using var stream = File.OpenRead(path);
+            using var md5 = MD5.Create();
+            byte[] hash = md5.ComputeHash(stream);
+            return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+        }
+        private static void ReturnRemoveFiles(DataMaster dm)
+        {
+            string projectFolder = dm.DM.SelectSingleNode(@"dm/utils/utilsData/opportunityFolder")?.InnerText ?? "";
+            string processedToolsPath = Path.Combine(H.GetSProperty("processPath"), projectFolder, "TOOLS");
+            string processedDeliveriesPath = Path.Combine(H.GetSProperty("processPath"), projectFolder, "OUTPUT");
+            string oppsToolsPath = Path.Combine(H.GetSProperty("oppsPath"), projectFolder, @"2.ING\OBS");
+            string oppsDeliveriesPath = Path.Combine(H.GetSProperty("oppsPath"), projectFolder, @"2.ING\OBS");
+
+
+            if (H.GetBProperty("returnTools"))
+                foreach (string file in Directory.GetFiles(processedToolsPath))
+                {
+                    Directory.CreateDirectory(oppsToolsPath); // Crea si no existe
+                    File.Copy(file, Path.Combine(oppsToolsPath, Path.GetFileName(file)), overwrite: true);
+                }
+
+            if (H.GetBProperty("removeTools"))
+                foreach (string file in Directory.GetFiles(processedToolsPath))
+                {
+                    File.Delete(file);
+                }
+
+
+            if (H.GetBProperty("returnDeliveries"))
+                foreach (string file in Directory.GetFiles(processedDeliveriesPath))
+                {
+                    Directory.CreateDirectory(oppsDeliveriesPath); // Crea si no existe
+                    File.Copy(file, Path.Combine(oppsDeliveriesPath, Path.GetFileName(file)), overwrite: true);
+                }
+
+            if (H.GetBProperty("removeDeliveries"))
+                foreach (string file in Directory.GetFiles(processedDeliveriesPath))
+                {
+                    File.Delete(file);
+                }
+
+            
+            if (H.GetBProperty("returnDataMaster"))
+                File.Copy(dm.FileName, Path.Combine(H.GetSProperty("oppsPath"), projectFolder), overwrite: true);
+
+
+        }
+
     }
 
     static class ThreadContext
@@ -203,7 +247,6 @@ namespace SmartBid
         {
             public int ThreadId { get; }
             public string User { get; }
-
             public ThreadInfo(string user)
             {
                 ThreadId = Thread.CurrentThread.ManagedThreadId;

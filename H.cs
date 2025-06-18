@@ -1,5 +1,4 @@
 ﻿using Microsoft.Office.Interop.Word;
-using Outlook = Microsoft.Office.Interop.Outlook;
 using SmartBid;
 using System.Xml;
 using Windows.System;

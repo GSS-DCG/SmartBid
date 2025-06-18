@@ -66,7 +66,6 @@ namespace SmartBid
 
     }
 
-
     public class ToolsMap
     {
         // Private static instance
@@ -232,19 +231,19 @@ namespace SmartBid
             );
 
             // 6. Crear copia del archivo para trabajar
-            string newFilePath = Path.Combine(H.GetSProperty("storagePath"), dm.DM.SelectSingleNode(@"dm/utils/utilsData/projectFolder")?.InnerText ?? "", "TOOLS");
+            string newFilePath = Path.Combine(
+                H.GetSProperty("processPath"),
+                dm.DM.SelectSingleNode(@"dm/utils/utilsData/opportunityFolder")?.InnerText ?? "",
+                "TOOLS",
+                tool.FileName
+            );
 
-            if (!Directory.Exists(newFilePath))
-                _ = Directory.CreateDirectory(newFilePath);
+            // Asegurar que la carpeta de destino existe antes de copiar
+            Directory.CreateDirectory(Path.GetDirectoryName(newFilePath)!);
 
-            newFilePath = Path.Combine(newFilePath, tool.FileName);
-            if (!File.Exists(newFilePath))
-            {
-                if (!Directory.Exists(Path.GetDirectoryName(newFilePath)))
-                    _ = Directory.CreateDirectory(Path.GetDirectoryName(newFilePath));
+            // Copiar y sobrescribir si ya existe
+            File.Copy(filePath, newFilePath, true);
 
-                File.Copy(filePath, newFilePath, true);
-            }
 
             // 7. Abrir el archivo en Excel Interop
             H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "CalculateExcel", $"Calculating tool {toolID}");
@@ -370,13 +369,22 @@ namespace SmartBid
             workbook.Close(false);
             excelApp.Quit();
 
-            // Release COM objects to prevent memory leaks
-            _ = System.Runtime.InteropServices.Marshal.ReleaseComObject(workbook);
-            _ = System.Runtime.InteropServices.Marshal.ReleaseComObject(excelApp);
+            try
+            {
+                Marshal.ReleaseComObject(workbook);
+                Marshal.ReleaseComObject(excelApp);
+            }
+            catch (Exception ex)
+            {
+                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ExcelCleanup", "Error releasing Excel objects: " + ex.Message);
+            }
+
+            // Additional cleanup
+            workbook = null;
+            excelApp = null;
             GC.Collect();
             GC.WaitForPendingFinalizers();
 
-            H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "CalculateExcel", $"Calculating tool {toolID} finished");
             return results;
         }
 
@@ -400,8 +408,8 @@ namespace SmartBid
             );
             // 6. Crear copia del archivo para trabajar
             string filePath = Path.Combine(
-                H.GetSProperty("storagePath"), 
-                dm.DM.SelectSingleNode(@"dm/utils/utilsData/projectFolder")?.InnerText ?? "", 
+                H.GetSProperty("processPath"), 
+                dm.DM.SelectSingleNode(@"dm/utils/utilsData/opportunityFolder")?.InnerText ?? "", 
                 "OUTPUT",
                 tool.FileName
                 );
@@ -565,8 +573,5 @@ namespace SmartBid
                 return null;
             }
         }
-
-
-
     }// End of class ToolsMap
 }// End of namespace SmartBid

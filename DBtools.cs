@@ -1,7 +1,14 @@
 ﻿
+using System;
+using System.Diagnostics;
 using System.Globalization;
 using System.Xml;
+using DocumentFormat.OpenXml.Vml;
 using MySql.Data.MySqlClient;
+using MySqlX.XDevAPI;
+using Org.BouncyCastle.Pqc.Crypto.Lms;
+using Windows.System;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 
 public static class DBConnectionFactory
@@ -26,28 +33,26 @@ static class DBtools
         {
             cmd.CommandText = @"
                 INSERT INTO callsTracker (
-                    CD_Date, CD_ProjectName, CD_Client, CD_Location_Country, CD_Location_City,
-                    CD_ProjectSize, CD_CreatedBy, CD_InputFolder,CD_Status, CD_Request
+                    CD_Date, CD_Request, CD_opportunityFolder, CD_opportunityID, CD_Client, CD_LocationCountry, 
+                    CD_ProjectSize, CD_CreatedBy, CD_Status
                 ) VALUES (
-                    @Date, @ProjectName, @Client, @Country, @City,
-                    @Size, @CreatedBy, @InputFolder, @Status, @Request
+                    @Date, @Request, @OpportunityFolder, @OportunityID, @Client, @Country, 
+                    @Size, @CreatedBy, @Status
                 );
                 SELECT LAST_INSERT_ID();";
 
             XmlNode requestDataNode = doc.SelectSingleNode(@"request/requestInfo");
             XmlNode projectDataNode = doc.SelectSingleNode(@"request/projectData");
-            XmlNode locationNode = doc.SelectSingleNode(@"request/projectData/location");
 
-            _ = cmd.Parameters.AddWithValue("@ProjectName", projectDataNode["projectName"]?.InnerText ?? "");
-            _ = cmd.Parameters.AddWithValue("@Client", projectDataNode["client"]?.InnerText ?? "");
-            _ = cmd.Parameters.AddWithValue("@Country", locationNode?["country"]?.InnerText ?? "");
-            _ = cmd.Parameters.AddWithValue("@City", locationNode?["city"]?.InnerText ?? "");
-            _ = cmd.Parameters.AddWithValue("@Size", double.TryParse(projectDataNode["projectSize"]?.InnerText, out double sizeVal) ? sizeVal : 0);
-            _ = cmd.Parameters.AddWithValue("@CreatedBy", requestDataNode["createdBy"]?.InnerText ?? "");
-            _ = cmd.Parameters.AddWithValue("@InputFolder", requestDataNode["inputFolder"]?.InnerText ?? "");
-            _ = cmd.Parameters.AddWithValue("@Status", "In progress");
-            _ = cmd.Parameters.AddWithValue("@Request", requestDataNode?.Attributes["Type"]?.Value);
             _ = cmd.Parameters.AddWithValue("@Date", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+            _ = cmd.Parameters.AddWithValue("@Request", requestDataNode?.Attributes["Type"]?.Value);
+            _ = cmd.Parameters.AddWithValue("@OpportunityFolder", requestDataNode["opportunityFolder"]?.InnerText ?? "");
+            _ = cmd.Parameters.AddWithValue("@OportunityID", projectDataNode["opportunityID"]?.InnerText ?? "");
+            _ = cmd.Parameters.AddWithValue("@Client", projectDataNode?["client"]?.InnerText ?? "");
+            _ = cmd.Parameters.AddWithValue("@Country", projectDataNode?["locationCountry"]?.InnerText ?? "");
+            _ = cmd.Parameters.AddWithValue("@Size", projectDataNode["peakPower"]?.InnerText ?? "");
+            _ = cmd.Parameters.AddWithValue("@CreatedBy", requestDataNode["createdBy"]?.InnerText ?? "");
+            _ = cmd.Parameters.AddWithValue("@Status", "In progress");
 
             try
             {
@@ -95,9 +100,7 @@ static class DBtools
             try
             {
                 // Extract XML nodes
-                XmlNode initDataNode = dm.SelectSingleNode(@"dm/initData");
-                XmlNode locationNode = dm.SelectSingleNode(@"dm/initData/location");
-                XmlNode geoCoordinatesNode = dm.SelectSingleNode(@"dm/initData/location/coordinates");
+                XmlNode initDataNode = dm.SelectSingleNode(@"dm/projectData");
                 XmlNode utilNode = dm.SelectSingleNode(@"dm/utils/rev_01/requestInfo");
                 XmlNodeList inputDocs = dm.SelectNodes(@"dm/utils/rev_01/inputDocs/doc");
                 XmlNodeList deliveryDocs = dm.SelectNodes(@"dm/utils/rev_01/deliveryDocs/doc");
@@ -106,31 +109,31 @@ static class DBtools
                 var cmdProject = conn.CreateCommand();
                 cmdProject.Transaction = transaction;
                 cmdProject.CommandText = @"
-                    INSERT INTO projects (
-                        Pro_ProjectName, Pro_Location_Country, Pro_Location_Region, Pro_Location_Province,
-                        Pro_Location_City, Pro_Location_PostalCode,
-                        Pro_Location_Coordinates_Latitude, Pro_Location_Coordinates_Longitude,
-                        Pro_ProjectSize, Pro_Product, Pro_KAM, PRO_CreatedBy
+                    INSERT INTO opportunities (
+                        OPO_Opportunity_ID, OPO_Opportunity_Folder, OPO_Project_Name, OPO_Owner, OPO_Client, OPO_PeakPower, 
+                        OPO_Location_Country, OPO_Location_Coordinates_Latitude, OPO_Location_Coordinates_Longitude,
+                        OPO_Product, OPO_KAM, OPO_CreatedBy
                     ) VALUES (
-                        @ProjectName, @Country, @Region, @Province, @City, @PostalCode,
-                        @Latitude, @Longitude, @Size, @Product, @KAM, @CreatedBy
+                        @OportunityID, @OportunityFolder, @ProjectName, @Owner, @Client, 
+                        @PeakPower, @Country, @Latitude, @Longitude, 
+                        @Product, @KAM, @CreatedBy
                     );
                     SELECT LAST_INSERT_ID();";
 
 
 
+                _ = cmdProject.Parameters.AddWithValue("@OportunityID", initDataNode["opportunityID"]?.InnerText ?? "");
+                _ = cmdProject.Parameters.AddWithValue("@OportunityFolder", dm.SelectSingleNode(@"dm/utils")["rev_01"]["requestInfo"]["opportunityFolder"]?.InnerText ?? "");
                 _ = cmdProject.Parameters.AddWithValue("@ProjectName", initDataNode["projectName"]?.InnerText ?? "");
-                _ = cmdProject.Parameters.AddWithValue("@Country", locationNode?["country"]?.InnerText ?? "");
-                _ = cmdProject.Parameters.AddWithValue("@Region", locationNode?["region"]?.InnerText ?? "");
-                _ = cmdProject.Parameters.AddWithValue("@Province", locationNode?["province"]?.InnerText ?? "");
-                _ = cmdProject.Parameters.AddWithValue("@City", locationNode?["city"]?.InnerText ?? "");
-                _ = cmdProject.Parameters.AddWithValue("@PostalCode", locationNode?["postalCode"]?.InnerText ?? "");
-                _ = cmdProject.Parameters.AddWithValue("@Latitude", decimal.TryParse(geoCoordinatesNode?["latitude"]?.InnerText, NumberStyles.Float, CultureInfo.InvariantCulture, out decimal lat) ? lat : 0);
-                _ = cmdProject.Parameters.AddWithValue("@Longitude", decimal.TryParse(geoCoordinatesNode?["longitude"]?.InnerText, NumberStyles.Float, CultureInfo.InvariantCulture, out decimal lng) ? lng : 0);
-                _ = cmdProject.Parameters.AddWithValue("@Size", decimal.TryParse(initDataNode?["projectSize"]?.InnerText, NumberStyles.Float, CultureInfo.InvariantCulture, out decimal size) ? size : 0);
+                _ = cmdProject.Parameters.AddWithValue("@Owner", initDataNode["owner"]?.InnerText ?? "");
+                _ = cmdProject.Parameters.AddWithValue("@Client", initDataNode["client"]?.InnerText ?? "");
+                _ = cmdProject.Parameters.AddWithValue("@PeakPower", decimal.TryParse(initDataNode?["peakPower"]?.InnerText, NumberStyles.Float, CultureInfo.InvariantCulture, out decimal size) ? size : 0);
+                _ = cmdProject.Parameters.AddWithValue("@Country", initDataNode?["locationCountry"]?.InnerText ?? "");
+                _ = cmdProject.Parameters.AddWithValue("@Latitude", decimal.TryParse(initDataNode?["locationCoordinatesLatitude"]?.InnerText, NumberStyles.Float, CultureInfo.InvariantCulture, out decimal lat) ? lat : 0);
+                _ = cmdProject.Parameters.AddWithValue("@Longitude", decimal.TryParse(initDataNode?["locationCoordinatesLongitude"]?.InnerText, NumberStyles.Float, CultureInfo.InvariantCulture, out decimal lng) ? lng : 0);
                 _ = cmdProject.Parameters.AddWithValue("@Product", initDataNode["product"]?.InnerText ?? "");
                 _ = cmdProject.Parameters.AddWithValue("@KAM", initDataNode["kam"]?.InnerText ?? "");
-                _ = cmdProject.Parameters.AddWithValue("@CreatedBy", utilNode["createdBy"]?.InnerText ?? "");
+                _ = cmdProject.Parameters.AddWithValue("@CreatedBy", dm.SelectSingleNode(@"dm/utils")["rev_01"]["requestInfo"]["createdBy"]?.InnerText ?? "");
 
                 int projectId = Convert.ToInt32(cmdProject.ExecuteScalar());
 
@@ -139,7 +142,7 @@ static class DBtools
                 cmdBid.Transaction = transaction;
                 cmdBid.CommandText = @"
                     INSERT INTO bidversion (
-                        BV_Version, BV_Date, BV_CreatedBy, BV_Status, project_id
+                        BV_Version, BV_Date, BV_CreatedBy, BV_Status, OPO_ID
                     ) VALUES (
                         @Version, @Date, @CreatedBy, @Status, @ProjectId
                     );
@@ -158,8 +161,18 @@ static class DBtools
                 {
                     var cmdInput = conn.CreateCommand();
                     cmdInput.Transaction = transaction;
-                    cmdInput.CommandText = "INSERT INTO inputdocs (ID_FileName, ID_BV_ID) VALUES (@FileName, @BV_ID);";
+                    cmdInput.CommandText = "INSERT INTO inputdocs (ID_FileType, ID_FileName, ID_FileCheckSum, ID_FileLastModified, ID_BV_ID) VALUES (@FileType, @FileName, @ID_FileCheckSum, @ID_FileLastModified, @BV_ID);";
+
+                    _ = cmdInput.Parameters.AddWithValue("@FileType", docNode.Attributes["type"]?.Value ?? "");
                     _ = cmdInput.Parameters.AddWithValue("@FileName", docNode?.InnerText ?? "UnnamedInput");
+                    _ = cmdInput.Parameters.AddWithValue("@ID_FileCheckSum", docNode.Attributes["hash"]?.Value ?? "");
+
+                    // Convertir la fecha al formato DateTime de MySQL
+                    DateTime parsedDate;
+                    if (DateTime.TryParse(docNode.Attributes["lastModified"]?.Value, out parsedDate))
+                        _ = cmdInput.Parameters.AddWithValue("@ID_FileLastModified", parsedDate.ToString("yyyy-MM-dd HH:mm:ss"));  // Formato correcto para MySQL DATETIME
+                    else
+                        _ = cmdInput.Parameters.AddWithValue("@ID_FileLastModified", DBNull.Value); // Manejo de error si la fecha no es válida
                     _ = cmdInput.Parameters.AddWithValue("@BV_ID", bidVersionId);
                     _ = cmdInput.ExecuteNonQuery();
                 }
@@ -207,4 +220,28 @@ static class DBtools
             }
     }
 
+    public static void InsertFileHash (string fileName, string type, string hash, string lastModified)
+    {
+        try
+        {
+            using var conn = DBConnectionFactory.CreateConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "INSERT INTO inputFileHashs " +
+              "       (IFH_time,   IFH_fileName, IFH_type, IFH_Checksum, IFH_lastModify) " +
+              "VALUES (@Timestamp, @fileName,    @type,    @hash,    @lastModify)";
+            _ = cmd.Parameters.AddWithValue("@Timestamp", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+            _ = cmd.Parameters.AddWithValue("@fileName", fileName);
+            _ = cmd.Parameters.AddWithValue("@type", type);
+            _ = cmd.Parameters.AddWithValue("@hash", hash);
+            _ = cmd.Parameters.AddWithValue("@lastModify", lastModified);
+            _ = cmd.ExecuteNonQuery();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("DBtools", "Error-LogMessage", "Error during insert: " + ex.Message);
+        }
+    }
+
+
 }
+

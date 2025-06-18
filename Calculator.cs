@@ -2,6 +2,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
+using DocumentFormat.OpenXml.Presentation;
 
 namespace SmartBid
 {
@@ -87,7 +88,6 @@ namespace SmartBid
             _ = DBtools.InsertNewProjectWithBid(dm.DM);
 
         }
-
         private XmlDocument CallPrepTool(string xmlVarList)
         {
             XmlDocument myArgument = new XmlDocument();
@@ -139,7 +139,6 @@ namespace SmartBid
 
             return xmlDoc;
         }
-
         public XmlDocument GetRouteMap(List<string> targets)
         {
             List<string> sourcesSearched = new List<string>();
@@ -175,7 +174,6 @@ namespace SmartBid
 
             return VariablesMap.Instance.ToXml(prepVarIDList); //Returning all variables to be read at Preparation in XML format
         }
-
         private static List<VariableData> Get_PREP_Variables(List<string> targets, List<string> sourcesExcluded, int deep, List<List<string>> calcTools)
         {
 
@@ -237,7 +235,6 @@ namespace SmartBid
 
             return variableList;
         }
-
         public static List<string> GetDeliveryDocs(XmlDocument xmlDoc)
         {
             XmlNode deliveryDocsNode = xmlDoc.SelectSingleNode("/request/bidVersion/deliveryDocs");
@@ -250,7 +247,6 @@ namespace SmartBid
 
             return deliveryDocs;
         }
-
         public static string ReadFileContent(string filePath)
         {
             if (File.Exists(filePath))
@@ -262,6 +258,7 @@ namespace SmartBid
                 throw new FileNotFoundException($"El archivo '{filePath}' no existe.");
             }
         }
+
     }
 
 }

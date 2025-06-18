@@ -1,2 +1,5 @@
 ﻿bin
-.vs
+.vs/
+bin/
+obj/
+*.log

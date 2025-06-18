@@ -1,6 +1,4 @@
-﻿using Microsoft.Office.Interop.Word;
-using SmartBid;
-using System.Xml;
+﻿using System.Xml;
 using Windows.System;
 
 public static class H //Helper class for reading properties from an XML file
@@ -100,7 +98,7 @@ public static class H //Helper class for reading properties from an XML file
         element.InnerText = value;
         return element;
     }
-
+    
     public static bool EnviarMail(DataMaster dm)
     {
         return _EnviarMail(_GetEmail(dm));
@@ -215,4 +213,6 @@ public static class H //Helper class for reading properties from an XML file
 
         return true;
     }
+    
+    
 }

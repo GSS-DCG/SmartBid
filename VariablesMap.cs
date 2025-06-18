@@ -87,9 +87,9 @@ public class VariableData
     public XmlElement ToXML(XmlDocument mainDoc)
     {
         XmlElement varElem = mainDoc.CreateElement("variable");
-        varElem.SetAttribute("ID", ID);
+        varElem.SetAttribute("id", ID);
         varElem.SetAttribute("varName", VarName);
-        varElem.SetAttribute("Source", Source);
+        varElem.SetAttribute("source", Source);
         varElem.SetAttribute("critic", Critic.ToString());
         varElem.SetAttribute("mandatory", Mandatory.ToString());
         varElem.SetAttribute("deep", Deep.ToString());
@@ -199,10 +199,10 @@ public class VariablesMap
         foreach (XmlNode node in doc.SelectNodes("//variable"))
         {
             VariableData data = new VariableData(
-                node.Attributes["ID"]?.InnerText ?? string.Empty,
+                node.Attributes["id"]?.InnerText ?? string.Empty,
                 node.Attributes["varName"]?.InnerText ?? string.Empty,
                 node.Attributes["area"]?.InnerText ?? string.Empty,
-                node.Attributes["Source"]?.InnerText ?? string.Empty,
+                node.Attributes["source"]?.InnerText ?? string.Empty,
                 Convert.ToBoolean(node.Attributes["critic"]?.InnerText ?? "false"),
                 Convert.ToBoolean(node.Attributes["mandatory"]?.InnerText ?? "false"),
                 node.Attributes["type"]?.InnerText ?? string.Empty,
@@ -283,10 +283,10 @@ public class VariablesMap
                 row[24]?.ToString(), // defaultValue
                 row[25]?.ToString()  // description
             );
-            if (!row.IsNull(21))
+            if (!row.IsNull(22))
             {
                 var rangeList = new List<string>();
-                foreach (var value in row[21].ToString().Split(';'))
+                foreach (var value in row[21].ToString().Split(';')) //AllowableRange
                 {
                     rangeList.Add(value.Trim());
                 }
@@ -347,11 +347,4 @@ public class VariablesMap
         return new List<string>();
     }
 
-    public static void _Main(string[] args)
-    {
-        VariablesMap myClass = new VariablesMap();
-        H.PrintLog(2, "VarMap", "myEvent", "\n\nReaded varialbes ID");
-        myClass.GetVarIDList().ForEach(variable => H.PrintLog(2, "VarMap", "myEvent", variable)); // No need for `ToList()`
-        ;
-    }
 }

@@ -1,8 +1,8 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+﻿<?xml version="1.0" encoding="utf-8" ?> 
 <root>
 	<!-- String de conexión a la base de datos -->
-	<DBConnextion>server=10.25.3.189;port=3306;database=SmartBid;user=SB_user01;password=_0000_</DBConnextion>
 	<DBConnextion>server=localhost;port=3306;database=SmartBid;user=SB_user01;password=_0000_</DBConnextion>
+	<DBConnextion>server=10.25.3.189;port=3306;database=SmartBid;user=SB_user01;password=_0000_</DBConnextion>
 
 	<!-- Mapa de directorios -->
 	<callsPath>C:\InSync\SmartBid\files\calls</callsPath>	<!-- Directorio de escucha -->

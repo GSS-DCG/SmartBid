@@ -1,5 +1,4 @@
-﻿bin
-.vs/
-bin/
-obj/
-*.log
+﻿.vs
+bin
+files
+obj

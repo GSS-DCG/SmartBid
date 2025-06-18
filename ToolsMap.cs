@@ -11,8 +11,6 @@ using Word = Microsoft.Office.Interop.Word;
 using File = System.IO.File;
 using Google.Protobuf.Reflection;
 
-
-
 namespace SmartBid
 {
 

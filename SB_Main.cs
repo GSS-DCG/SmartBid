@@ -8,9 +8,6 @@ using System.Xml;
 using Windows.Services.Store;
 using Windows.UI.ViewManagement;
 
-
-
-
 namespace SmartBid
 {
     class SB_Main
@@ -121,10 +118,6 @@ namespace SmartBid
             H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--****||PROJECT: {dm.GetInnerText(@"dm/utils/utilsData/opportunityFolder")} DONE||****--");
             H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--***************************************--");
 
-            H.DeleteBookmarkText("ES_Informe de corrosión_Rev0.0.docx", "Ruta_05", dm, "OUTPUT");
-            H.EnviarMail(dm);
-
-
         }
 
         private static DataMaster CreateDataMaster(XmlDocument xmlCall) //Creamos el datamaster
@@ -163,10 +156,14 @@ namespace SmartBid
                 doc.SetAttribute("hash", hash); // Set the hash attribute in the XML
                 doc.SetAttribute("lastModified", lastModified); // Set the hash attribute in the XML
 
+                DBtools.InsertFileHash(fileName, doc.GetAttribute("type"), hash, lastModified); // Store the file hash in the database
+
                 H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"Archivo '{fileName}' registered");
 
             }
             H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"All input files have been registered'.");
+
+
         }
         private static void StoreCallFile(string callFile)
         {

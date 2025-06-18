@@ -3,7 +3,6 @@ using System.Xml;
 using ExcelDataReader;
 using File = System.IO.File;
 
-
 public class VariableData
 {
     #region Properties

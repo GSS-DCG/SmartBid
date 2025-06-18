@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "WSL": {
+      "commandName": "WSL2",
+      "distributionName": ""
+    },
+    "SmartBid": {
+      "commandName": "Project",
+      "workingDirectory": "C:\\InSync\\SmartBid"
+    }
+  }
+}

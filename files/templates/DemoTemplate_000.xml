@@ -1,7 +1,0 @@
-<doc fileName="DemoTemplate_000.DOCX" GSS_GSSCode="GSSIDaaa" GSS_DocVersion="000" GSS_Buld="00" date="06/09/25_16:00">
-  <variable source="PREP" inOut="in" call="1">A</variable>
-  <variable source="DEMO1" inOut="in" call="1">D</variable>
-  <variable source="DEMO2" inOut="in" call="1">F</variable>
-  <variable source="DEMO1_Call2" inOut="in" call="1">H</variable>
-  <variable source="DEMO1" inOut="in" call="1">tabla2</variable>
-</doc>

@@ -1,5 +1,0 @@
-<doc fileName="DemoFileName2_000.XLSX" GSS_GSSCode="DEMO2" GSS_Version="000" GSS_Build="00" GSS_DocVersion="MiDocVersion" date="06/10/25_12:51">
-  <variable source="DEMO1" inOut="in" call="1">E</variable>
-  <variable source="DEMO2" inOut="out" call="1">F</variable>
-  <variable source="DEMO2" inOut="out" call="1">G</variable>
-</doc>

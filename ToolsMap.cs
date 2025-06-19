@@ -276,11 +276,11 @@ namespace SmartBid
                                 H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", "Error accessing range: " + ex.Message);
                             }
 
-                            cell.Value = dm.GetStringValue(variableID);
+                            cell.Value = dm.GetValueString(variableID);
                         }
                         else // Si es una tabla, obtenemos el XML de la tabla y lo escribimos en la hoja de Excel
                         {
-                            XmlNode tableData = dm.GetXmlValue(variableID);
+                            XmlNode tableData = dm.GetValueXmlNode(variableID);
                             if (tableData.SelectSingleNode("t") != null && tableData.SelectSingleNode("t").HasChildNodes)
                             {
                                 WriteTableToExcel(workbook, rangeName, tableData);
@@ -424,7 +424,7 @@ namespace SmartBid
 
             foreach (string var in mirror.VarList.Keys)
             {
-                varList[var] = dm.GetXmlValue(var);
+                varList[var] = dm.GetValueXmlNode(var);
             }
 
             Word.Application wordApp = new Word.Application();

@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 using DocumentFormat.OpenXml.Packaging;
@@ -200,12 +200,36 @@ namespace SmartBid
                 H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"Error reading DOCX: {ex.Message}");
             }
             string varPrefix = H.GetSProperty("VarPrefix");
-            return varList
-                .Where(pair => !string.IsNullOrWhiteSpace(pair.Key) && !pair.Key.ToLower().Contains("_toc")) // Apply filter to key
-                .Select(pair => new KeyValuePair<string, string[]>(pair.Key.Replace("\\* MERGEFORMAT", "").Replace("ref ", "").Replace(varPrefix, ""), pair.Value)) // Modify key, preserve value
-                .DistinctBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase) // Ensure unique keys
-                .ToDictionary(pair => pair.Key, pair => pair.Value); // Convert back to Dictionary
 
+            varList = varList
+                        .Where(pair => !string.IsNullOrWhiteSpace(pair.Key))
+                        .ToDictionary(pair => pair.Key, pair => pair.Value);
+
+            varList = varList
+                        .Where(pair =>
+                            pair.Key.IndexOf("_toc", StringComparison.OrdinalIgnoreCase) == -1 &&
+                            pair.Key.IndexOf("PAGEREF", StringComparison.OrdinalIgnoreCase) == -1)
+                        .ToDictionary(pair => pair.Key, pair => pair.Value);
+
+            varList = varList
+                        .Where(pair => pair.Key.StartsWith("SB_", StringComparison.OrdinalIgnoreCase))
+                        .ToDictionary(pair => pair.Key, pair => pair.Value);
+
+            varList = varList
+                        .Select(pair => new KeyValuePair<string, string[]>(
+                            pair.Key
+                                .Replace("\\* MERGEFORMAT", "")
+                                .Replace("ref ", "")
+                                .Replace(varPrefix, ""),
+                            pair.Value))
+                        .ToDictionary(pair => pair.Key, pair => pair.Value);
+
+            varList = varList
+                        .DistinctBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
+                        .ToDictionary(pair => pair.Key, pair => pair.Value);
+
+
+            return varList;
         }
 
         private static Dictionary<string, string> ExtractGSSDataFromXlsx(string fileName)

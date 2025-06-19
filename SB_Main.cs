@@ -116,7 +116,7 @@ namespace SmartBid
             DBtools.UpdateCallRegistry(callID, "DONE", "OK");
 
             H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--***************************************--");
-            H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--****||PROJECT: {dm.GetStringValue("opportunityFolder")} DONE||****--");
+            H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--****||PROJECT: {dm.GetValueString("opportunityFolder")} DONE||****--");
             H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--***************************************--");
 
             // H.DeleteBookmarkText("ES_Informe de corrosión_Rev0.0.docx", "Ruta_05", dm, "OUTPUT");
@@ -126,13 +126,13 @@ namespace SmartBid
 
             // Add KAM email if configured to do so
             if (H.GetBProperty("mailKAM"))
-                emailRecipients.Add(dm.GetStringValue("kam"));
+                emailRecipients.Add(dm.GetValueString("kam"));
 
             // Add CreatedBy email if configured to do so
             if (H.GetBProperty("mailCreatedBy"))
-                emailRecipients.Add(dm.GetStringValue("createdBy"));
+                emailRecipients.Add(dm.GetValueString("createdBy"));
 
-            H.MailTo(emailRecipients);
+            H.MailTo(emailRecipients, "Mail de Prueba", "Enviado desde SmartBid");
 
 
 

@@ -103,7 +103,7 @@ public static class H //Helper class for reading properties from an XML file
         return element;
     }
 
-    public static bool MailTo(List<string> email)
+    public static bool MailTo(List<string> email, string subject, string text)
     {
         try
         {

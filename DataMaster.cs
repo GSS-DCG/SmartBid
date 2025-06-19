@@ -149,13 +149,6 @@ namespace SmartBid
             // Implementación pendiente
         }
 
-        private XmlElement CreateElement(string name, string value)
-        {
-            XmlElement element = _dm.CreateElement(name);
-            element.InnerText = value;
-            return element;
-        }
-
         public void UpdateData(XmlDocument newData)
         {
             XmlNode variablesNode = newData.SelectSingleNode("/root/variables");
@@ -189,18 +182,6 @@ namespace SmartBid
             }
         }
 
-        public XmlElement GetImportedElement(XmlDocument sourceDoc, string elementName)
-        {
-            XmlElement sourceElement = (XmlElement)sourceDoc.DocumentElement.SelectSingleNode(elementName);
-            if (sourceElement == null)
-            {
-                throw new XmlException($"Element '{elementName}' not found in the source document.");
-            }
-
-            XmlElement importedElement = (XmlElement)_dm.ImportNode(sourceElement, true);
-            return importedElement;
-        }
-
         public void SaveDataMaster()
         {
             string filePath;
@@ -219,7 +200,7 @@ namespace SmartBid
             H.PrintLog(4, User, "DM", $"XML guardado en {filePath}");
         }
 
-        public string GetStringValue(string key)
+        public string GetValueString(string key)
         {
             if (_data.ContainsKey(key))
             {
@@ -231,13 +212,25 @@ namespace SmartBid
             }
         }
 
-        public double? GetNumberValue(string key)
+        public double? GetValueNumber(string key)
         {
             if (_data.ContainsKey(key))
             {
-               return double.TryParse(_data[key]?.FirstChild.Value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out double num) ? num : (double?)null;
+                return double.TryParse(_data[key]?.FirstChild.Value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out double num) ? num : (double?)null;
 
-               
+
+            }
+            else
+            {
+                throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
+            }
+        }
+        
+        public bool? GetValueBoolean(string key)
+        {
+            if (_data.ContainsKey(key))
+            {
+                return bool.TryParse(_data[key]?.FirstChild.Value.ToString(), out bool num) ? num : (bool?)null;
             }
             else
             {
@@ -245,7 +238,7 @@ namespace SmartBid
             }
         }
 
-        public XmlNode GetXmlValue(string key)
+        public XmlNode GetValueXmlNode(string key)
         {
             if (_data.ContainsKey(key))
             {
@@ -268,6 +261,25 @@ namespace SmartBid
             {
                 throw new XmlException($"Node not found for XPath: {xpath}");
             }
+        }
+
+        private XmlElement GetImportedElement(XmlDocument sourceDoc, string elementName)
+        {
+            XmlElement sourceElement = (XmlElement)sourceDoc.DocumentElement.SelectSingleNode(elementName);
+            if (sourceElement == null)
+            {
+                throw new XmlException($"Element '{elementName}' not found in the source document.");
+            }
+
+            XmlElement importedElement = (XmlElement)_dm.ImportNode(sourceElement, true);
+            return importedElement;
+        }
+
+        private XmlElement CreateElement(string name, string value)
+        {
+            XmlElement element = _dm.CreateElement(name);
+            element.InnerText = value;
+            return element;
         }
 
         private static XmlElement CreateElement(XmlDocument doc, string name, string value)

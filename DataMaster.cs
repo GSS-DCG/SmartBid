@@ -1,8 +1,10 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 using DocumentFormat.OpenXml.Presentation;
 using Microsoft.Office.Interop.Word;
+using Org.BouncyCastle.Asn1.Ocsp;
 
 namespace SmartBid
 {
@@ -62,7 +64,13 @@ namespace SmartBid
                     {
 
                     // Load Basic Data
-                    if (variable.Area == "projectData") _projectDataNode.AppendChild(GetImportedElement(xmlRequest, @$"//projectData/{variable.ID}"));
+                    if (variable.Area == "projectData")
+                    {
+                        XmlElement element = GetImportedElement(xmlRequest, @$"//projectData/{variable.ID}");
+                        _projectDataNode.AppendChild(element);
+
+                        _data.Add(variable.ID, element);
+                    }
 
                     // Load Config. Init Data (creating an xml with config data variables and send it to UpdateData for inserting in DM
                     if (variable.Area == "config") {
@@ -108,12 +116,15 @@ namespace SmartBid
                     H.PrintLog(5, User, "CargaXML", "⚠️ Nodo 'opportunityFolder' no encontrado.");
                     throw new InvalidOperationException("El XML está incompleto: falta '//requestInfo/opportunityFolder'.");
                 }
+
+                // Add opportunityFolder to dataMaster and _data dictionary
                 utilsData.AppendChild(GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder"));
+                _data.Add("opportunityFolder", GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder"));
+                _data.Add("createdBy", GetImportedElement(xmlRequest, "//requestInfo/createdBy"));
 
                 //Add first revision element
-                _ = _utilsNode.AppendChild(_dm.CreateComment("First Revision"));
+                _utilsNode.AppendChild(_dm.CreateComment("First Revision"));
                 XmlElement revision = _dm.CreateElement("rev_01");
-
 
                 XmlElement importedNode = (XmlElement)xmlRequest.SelectSingleNode("//requestInfo");
 
@@ -213,6 +224,20 @@ namespace SmartBid
             if (_data.ContainsKey(key))
             {
                 return _data[key]?.FirstChild.Value.ToString() ?? string.Empty;
+            }
+            else
+            {
+                throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
+            }
+        }
+
+        public double? GetNumberValue(string key)
+        {
+            if (_data.ContainsKey(key))
+            {
+               return double.TryParse(_data[key]?.FirstChild.Value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out double num) ? num : (double?)null;
+
+               
             }
             else
             {

@@ -21,12 +21,17 @@
 	<tableStyle>MyStyle</tableStyle>  <!-- Nombre del formato que se dará a las tablas insertadas en los Templates -->
 
 	<!-- Log/Storage -->
-	<storeXmlCall>true</storeXmlCall> <!-- Archivar el fichero Call.xml-->
-	<returnTools>true</returnTools> <!-- Copiar las herramientas al directorio Opps -->
-	<returnDeliveries>true</returnDeliveries>
-	<returnDataMaster>false</returnDataMaster>
+	<storeXmlCall>true</storeXmlCall>	<!-- Archivar el fichero Call.xml-->
 	<storeTools>true</storeTools>
 	<storeDeliveries>true</storeDeliveries>
-	<logLevel>2</logLevel>  <!-- Nivel de anotaciones en el Log: 0-Todo 5-Mínimo -->
-	<printLevel>0</printLevel>  <!-- Nivel de printouts en consola: 0-Todo 5-Mínimo -->
+	
+	<returnTools>false</returnTools>	<!-- Copiar las herramientas al directorio Opps -->
+	<returnDeliveries>true</returnDeliveries>
+	<returnDataMaster>false</returnDataMaster>
+
+	<mailKAM>false</mailKAM>
+	<mailCreatedBy>true</mailCreatedBy>
+	
+	<logLevel>3</logLevel>  <!-- Nivel de anotaciones en el Log: 0-Todo 5-Mínimo -->
+	<printLevel>3</printLevel>  <!-- Nivel de printouts en consola: 0-Todo 5-Mínimo -->
 </root>

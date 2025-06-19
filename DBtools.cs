@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.Intrinsics.Arm;
 using System.Xml;
 using DocumentFormat.OpenXml.Vml;
 using MySql.Data.MySqlClient;
 using MySqlX.XDevAPI;
 using Org.BouncyCastle.Pqc.Crypto.Lms;
+using SmartBid;
 using Windows.System;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
@@ -91,18 +93,17 @@ static class DBtools
         }
     }
 
-    public static int InsertNewProjectWithBid(XmlDocument dm)
+    public static int InsertNewProjectWithBid(DataMaster dm)
     {
+        XmlDocument dataMaster = dm.DM;
         using (var conn = DBConnectionFactory.CreateConnection())
         using (var transaction = conn.BeginTransaction())
         {
             try
             {
                 // Extract XML nodes
-                XmlNode initDataNode = dm.SelectSingleNode(@"dm/projectData");
-                XmlNode utilNode = dm.SelectSingleNode(@"dm/utils/rev_01/requestInfo");
-                XmlNodeList inputDocs = dm.SelectNodes(@"dm/utils/rev_01/inputDocs/doc");
-                XmlNodeList deliveryDocs = dm.SelectNodes(@"dm/utils/rev_01/deliveryDocs/doc");
+                XmlNodeList inputDocs = dataMaster.SelectNodes(@"dm /utils/rev_01/inputDocs/doc");
+                XmlNodeList deliveryDocs = dataMaster.SelectNodes(@"dm/utils/rev_01/deliveryDocs/doc");
 
                 // Insert project
                 var cmdProject = conn.CreateCommand();
@@ -119,20 +120,19 @@ static class DBtools
                     );
                     SELECT LAST_INSERT_ID();";
 
-
-
-                _ = cmdProject.Parameters.AddWithValue("@OportunityID", initDataNode["opportunityID"]?.InnerText ?? "");
-                _ = cmdProject.Parameters.AddWithValue("@OportunityFolder", dm.SelectSingleNode(@"dm/utils")["rev_01"]["requestInfo"]["opportunityFolder"]?.InnerText ?? "");
-                _ = cmdProject.Parameters.AddWithValue("@ProjectName", initDataNode["projectName"]?.InnerText ?? "");
-                _ = cmdProject.Parameters.AddWithValue("@Owner", initDataNode["owner"]?.InnerText ?? "");
-                _ = cmdProject.Parameters.AddWithValue("@Client", initDataNode["client"]?.InnerText ?? "");
-                _ = cmdProject.Parameters.AddWithValue("@PeakPower", decimal.TryParse(initDataNode?["peakPower"]?.InnerText, NumberStyles.Float, CultureInfo.InvariantCulture, out decimal size) ? size : 0);
-                _ = cmdProject.Parameters.AddWithValue("@Country", initDataNode?["locationCountry"]?.InnerText ?? "");
-                _ = cmdProject.Parameters.AddWithValue("@Latitude", decimal.TryParse(initDataNode?["locationCoordinatesLatitude"]?.InnerText, NumberStyles.Float, CultureInfo.InvariantCulture, out decimal lat) ? lat : 0);
-                _ = cmdProject.Parameters.AddWithValue("@Longitude", decimal.TryParse(initDataNode?["locationCoordinatesLongitude"]?.InnerText, NumberStyles.Float, CultureInfo.InvariantCulture, out decimal lng) ? lng : 0);
-                _ = cmdProject.Parameters.AddWithValue("@Product", initDataNode["product"]?.InnerText ?? "");
-                _ = cmdProject.Parameters.AddWithValue("@KAM", initDataNode["kam"]?.InnerText ?? "");
-                _ = cmdProject.Parameters.AddWithValue("@CreatedBy", dm.SelectSingleNode(@"dm/utils")["rev_01"]["requestInfo"]["createdBy"]?.InnerText ?? "");
+                //_ = cmdProject.Parameters.AddWithValue("@OportunityID", dm.GetInnerText(@"dm/projectData/opportunityID"));
+                _ = cmdProject.Parameters.AddWithValue("@OportunityID", dm.GetStringValue("opportunityID"));
+                _ = cmdProject.Parameters.AddWithValue("@OportunityFolder", dm.GetStringValue("opportunityFolder"));
+                _ = cmdProject.Parameters.AddWithValue("@ProjectName", dm.GetStringValue("projectName"));
+                _ = cmdProject.Parameters.AddWithValue("@Owner", dm.GetStringValue("owner"));
+                _ = cmdProject.Parameters.AddWithValue("@Client", dm.GetStringValue("client"));
+                _ = cmdProject.Parameters.AddWithValue("@PeakPower", dm.GetNumberValue("peakPower") ?? 0);
+                _ = cmdProject.Parameters.AddWithValue("@Country", dm.GetStringValue("locationCountry"));
+                _ = cmdProject.Parameters.AddWithValue("@Latitude", dm.GetNumberValue("locationCoordinatesLatitude") ?? 0);
+                _ = cmdProject.Parameters.AddWithValue("@Longitude", dm.GetNumberValue("locationCoordinatesLongitude") ?? 0);
+                _ = cmdProject.Parameters.AddWithValue("@Product", dm.GetStringValue("product"));
+                _ = cmdProject.Parameters.AddWithValue("@KAM", dm.GetStringValue("kam"));
+                _ = cmdProject.Parameters.AddWithValue("@CreatedBy", dm.GetStringValue("createdBy"));
 
                 int projectId = Convert.ToInt32(cmdProject.ExecuteScalar());
 
@@ -149,7 +149,7 @@ static class DBtools
 
                 _ = cmdBid.Parameters.AddWithValue("@Version", 1);
                 _ = cmdBid.Parameters.AddWithValue("@Date", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-                _ = cmdBid.Parameters.AddWithValue("@CreatedBy", utilNode["createdBy"]?.InnerText ?? "");
+                _ = cmdBid.Parameters.AddWithValue("@CreatedBy", dm.GetInnerText(@"dm/utils/rev_01/requestInfo/createdBy"));
                 _ = cmdBid.Parameters.AddWithValue("@Status", "In progress");
                 _ = cmdBid.Parameters.AddWithValue("@ProjectId", projectId);
 

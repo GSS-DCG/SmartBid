@@ -85,7 +85,7 @@ namespace SmartBid
             }
             dm.SaveDataMaster(); //Save the DataMaster after calculations
 
-            _ = DBtools.InsertNewProjectWithBid(dm.DM);
+            _ = DBtools.InsertNewProjectWithBid(dm);
 
         }
         private XmlDocument CallPrepTool(string xmlVarList)

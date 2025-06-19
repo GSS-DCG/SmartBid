@@ -156,7 +156,7 @@ namespace SmartBid
 
         private Dictionary<string, string[]> ExtractVariablesFromDocx(string docxPath)
         {
-            Dictionary<string, string[]> varList = new Dictionary<string, string[]>();
+            List <string> varList = new List<string>();
             try
             {
                 using (WordprocessingDocument doc = WordprocessingDocument.Open(docxPath, false))
@@ -165,6 +165,8 @@ namespace SmartBid
                     var runs = body.Descendants<Run>();
                     string currentField = "";
                     bool isFieldActive = false;
+
+                    // recorre  todas las marcas, como vienen rotas tenemos que unificar los fragmentos que se encuentran entre FieldCharValues.Begin y FieldCharValues.End
                     foreach (var run in runs)
                     {
                         var fldCharBegin = run.Descendants<FieldChar>().FirstOrDefault(fc => fc.FieldCharType == FieldCharValues.Begin);
@@ -181,12 +183,12 @@ namespace SmartBid
                         }
                         if (fldCharEnd != null)
                         {
-                            isFieldActive = false;
+                            isFieldActive = false; // Una vez que hemos encontrado una marca completa la añadimos a la lista.
                             if (!string.IsNullOrEmpty(currentField))
                             {
                                 // Remove unwanted characters and add to the list
                                 currentField = currentField.Trim();
-                                varList[currentField] = new string[] { "", "in", "1" };
+                                varList.Add(currentField);
 
                                 // Reset currentField for the next varName
                                 currentField = "";
@@ -197,39 +199,30 @@ namespace SmartBid
             }
             catch (Exception ex)
             {
-                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"Error reading DOCX: {ex.Message}");
+                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - ExtractVariablesFromDocx", $"Error reading DOCX: {ex.Message}");
             }
+
             string varPrefix = H.GetSProperty("VarPrefix");
 
-            varList = varList
-                        .Where(pair => !string.IsNullOrWhiteSpace(pair.Key))
-                        .ToDictionary(pair => pair.Key, pair => pair.Value);
 
             varList = varList
-                        .Where(pair =>
-                            pair.Key.IndexOf("_toc", StringComparison.OrdinalIgnoreCase) == -1 &&
-                            pair.Key.IndexOf("PAGEREF", StringComparison.OrdinalIgnoreCase) == -1)
-                        .ToDictionary(pair => pair.Key, pair => pair.Value);
+                .Where(item => //dejamos sólo las que empiecen por el prejijo
+                    !string.IsNullOrWhiteSpace(item) &&
+                    item.StartsWith(varPrefix, StringComparison.OrdinalIgnoreCase))
+                .Select(item => item // eliminamos el prefijo y otras marcas que pueden aparecer
+                    .Replace(varPrefix, "")
+                    .Replace("\\* MERGEFORMAT", "")
+                    .Replace("ref ", ""))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
-            varList = varList
-                        .Where(pair => pair.Key.StartsWith("SB_", StringComparison.OrdinalIgnoreCase))
-                        .ToDictionary(pair => pair.Key, pair => pair.Value);
+            Dictionary<string, string[]> varDict = varList
+                    .ToDictionary(
+                        key => key,
+                        key => new string[] { "", "in", "1" },
+                        StringComparer.OrdinalIgnoreCase);
 
-            varList = varList
-                        .Select(pair => new KeyValuePair<string, string[]>(
-                            pair.Key
-                                .Replace("\\* MERGEFORMAT", "")
-                                .Replace("ref ", "")
-                                .Replace(varPrefix, ""),
-                            pair.Value))
-                        .ToDictionary(pair => pair.Key, pair => pair.Value);
-
-            varList = varList
-                        .DistinctBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
-                        .ToDictionary(pair => pair.Key, pair => pair.Value);
-
-
-            return varList;
+            return varDict;
         }
 
         private static Dictionary<string, string> ExtractGSSDataFromXlsx(string fileName)

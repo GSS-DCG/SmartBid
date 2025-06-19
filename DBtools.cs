@@ -1,13 +1,12 @@
-﻿using System;
+﻿
+using System;
 using System.Diagnostics;
 using System.Globalization;
-using System.Runtime.Intrinsics.Arm;
 using System.Xml;
 using DocumentFormat.OpenXml.Vml;
 using MySql.Data.MySqlClient;
 using MySqlX.XDevAPI;
 using Org.BouncyCastle.Pqc.Crypto.Lms;
-using SmartBid;
 using Windows.System;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
@@ -61,7 +60,7 @@ static class DBtools
             }
             catch (Exception ex)
             {
-                H.PrintLog(5, "DBtools", "Error - InsertCallStart", "Error inserting callsTracker registry: " + ex.Message);
+                H.PrintLog(2, "DBtools", "myEvent", "Error inserting call start: " + ex.Message);
                 return -1;
             }
         }
@@ -88,22 +87,23 @@ static class DBtools
             }
             catch (Exception ex)
             {
-                H.PrintLog(5, "DBtools", "Error - UpdateCallRegistry", "Error updating callsTracker registry: " + ex.Message);
+                H.PrintLog(2, "DBtools", "myEvent", "Error updating call registry: " + ex.Message);
             }
         }
     }
 
-    public static int InsertNewProjectWithBid(DataMaster dm)
+    public static int InsertNewProjectWithBid(XmlDocument dm)
     {
-        XmlDocument dataMaster = dm.DM;
         using (var conn = DBConnectionFactory.CreateConnection())
         using (var transaction = conn.BeginTransaction())
         {
             try
             {
                 // Extract XML nodes
-                XmlNodeList inputDocs = dataMaster.SelectNodes(@"dm /utils/rev_01/inputDocs/doc");
-                XmlNodeList deliveryDocs = dataMaster.SelectNodes(@"dm/utils/rev_01/deliveryDocs/doc");
+                XmlNode initDataNode = dm.SelectSingleNode(@"dm/projectData");
+                XmlNode utilNode = dm.SelectSingleNode(@"dm/utils/rev_01/requestInfo");
+                XmlNodeList inputDocs = dm.SelectNodes(@"dm/utils/rev_01/inputDocs/doc");
+                XmlNodeList deliveryDocs = dm.SelectNodes(@"dm/utils/rev_01/deliveryDocs/doc");
 
                 // Insert project
                 var cmdProject = conn.CreateCommand();
@@ -120,19 +120,20 @@ static class DBtools
                     );
                     SELECT LAST_INSERT_ID();";
 
-                //_ = cmdProject.Parameters.AddWithValue("@OportunityID", dm.GetInnerText(@"dm/projectData/opportunityID"));
-                _ = cmdProject.Parameters.AddWithValue("@OportunityID", dm.GetValueString("opportunityID"));
-                _ = cmdProject.Parameters.AddWithValue("@OportunityFolder", dm.GetValueString("opportunityFolder"));
-                _ = cmdProject.Parameters.AddWithValue("@ProjectName", dm.GetValueString("projectName"));
-                _ = cmdProject.Parameters.AddWithValue("@Owner", dm.GetValueString("owner"));
-                _ = cmdProject.Parameters.AddWithValue("@Client", dm.GetValueString("client"));
-                _ = cmdProject.Parameters.AddWithValue("@PeakPower", dm.GetValueNumber("peakPower") ?? 0);
-                _ = cmdProject.Parameters.AddWithValue("@Country", dm.GetValueString("locationCountry"));
-                _ = cmdProject.Parameters.AddWithValue("@Latitude", dm.GetValueNumber("locationCoordinatesLatitude") ?? 0);
-                _ = cmdProject.Parameters.AddWithValue("@Longitude", dm.GetValueNumber("locationCoordinatesLongitude") ?? 0);
-                _ = cmdProject.Parameters.AddWithValue("@Product", dm.GetValueString("product"));
-                _ = cmdProject.Parameters.AddWithValue("@KAM", dm.GetValueString("kam"));
-                _ = cmdProject.Parameters.AddWithValue("@CreatedBy", dm.GetValueString("createdBy"));
+
+
+                _ = cmdProject.Parameters.AddWithValue("@OportunityID", initDataNode["opportunityID"]?.InnerText ?? "");
+                _ = cmdProject.Parameters.AddWithValue("@OportunityFolder", dm.SelectSingleNode(@"dm/utils")["rev_01"]["requestInfo"]["opportunityFolder"]?.InnerText ?? "");
+                _ = cmdProject.Parameters.AddWithValue("@ProjectName", initDataNode["projectName"]?.InnerText ?? "");
+                _ = cmdProject.Parameters.AddWithValue("@Owner", initDataNode["owner"]?.InnerText ?? "");
+                _ = cmdProject.Parameters.AddWithValue("@Client", initDataNode["client"]?.InnerText ?? "");
+                _ = cmdProject.Parameters.AddWithValue("@PeakPower", decimal.TryParse(initDataNode?["peakPower"]?.InnerText, NumberStyles.Float, CultureInfo.InvariantCulture, out decimal size) ? size : 0);
+                _ = cmdProject.Parameters.AddWithValue("@Country", initDataNode?["locationCountry"]?.InnerText ?? "");
+                _ = cmdProject.Parameters.AddWithValue("@Latitude", decimal.TryParse(initDataNode?["locationCoordinatesLatitude"]?.InnerText, NumberStyles.Float, CultureInfo.InvariantCulture, out decimal lat) ? lat : 0);
+                _ = cmdProject.Parameters.AddWithValue("@Longitude", decimal.TryParse(initDataNode?["locationCoordinatesLongitude"]?.InnerText, NumberStyles.Float, CultureInfo.InvariantCulture, out decimal lng) ? lng : 0);
+                _ = cmdProject.Parameters.AddWithValue("@Product", initDataNode["product"]?.InnerText ?? "");
+                _ = cmdProject.Parameters.AddWithValue("@KAM", initDataNode["kam"]?.InnerText ?? "");
+                _ = cmdProject.Parameters.AddWithValue("@CreatedBy", dm.SelectSingleNode(@"dm/utils")["rev_01"]["requestInfo"]["createdBy"]?.InnerText ?? "");
 
                 int projectId = Convert.ToInt32(cmdProject.ExecuteScalar());
 
@@ -149,7 +150,7 @@ static class DBtools
 
                 _ = cmdBid.Parameters.AddWithValue("@Version", 1);
                 _ = cmdBid.Parameters.AddWithValue("@Date", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-                _ = cmdBid.Parameters.AddWithValue("@CreatedBy", dm.GetValueString("createdBy"));
+                _ = cmdBid.Parameters.AddWithValue("@CreatedBy", utilNode["createdBy"]?.InnerText ?? "");
                 _ = cmdBid.Parameters.AddWithValue("@Status", "In progress");
                 _ = cmdBid.Parameters.AddWithValue("@ProjectId", projectId);
 
@@ -193,7 +194,7 @@ static class DBtools
             catch (Exception ex)
             {
                 transaction.Rollback();
-                H.PrintLog(5, "DBtools", "Error - InsertNewProjectWithBid", "Error during insert: " + ex.Message);
+                H.PrintLog(2, "DBtools", "myEvent", "Error during insert: " + ex.Message);
                 return -1;
             }
         }
@@ -215,7 +216,7 @@ static class DBtools
             }
             catch (Exception ex)
             {
-                Console.WriteLine("DBtools", "Error - LogMessage", "Error during insert: " + ex.Message);
+                Console.WriteLine("DBtools", "Error-LogMessage", "Error during insert: " + ex.Message);
             }
     }
 
@@ -237,7 +238,7 @@ static class DBtools
         }
         catch (Exception ex)
         {
-            H.PrintLog(5, "DBtools", "Error - InsertFileHash", "Error during insert inputFileHashs: " + ex.Message);
+            Console.WriteLine("DBtools", "Error-LogMessage", "Error during insert: " + ex.Message);
         }
     }
 

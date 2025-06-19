@@ -1,9 +1,11 @@
-﻿using System.Text.RegularExpressions;
-using System.Xml;
-using System.Xml.Linq;
+
+using DocumentFormat.OpenXml.Office2010.Excel;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
 using DocumentFormat.OpenXml.Wordprocessing;
+using System.Text.RegularExpressions;
+using System.Xml;
+using System.Xml.Linq;
 using Run = DocumentFormat.OpenXml.Wordprocessing.Run;
 using Text = DocumentFormat.OpenXml.Wordprocessing.Text;
 
@@ -83,9 +85,15 @@ namespace SmartBid
 
                 foreach (string variable in VarList.Keys.ToList())
                 {
-                    string id = System.Text.RegularExpressions.Regex.Replace(variable, @"^Call[0-9]_", "");
-                    VarList[variable] = new string[] { varMap.GetNewVariableData(id).Source, VarList[variable][1], VarList[variable][2] }; // Fill up source data before saving to XML
+                    if (!variable.Contains("\\s"))
+                    {
+                        string id = System.Text.RegularExpressions.Regex.Replace(variable, @"^Call[0-9]_", "");
 
+                        if(varMap.GetNewVariableData(id) != null)
+                        {
+                            VarList[variable] = new string[] { varMap.GetNewVariableData(id).Source, VarList[variable][1], VarList[variable][2] }; // Fill up source data before saving to XML
+                        }
+                    }
                 }
 
                 CreateXMLMirror(directoryPath);
@@ -200,36 +208,12 @@ namespace SmartBid
                 H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"Error reading DOCX: {ex.Message}");
             }
             string varPrefix = H.GetSProperty("VarPrefix");
+            return varList
+                .Where(pair => !string.IsNullOrWhiteSpace(pair.Key) && !pair.Key.ToLower().Contains("_toc")) // Apply filter to key
+                .Select(pair => new KeyValuePair<string, string[]>(pair.Key.Replace("\\* MERGEFORMAT", "").Replace("ref ", "").Replace(varPrefix, ""), pair.Value)) // Modify key, preserve value
+                .DistinctBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase) // Ensure unique keys
+                .ToDictionary(pair => pair.Key, pair => pair.Value); // Convert back to Dictionary
 
-            varList = varList
-                        .Where(pair => !string.IsNullOrWhiteSpace(pair.Key))
-                        .ToDictionary(pair => pair.Key, pair => pair.Value);
-
-            varList = varList
-                        .Where(pair =>
-                            pair.Key.IndexOf("_toc", StringComparison.OrdinalIgnoreCase) == -1 &&
-                            pair.Key.IndexOf("PAGEREF", StringComparison.OrdinalIgnoreCase) == -1)
-                        .ToDictionary(pair => pair.Key, pair => pair.Value);
-
-            varList = varList
-                        .Where(pair => pair.Key.StartsWith("SB_", StringComparison.OrdinalIgnoreCase))
-                        .ToDictionary(pair => pair.Key, pair => pair.Value);
-
-            varList = varList
-                        .Select(pair => new KeyValuePair<string, string[]>(
-                            pair.Key
-                                .Replace("\\* MERGEFORMAT", "")
-                                .Replace("ref ", "")
-                                .Replace(varPrefix, ""),
-                            pair.Value))
-                        .ToDictionary(pair => pair.Key, pair => pair.Value);
-
-            varList = varList
-                        .DistinctBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
-                        .ToDictionary(pair => pair.Key, pair => pair.Value);
-
-
-            return varList;
         }
 
         private static Dictionary<string, string> ExtractGSSDataFromXlsx(string fileName)
@@ -281,10 +265,15 @@ namespace SmartBid
                     Match match = Regex.Match(varName.ToLower(), @"^call(\d)_");
                     if (match.Success) value[2] = match.Groups[1].Value; varName = varName.Substring(match.Length);
 
-
-                    varList.Add(new string(varName), value);
+                    if (!varList.ContainsKey(varName))
+                    {
+                        varList.Add(new string(varName), value);
+                    }
+                    else
+                    {
+                        Console.WriteLine($"VariableData with ID '{varName}' was declared twice on the word Document.");
+                    }
                 }
-
             }
             return varList;
 
@@ -299,7 +288,7 @@ namespace SmartBid
                 var definedNames = workbookPart.Workbook.DefinedNames;
                 if (definedNames != null)
                 {
-                    foreach (var definedName in definedNames.Elements<DefinedName>())
+                    foreach (var definedName in definedNames.Elements<DocumentFormat.OpenXml.Spreadsheet.DefinedName>())
                     {
                         rangeNames.Add(definedName.Name);
                     }
@@ -320,7 +309,7 @@ namespace SmartBid
                 var definedNames = workbookPart.Workbook.DefinedNames;
                 if (definedNames != null)
                 {
-                    var gssInputRange = definedNames.Elements<DefinedName>().FirstOrDefault(dn => dn.Name == rangeName);
+                    var gssInputRange = definedNames.Elements<DocumentFormat.OpenXml.Spreadsheet.DefinedName>().FirstOrDefault(dn => dn.Name == rangeName);
                     if (gssInputRange != null)
                     {
                         string[] range = gssInputRange.Text.Split('!')[1].Split(':');

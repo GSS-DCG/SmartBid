@@ -3,6 +3,7 @@ using System.Xml;
 using ExcelDataReader;
 using File = System.IO.File;
 
+
 public class VariableData
 {
     #region Properties
@@ -265,7 +266,7 @@ public class VariablesMap
         }
         DataTable dataTable = dataSet.Tables["VarMap"];
         // Iterate over the rows from row 3 until column A is empty
-        for (int i = 1; i < dataTable.Rows.Count; i++)
+        for (int i = 2; i < dataTable.Rows.Count; i++)
         {
             DataRow row = dataTable.Rows[i];
             if (row.IsNull(0))
@@ -330,12 +331,18 @@ public class VariablesMap
     {
         var varData = Variables.FirstOrDefault(variable => variable.ID == id);
 
-        if (varData == null)
+        if (!id.Contains("\\s"))
         {
-            throw new KeyNotFoundException($"VariableData with ID '{id}' was not found.");
-        }
+            if (varData == null)
+            {
+                Console.WriteLine($"VariableData with ID '{id}' was not found");
+
+                return null;
+            }
 
         return varData.Clone(); // Using the Clone method to return a new instance
+        }
+        return null;
     }
 
     public List<string> GetCalculationPath(List<string> varList)

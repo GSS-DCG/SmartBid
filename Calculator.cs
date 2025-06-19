@@ -1,5 +1,5 @@
 ﻿using System.Diagnostics;
-using System.Text; 
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
 using DocumentFormat.OpenXml.Presentation;
@@ -85,7 +85,7 @@ namespace SmartBid
             }
             dm.SaveDataMaster(); //Save the DataMaster after calculations
 
-            _ = DBtools.InsertNewProjectWithBid(dm);
+            _ = DBtools.InsertNewProjectWithBid(dm.DM);
 
         }
         private XmlDocument CallPrepTool(string xmlVarList)
@@ -202,17 +202,20 @@ namespace SmartBid
                 }
 
                 foreach (var item in mirror.VarList.Keys)
-
                 {
+                    if (!item.Contains("\\s") && varMap.GetNewVariableData(item) != null)
+                    {
                     string varName = item;
 
-                    if (mirror.VarList[varName][1] == "in" && call == Convert.ToInt16(mirror.VarList[varName][2]))
-                    {
-                        VariableData variableData = varMap.GetNewVariableData(varName); // Retrieve the variable data
-                        variableData.InOut = "in"; // Set the InOut property
-                        variableData.Call = Convert.ToInt16(mirror.VarList[varName][2]);// Set the Call property
-                        variableData.Deep = deep; // Set the depth property
-                        variableList.Add(variableData); // Add it to the list
+                        if (mirror.VarList[varName][1] == "in" && call == Convert.ToInt16(mirror.VarList[varName][2]))
+                        {
+                            VariableData variableData = varMap.GetNewVariableData(varName); // Retrieve the variable data
+                            variableData.InOut = "in"; // Set the InOut property
+                            variableData.Call = Convert.ToInt16(mirror.VarList[varName][2]);// Set the Call property
+                            variableData.Deep = deep; // Set the depth property
+                            variableList.Add(variableData); // Add it to the list
+                        }
+
                     }
                 }
             }

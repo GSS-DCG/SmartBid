@@ -1,4 +1,4 @@
-ï»¿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 using DocumentFormat.OpenXml.Packaging;
@@ -83,9 +83,15 @@ namespace SmartBid
 
                 foreach (string variable in VarList.Keys.ToList())
                 {
-                    string id = System.Text.RegularExpressions.Regex.Replace(variable, @"^Call[0-9]_", "");
-                    VarList[variable] = new string[] { varMap.GetNewVariableData(id).Source, VarList[variable][1], VarList[variable][2] }; // Fill up source data before saving to XML
+                    if (!variable.Contains("\\s"))
+                    {
+                        string id = System.Text.RegularExpressions.Regex.Replace(variable, @"^Call[0-9]_", "");
 
+                        if(varMap.GetNewVariableData(id) != null)
+                        {
+                            VarList[variable] = new string[] { varMap.GetNewVariableData(id).Source, VarList[variable][1], VarList[variable][2] }; // Fill up source data before saving to XML
+                        }
+                    }
                 }
 
                 CreateXMLMirror(directoryPath);
@@ -183,7 +189,7 @@ namespace SmartBid
                         }
                         if (fldCharEnd != null)
                         {
-                            isFieldActive = false; // Una vez que hemos encontrado una marca completa la aÃ±adimos a la lista.
+                            isFieldActive = false; // Una vez que hemos encontrado una marca completa la añadimos a la lista.
                             if (!string.IsNullOrEmpty(currentField))
                             {
                                 // Remove unwanted characters and add to the list
@@ -206,7 +212,7 @@ namespace SmartBid
 
 
             varList = varList
-                .Where(item => //dejamos sÃ³lo las que empiecen por el prejijo
+                .Where(item => //dejamos sólo las que empiecen por el prejijo
                     !string.IsNullOrWhiteSpace(item) &&
                     item.StartsWith(varPrefix, StringComparison.OrdinalIgnoreCase))
                 .Select(item => item // eliminamos el prefijo y otras marcas que pueden aparecer

@@ -296,6 +296,11 @@ public class VariablesMap
         }
     }
 
+    public bool IsVariableExists(string id)
+    {
+        return Variables.Any(variable => variable.ID == id);
+    }
+
     public List<string> GetVarIDList()
     {
         List<string> varList = new List<string>();

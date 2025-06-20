@@ -225,13 +225,23 @@ namespace SmartBid
                 .Where(item => !string.IsNullOrWhiteSpace(item))
                 .ToList();
 
-            Dictionary<string, string[]> varDict = varList
-                    .ToDictionary(
-                        key => key,
-                        key => new string[] { "", "in", "1" },
-                        StringComparer.OrdinalIgnoreCase);
 
-            return varDict;
+            VariablesMap varMap = VariablesMap.Instance;
+
+            foreach (string var in varList) // Comprobamos que todas las variables están declaradas en el VariableMap
+            {
+                if (!varMap.IsVariableExists(var))
+                {
+                    H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - ExtractVariablesFromDocx", $" Variable {var} No está definida en VariableMap");
+                    throw new InvalidOperationException($" Variable {var} No está definida en VariableMap");
+                }
+            }
+
+            return varList.ToDictionary(
+                            key => key,
+                            key => new string[] { "", "in", "1" },
+                            StringComparer.OrdinalIgnoreCase);
+
         }
 
         private static Dictionary<string, string> ExtractGSSDataFromXlsx(string fileName)

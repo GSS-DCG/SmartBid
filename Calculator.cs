@@ -2,6 +2,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
+using Org.BouncyCastle.Asn1.X509;
 
 namespace SmartBid
 {
@@ -34,9 +35,10 @@ namespace SmartBid
             dm.SaveDataMaster(); //Save the DataMaster after preparation
 
             //Generate files structure and move input files
-
-
             //Call each tool in the list of _targets and update the DataMaster with the results
+
+            H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "RunCalculations", $"rute: {string.Join(" > ", _calcRoute)}");
+
             foreach (string target in _calcRoute)
             {
                 if (tm.Tools.Exists(tool => tool.ID == target))

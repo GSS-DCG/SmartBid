@@ -29,7 +29,7 @@
 	<returnDeliveries>true</returnDeliveries>
 	<returnDataMaster>false</returnDataMaster>
 
-	<mailKAM>true</mailKAM>
+	<mailKAM>false</mailKAM>
 	<mailCreatedBy>false</mailCreatedBy>
 	
 	<logLevel>3</logLevel>  <!-- Nivel de anotaciones en el Log: 0-Todo 5-Mínimo -->

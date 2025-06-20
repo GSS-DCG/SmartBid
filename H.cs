@@ -85,7 +85,7 @@ public static class H //Helper class for reading properties from an XML file
     {
         if (GetNProperty("printLevel") <= level)
         {
-            Console.WriteLine($"{level} - user: {user}  >>{eventLog}: {message}");
+            Console.WriteLine($"{level} - user: {user} >> {eventLog}: {message}");
         }
         if (GetNProperty("logLevel") <= level)
         {

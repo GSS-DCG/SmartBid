@@ -99,7 +99,7 @@ namespace SmartBid
             ProcessInputFiles(dm, 1); // checks that all files declare exits and stores the checksum of the file for comparison
 
             if (H.GetBProperty("storeXmlCall")) //Stores de call file in case configuration says so
-                StoreCallFile(filePath);
+                StoreCallFile(filePath, Path.GetDirectoryName(dm.FileName));
 
             Calculator calculator = new Calculator(dm, xmlCall);
 
@@ -177,16 +177,16 @@ namespace SmartBid
 
 
         }
-        private static void StoreCallFile(string callFile)
+        private static void StoreCallFile(string callFile, string oppFolder)
         {
             if (!string.IsNullOrEmpty(callFile))
             {
                 try
                 {
                     string fileName = $"{DateTime.Now:yyMMdd-HHmmss}_{Path.GetFileName(callFile)}";
-                    string targetDir = Path.Combine(H.GetSProperty("oppsPath"), "calls");
+                    string targetDir = Path.Combine(H.GetSProperty("processPath"), "", "calls");
 
-                    File.Move(callFile, Path.Combine(targetDir, fileName));
+                    File.Move(callFile, Path.Combine(targetDir, oppFolder, fileName));
 
                     H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "StoreCallFile", $"Archivo '{callFile}' movido a '{targetDir}'.");
                 }

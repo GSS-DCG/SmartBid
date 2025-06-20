@@ -27,6 +27,9 @@ namespace SmartBid
             _dm = new XmlDocument();
             _data = new Dictionary<string, XmlNode>();
 
+            // register actual revision number in _data (no need to store it in DM)
+            StoreValue("revision", H.CreateElement(DM, "value", "rev_01"));
+
             if (((XmlElement)xmlRequest.SelectSingleNode("/request/requestInfo")).GetAttribute("Type") == "create")
             {
                 XmlDeclaration xmlDeclaration = _dm.CreateXmlDeclaration("1.0", "utf-8", null);
@@ -58,13 +61,13 @@ namespace SmartBid
                 foreach (VariableData variable in varList)
                 {
 
-                    // Load Basic Data
+                    // Load PROJECTDATA Data
                     if (variable.Area == "projectData")
                     {
                         XmlElement element = GetImportedElement(xmlRequest, @$"//projectData/{variable.ID}");
                         _ = _projectDataNode.AppendChild(element);
 
-                        _data.Add(variable.ID, element);
+                        StoreValue(variable.ID, element);
                     }
 
                     // Load Config. Init Data (creating an xml with config data variables and send it to UpdateData for inserting in DM
@@ -115,8 +118,13 @@ namespace SmartBid
 
                 // Add opportunityFolder to dataMaster and _data dictionary
                 _ = utilsData.AppendChild(GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder"));
-                _data.Add("opportunityFolder", GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder"));
-                _data.Add("createdBy", GetImportedElement(xmlRequest, "//requestInfo/createdBy"));
+                StoreValue("opportunityFolder", GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder"));
+                StoreValue("createdBy", GetImportedElement(xmlRequest, "//requestInfo/createdBy"));
+
+
+
+            
+
 
                 //Add first revision element
                 _ = _utilsNode.AppendChild(_dm.CreateComment("First Revision"));
@@ -165,7 +173,7 @@ namespace SmartBid
                     _ = set01Element.AppendChild(child.CloneNode(true));
                     if (child.Name == "value")
                     {
-                        _data.Add(variable.Name, child);
+                       StoreValue(variable.Name, (XmlElement)child);
                     }
                 }
 
@@ -212,11 +220,10 @@ namespace SmartBid
             if (_data.ContainsKey(key))
             {
                 return double.TryParse(_data[key]?.FirstChild.Value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out double num) ? num : null;
-
-
             }
             else
             {
+                H.PrintLog(5, User, "Error - DM", $"Key '{key}' not found in DataMaster.");
                 throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
             }
         }
@@ -229,6 +236,7 @@ namespace SmartBid
             }
             else
             {
+                H.PrintLog(5, User, "Error - DM", $"Key '{key}' not found in DataMaster.");
                 throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
             }
         }
@@ -241,6 +249,7 @@ namespace SmartBid
             }
             else
             {
+                H.PrintLog(5, User, "Error - DM", $"Key '{key}' not found in DataMaster.");
                 throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
             }
         }
@@ -256,6 +265,12 @@ namespace SmartBid
             {
                 throw new XmlException($"Node not found for XPath: {xpath}");
             }
+        }
+
+        private void StoreValue(string id, XmlElement value)
+        {
+            H.PrintLog(1, User, "StoreValue", $"variable ||{id}|| added to DataMaster data");
+            _data.Add(id, value);
         }
 
         private XmlElement GetImportedElement(XmlDocument sourceDoc, string elementName)

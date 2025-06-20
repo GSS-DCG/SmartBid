@@ -1,15 +1,11 @@
 ﻿using System.Data;
 using System.Runtime.InteropServices;
 using System.Xml;
-using DocumentFormat.OpenXml.Drawing.Diagrams;
-using DocumentFormat.OpenXml.ExtendedProperties;
-using DocumentFormat.OpenXml.Spreadsheet;
 using ExcelDataReader;
 using Microsoft.Office.Interop.Word;
 using Excel = Microsoft.Office.Interop.Excel;
-using Word = Microsoft.Office.Interop.Word;
 using File = System.IO.File;
-using Google.Protobuf.Reflection;
+using Word = Microsoft.Office.Interop.Word;
 
 namespace SmartBid
 {
@@ -237,7 +233,7 @@ namespace SmartBid
             );
 
             // Asegurar que la carpeta de destino existe antes de copiar
-            Directory.CreateDirectory(Path.GetDirectoryName(newFilePath)!);
+            _ = Directory.CreateDirectory(Path.GetDirectoryName(newFilePath)!);
 
             // Copiar y sobrescribir si ya existe
             File.Copy(filePath, newFilePath, true);
@@ -319,10 +315,9 @@ namespace SmartBid
 
                 if (mirror.GetVarCallLevel(variableID) == tool.Call && (direction == "out"))
                 {
-                    Excel.Range cell = null;
                     XmlElement newElement = results.CreateElement(variableID);
                     string rangeName = $"{H.GetSProperty("OUT_VarPrefix")}{((tool.Call > 1) ? $"call{tool.Call}_" : "")}{variableID}";
-                    cell = workbook.Names.Item(rangeName).RefersToRange;
+                    Excel.Range cell = workbook.Names.Item(rangeName).RefersToRange;
 
 
 
@@ -330,25 +325,25 @@ namespace SmartBid
                     {
 
                         if (_variablesMap.GetVariableData(variableID).Type != "table")
+                        {
+                            // Si el tipo no es tabla, simplemente añadimos el valor
+                            _ = newElement.AppendChild(H.CreateElement(results, "value", cell.Value.ToString()));
+                        }
+                        else // Si es una tabla, obtenemos los datos de la tabla y los añadimos
+                        {
+                            XmlNode tableDataXml = ReadTableFromExcel(workbook, rangeName, results);
+                            if (tableDataXml != null && tableDataXml.HasChildNodes)
                             {
-                                // Si el tipo no es tabla, simplemente añadimos el valor
-                                _ = newElement.AppendChild(H.CreateElement(results, "value", cell.Value.ToString()));
-                            }
-                            else // Si es una tabla, obtenemos los datos de la tabla y los añadimos
-                            {
-                                XmlNode tableDataXml = ReadTableFromExcel(workbook, rangeName, results);
-                                if (tableDataXml != null && tableDataXml.HasChildNodes)
-                                {
                                 XmlElement value = results.CreateElement("value");
                                 value.SetAttribute("type", "table");
-                                value.AppendChild(tableDataXml);
+                                _ = value.AppendChild(tableDataXml);
                                 _ = newElement.AppendChild(value);
-                                }
-                                else
-                                {
-                                    _ = newElement.AppendChild(H.CreateElement(results, "value", "No data found in table."));
                             }
+                            else
+                            {
+                                _ = newElement.AppendChild(H.CreateElement(results, "value", "No data found in table."));
                             }
+                        }
                         _ = newElement.AppendChild(H.CreateElement(results, "origin", $"{toolID}+{timestamp}"));
                         _ = newElement.AppendChild(H.CreateElement(results, "note", $"Value calculated"));
                     }
@@ -369,8 +364,8 @@ namespace SmartBid
 
             try
             {
-                Marshal.ReleaseComObject(workbook);
-                Marshal.ReleaseComObject(excelApp);
+                _ = Marshal.ReleaseComObject(workbook);
+                _ = Marshal.ReleaseComObject(excelApp);
             }
             catch (Exception ex)
             {
@@ -378,8 +373,6 @@ namespace SmartBid
             }
 
             // Additional cleanup
-            workbook = null;
-            excelApp = null;
             GC.Collect();
             GC.WaitForPendingFinalizers();
 
@@ -406,8 +399,8 @@ namespace SmartBid
             );
             // 6. Crear copia del archivo para trabajar
             string filePath = Path.Combine(
-                H.GetSProperty("processPath"), 
-                dm.DM.SelectSingleNode(@"dm/utils/utilsData/opportunityFolder")?.InnerText ?? "", 
+                H.GetSProperty("processPath"),
+                dm.DM.SelectSingleNode(@"dm/utils/utilsData/opportunityFolder")?.InnerText ?? "",
                 "OUTPUT",
                 tool.FileName
                 );
@@ -432,7 +425,7 @@ namespace SmartBid
 
             H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOutputWord", $"Generating output {templateID}");
 
-                try
+            try
             {
                 string prefix = H.GetSProperty("VarPrefix");
                 foreach (Word.Field field in doc.Fields) //each mark in the word document
@@ -482,12 +475,13 @@ namespace SmartBid
                                 H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"Tabla insertada y referencia '{variableID}' eliminada correctamente.");
 
                             }
-                            else { 
+                            else
+                            {
                                 fieldRange.Text = varList[variableID].InnerText;
                                 field.Unlink(); // Convierte la referencia en texto estático
-                            }                            
+                            }
                         }
-                        
+
                     }
                 }
 
@@ -508,7 +502,7 @@ namespace SmartBid
 
         static void WriteTableToExcel(Excel.Workbook workbook, string rangeName, XmlNode doc)
         {
-            
+
             try
             {
                 // 📌 Parse XML Input
@@ -557,9 +551,9 @@ namespace SmartBid
                     {
                         XmlElement cell = outputDoc.CreateElement("c");
                         cell.InnerText = Convert.ToString(((Excel.Range)outputRange.Cells[i, j]).Text); // ✅ Corrected conversion
-                        row.AppendChild(cell);
+                        _ = row.AppendChild(cell);
                     }
-                    root.AppendChild(row);
+                    _ = root.AppendChild(row);
                 }
 
                 return root; // ✅ Returning Proper XMLNode Output

@@ -1,10 +1,5 @@
 using System.Globalization;
-using System.Text.RegularExpressions;
 using System.Xml;
-using System.Xml.Linq;
-using DocumentFormat.OpenXml.Presentation;
-using Microsoft.Office.Interop.Word;
-using Org.BouncyCastle.Asn1.Ocsp;
 
 namespace SmartBid
 {
@@ -55,30 +50,31 @@ namespace SmartBid
 
                 XmlDocument configDataXML = new XmlDocument();
                 XmlElement configDataRoot = configDataXML.CreateElement("root");
-                configDataXML.AppendChild(configDataRoot);
+                _ = configDataXML.AppendChild(configDataRoot);
                 XmlElement variables = configDataXML.CreateElement("variables");
-                configDataRoot.AppendChild(variables);
+                _ = configDataRoot.AppendChild(variables);
 
 
                 foreach (VariableData variable in varList)
-                    {
+                {
 
                     // Load Basic Data
                     if (variable.Area == "projectData")
                     {
                         XmlElement element = GetImportedElement(xmlRequest, @$"//projectData/{variable.ID}");
-                        _projectDataNode.AppendChild(element);
+                        _ = _projectDataNode.AppendChild(element);
 
                         _data.Add(variable.ID, element);
                     }
 
                     // Load Config. Init Data (creating an xml with config data variables and send it to UpdateData for inserting in DM
-                    if (variable.Area == "config") {
-                        _dataNode.AppendChild(GetImportedElement(xmlRequest, @$"//config/{variable.ID}"));
+                    if (variable.Area == "config")
+                    {
+                        _ = _dataNode.AppendChild(GetImportedElement(xmlRequest, @$"//config/{variable.ID}"));
 
                         // Variable 
                         XmlElement newVar = configDataXML.CreateElement(variable.ID);
-                        variables.AppendChild(newVar);
+                        _ = variables.AppendChild(newVar);
 
                         // Value node
                         XmlElement value = configDataXML.CreateElement("value");
@@ -91,17 +87,17 @@ namespace SmartBid
 
                         value.InnerText = importedElement?.InnerText ?? ""; // Avoid null reference
 
-                        newVar.AppendChild(value);
+                        _ = newVar.AppendChild(value);
 
                         // Origin node
                         XmlElement origin = configDataXML.CreateElement("origin");
                         origin.InnerText = "INIT from callXML";
-                        newVar.AppendChild(origin);
+                        _ = newVar.AppendChild(origin);
 
                         // Note node
                         XmlElement note = configDataXML.CreateElement("note");
                         note.InnerText = "Variable leida de Hermes";
-                        newVar.AppendChild(note);
+                        _ = newVar.AppendChild(note);
                     }
                 }
                 // Adding variable to the data dictionary
@@ -111,24 +107,23 @@ namespace SmartBid
                 XmlNode utilsData = _utilsNode.AppendChild(DM.CreateElement("utilsData"));
 
                 // Check if opportunityFolder exists, otherwise throw an exception
-                if (GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder") == null) 
+                if (GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder") == null)
                 {
                     H.PrintLog(5, User, "CargaXML", "⚠️ Nodo 'opportunityFolder' no encontrado.");
                     throw new InvalidOperationException("El XML está incompleto: falta '//requestInfo/opportunityFolder'.");
                 }
 
                 // Add opportunityFolder to dataMaster and _data dictionary
-                utilsData.AppendChild(GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder"));
+                _ = utilsData.AppendChild(GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder"));
                 _data.Add("opportunityFolder", GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder"));
                 _data.Add("createdBy", GetImportedElement(xmlRequest, "//requestInfo/createdBy"));
 
                 //Add first revision element
-                _utilsNode.AppendChild(_dm.CreateComment("First Revision"));
+                _ = _utilsNode.AppendChild(_dm.CreateComment("First Revision"));
                 XmlElement revision = _dm.CreateElement("rev_01");
+                XmlElement unused = (XmlElement)xmlRequest.SelectSingleNode("//requestInfo");
 
                 XmlElement importedNode = (XmlElement)xmlRequest.SelectSingleNode("//requestInfo");
-
-                importedNode = (XmlElement)xmlRequest.SelectSingleNode("//requestInfo");
                 _ = importedNode != null ? revision.AppendChild(_dm.ImportNode(importedNode, true)) : null;
 
                 importedNode = (XmlElement)xmlRequest.SelectSingleNode("//bidVersion/deliveryDocs");
@@ -216,7 +211,7 @@ namespace SmartBid
         {
             if (_data.ContainsKey(key))
             {
-                return double.TryParse(_data[key]?.FirstChild.Value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out double num) ? num : (double?)null;
+                return double.TryParse(_data[key]?.FirstChild.Value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out double num) ? num : null;
 
 
             }
@@ -225,12 +220,12 @@ namespace SmartBid
                 throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
             }
         }
-        
+
         public bool? GetValueBoolean(string key)
         {
             if (_data.ContainsKey(key))
             {
-                return bool.TryParse(_data[key]?.FirstChild.Value.ToString(), out bool num) ? num : (bool?)null;
+                return bool.TryParse(_data[key]?.FirstChild.Value.ToString(), out bool num) ? num : null;
             }
             else
             {

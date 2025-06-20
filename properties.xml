@@ -9,7 +9,7 @@
 	<oppsPath>C:\InSync\SmartBid\files\oportunidades</oppsPath>  <!-- Directorio de entrada -->
 	<processPath>C:\InSync\SmartBid\files\processed</processPath>  <!-- Directorio de salida -->
 
-	<VarMap>C:\InSync\SmartBid\files\tools\Libro1 2.xlsx</VarMap>  <!-- Excel con el mapa de variables y de herramientas -->
+	<VarMap>C:\InSync\SmartBid\files\tools\Libro1.xlsx</VarMap>  <!-- Excel con el mapa de variables y de herramientas -->
 	<PreparationTool>C:\InSync\Preparation\publish\Preparation.exe</PreparationTool>  <!-- applicacion de preparación .exe  -->
 	<ToolsPath>C:\InSync\SmartBid\files\tools\</ToolsPath>  <!-- Carpeta donde encontrar las herramientas -->
 	<TemplatesPath>C:\InSync\SmartBid\files\templates\</TemplatesPath>  <!-- Carpeta donde encontrar las plantillas -->

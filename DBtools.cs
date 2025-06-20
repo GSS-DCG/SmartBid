@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using System.Xml;
+﻿using System.Xml;
 using MySql.Data.MySqlClient;
 using SmartBid;
 
@@ -193,25 +192,25 @@ static class DBtools
 
     public static void LogMessage(int level, string user, string eventLog, string message)
     {
-            try
-            {
-                using var conn = DBConnectionFactory.CreateConnection();
-                using var cmd = conn.CreateCommand();
-                cmd.CommandText = "INSERT INTO log (Log_time, Log_level, Log_event, Log_user, Log_message) VALUES (@Timestamp, @Level, @Event, @User, @Message)";
-                _ = cmd.Parameters.AddWithValue("@Timestamp", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-                _ = cmd.Parameters.AddWithValue("@Level", level);
-                _ = cmd.Parameters.AddWithValue("@Event", eventLog);
-                _ = cmd.Parameters.AddWithValue("@User", user);
-                _ = cmd.Parameters.AddWithValue("@Message", message);
-                _ = cmd.ExecuteNonQuery();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("DBtools", "Error - LogMessage", "Error during insert: " + ex.Message);
-            }
+        try
+        {
+            using var conn = DBConnectionFactory.CreateConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "INSERT INTO log (Log_time, Log_level, Log_event, Log_user, Log_message) VALUES (@Timestamp, @Level, @Event, @User, @Message)";
+            _ = cmd.Parameters.AddWithValue("@Timestamp", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+            _ = cmd.Parameters.AddWithValue("@Level", level);
+            _ = cmd.Parameters.AddWithValue("@Event", eventLog);
+            _ = cmd.Parameters.AddWithValue("@User", user);
+            _ = cmd.Parameters.AddWithValue("@Message", message);
+            _ = cmd.ExecuteNonQuery();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("DBtools", "Error - LogMessage", "Error during insert: " + ex.Message);
+        }
     }
 
-    public static void InsertFileHash (string fileName, string type, string hash, string lastModified)
+    public static void InsertFileHash(string fileName, string type, string hash, string lastModified)
     {
         try
         {

@@ -1,8 +1,6 @@
 ﻿using System.Xml;
 using Microsoft.Office.Interop.Word;
-using MySqlX.XDevAPI;
 using SmartBid;
-using Windows.System;
 using Outlook = Microsoft.Office.Interop.Outlook;
 
 public static class H //Helper class for reading properties from an XML file 
@@ -31,7 +29,7 @@ public static class H //Helper class for reading properties from an XML file
     {
         if (propertyCache.ContainsKey(name))
         {
-            return propertyCache[name].ToString() as string;
+            return propertyCache[name].ToString();
         }
 
         if (!File.Exists(Path.GetFullPath(PROPERTIES_FILEPATH)))
@@ -83,7 +81,7 @@ public static class H //Helper class for reading properties from an XML file
         return; // Only print if log level is sufficient
     }
 
-    public static void PrintLog (int level = 2, string user = "", string eventLog = "info", string message = "")
+    public static void PrintLog(int level = 2, string user = "", string eventLog = "info", string message = "")
     {
         if (GetNProperty("printLevel") <= level)
         {
@@ -91,7 +89,7 @@ public static class H //Helper class for reading properties from an XML file
         }
         if (GetNProperty("logLevel") <= level)
         {
-            DBtools.LogMessage( level, user, eventLog, message);
+            DBtools.LogMessage(level, user, eventLog, message);
         }
 
     }
@@ -115,7 +113,7 @@ public static class H //Helper class for reading properties from an XML file
 
             foreach (string _email in email)
             {
-                mailItem.Recipients.Add(_email);
+                _ = mailItem.Recipients.Add(_email);
             }
 
             mailItem.Body = $"Correo enviado desde C#"; //Texto dentro del correo
@@ -143,8 +141,8 @@ public static class H //Helper class for reading properties from an XML file
         try
         {
             File.Copy(RutaBaseWordDoc, RutaProcessedWordDoc, true);
-            _DeleteBookmarkText(RutaProcessedWordDoc, BookmarkName);
-            _DeleteBookmarks(RutaProcessedWordDoc, BookmarkName);
+            _ = _DeleteBookmarkText(RutaProcessedWordDoc, BookmarkName);
+            _ = _DeleteBookmarks(RutaProcessedWordDoc, BookmarkName);
         }
         catch (Exception e)
         {

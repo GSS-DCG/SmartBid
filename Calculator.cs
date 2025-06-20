@@ -1,8 +1,7 @@
 ﻿using System.Diagnostics;
-using System.Text; 
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
-using DocumentFormat.OpenXml.Presentation;
 
 namespace SmartBid
 {
@@ -12,22 +11,16 @@ namespace SmartBid
         List<string> _calcRoute;
         ToolsMap tm;
         DataMaster dm;
-        XmlDocument xmlCall; //Evaluar si queremos utilizar el call aquí, o si mejor usar sólo datos del Datamaster, de momento lo usamos pero cambiarlo a usar info del DM.
 
         public Calculator(DataMaster dataMaster, XmlDocument call)
         {
-            //Inicializamos el DataMaster con los datos inciales (para crear uno nuevo)
-
             H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "Calculator", $"REQUEST:");
 
             this.dm = dataMaster;
-            this.xmlCall = call;
 
-            _targets = GetDeliveryDocs(xmlCall);
-
-
+            _targets = GetDeliveryDocs(call);
         }
-        public void RunCalculations(XmlDocument xmlCall)
+        public void RunCalculations()
         {
             //Buscamos los datos necesarios con la PreparationTool
             tm = ToolsMap.Instance;

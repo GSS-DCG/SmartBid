@@ -340,7 +340,7 @@ public class VariablesMap
                 return null;
             }
 
-        return varData.Clone(); // Using the Clone method to return a new instance
+            return varData.Clone(); // Using the Clone method to return a new instance
         }
         return null;
     }

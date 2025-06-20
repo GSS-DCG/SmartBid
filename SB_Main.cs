@@ -1,13 +1,7 @@
 ﻿using System.Collections.Concurrent;
-using System.Linq;
-using System.Media;
-using System.Runtime.InteropServices.Marshalling;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Xml;
-using Windows.Services.Store;
-using Windows.UI.ViewManagement;
 
 namespace SmartBid
 {
@@ -109,7 +103,7 @@ namespace SmartBid
 
             Calculator calculator = new Calculator(dm, xmlCall);
 
-            calculator.RunCalculations(xmlCall);
+            calculator.RunCalculations();
 
             ReturnRemoveFiles(dm); // Returns or removes files depending on configuration
 
@@ -132,7 +126,7 @@ namespace SmartBid
             if (H.GetBProperty("mailCreatedBy"))
                 emailRecipients.Add(dm.GetValueString("createdBy"));
 
-            H.MailTo(emailRecipients, "Mail de Prueba", "Enviado desde SmartBid");
+            _ = H.MailTo(emailRecipients, "Mail de Prueba", "Enviado desde SmartBid");
 
 
 
@@ -221,7 +215,7 @@ namespace SmartBid
             if (H.GetBProperty("returnTools"))
                 foreach (string file in Directory.GetFiles(processedToolsPath))
                 {
-                    Directory.CreateDirectory(oppsToolsPath); // Crea si no existe
+                    _ = Directory.CreateDirectory(oppsToolsPath); // Crea si no existe
                     File.Copy(file, Path.Combine(oppsToolsPath, Path.GetFileName(file)), overwrite: true);
                 }
 
@@ -235,7 +229,7 @@ namespace SmartBid
             if (H.GetBProperty("returnDeliveries"))
                 foreach (string file in Directory.GetFiles(processedDeliveriesPath))
                 {
-                    Directory.CreateDirectory(oppsDeliveriesPath); // Crea si no existe
+                    _ = Directory.CreateDirectory(oppsDeliveriesPath); // Crea si no existe
                     File.Copy(file, Path.Combine(oppsDeliveriesPath, Path.GetFileName(file)), overwrite: true);
                 }
 
@@ -245,7 +239,7 @@ namespace SmartBid
                     File.Delete(file);
                 }
 
-            
+
             if (H.GetBProperty("returnDataMaster"))
                 File.Copy(dm.FileName, Path.Combine(H.GetSProperty("oppsPath"), projectFolder), overwrite: true);
 

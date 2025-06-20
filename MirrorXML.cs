@@ -45,7 +45,7 @@ namespace SmartBid
         {
             target = Regex.Replace(target, "_Call\\d+", "");
 
-            string? directoryPath = (ToolsMap.Instance.getToolDataByCode(target).Resource == "TOOL")
+             string? directoryPath = (ToolsMap.Instance.getToolDataByCode(target).Resource == "TOOL")
                 ? Path.GetDirectoryName(H.GetSProperty("ToolsPath"))
                 : (ToolsMap.Instance.getToolDataByCode(target).Resource == "TEMPLATE")
                 ? Path.GetDirectoryName(H.GetSProperty("TemplatesPath"))
@@ -87,7 +87,7 @@ namespace SmartBid
                     {
                         string id = System.Text.RegularExpressions.Regex.Replace(variable, @"^Call[0-9]_", "");
 
-                        if(varMap.GetNewVariableData(id) != null)
+                        if (varMap.GetNewVariableData(id) != null)
                         {
                             VarList[variable] = new string[] { varMap.GetNewVariableData(id).Source, VarList[variable][1], VarList[variable][2] }; // Fill up source data before saving to XML
                         }
@@ -162,7 +162,7 @@ namespace SmartBid
 
         private Dictionary<string, string[]> ExtractVariablesFromDocx(string docxPath)
         {
-            List <string> varList = new List<string>();
+            List<string> varList = new List<string>();
             try
             {
                 using (WordprocessingDocument doc = WordprocessingDocument.Open(docxPath, false))
@@ -220,6 +220,9 @@ namespace SmartBid
                     .Replace("\\* MERGEFORMAT", "")
                     .Replace("ref ", ""))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            varList = varList
+                .Where(item => !string.IsNullOrWhiteSpace(item))
                 .ToList();
 
             Dictionary<string, string[]> varDict = varList
@@ -280,6 +283,12 @@ namespace SmartBid
                     Match match = Regex.Match(varName.ToLower(), @"^call(\d)_");
                     if (match.Success) value[2] = match.Groups[1].Value; varName = varName.Substring(match.Length);
 
+
+                    if (varList.ContainsKey(varName))
+                    {
+                        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - ExtractVariablesFromXlsx", $"Ya existe una variable con el nombre '{varName}' en en la herramienta.");
+                        throw new InvalidOperationException($"Ya existe una variable con el nombre '{varName}' en en la herramienta.");
+                    }
 
                     varList.Add(new string(varName), value);
                 }

@@ -1,4 +1,5 @@
-﻿using System.Xml;
+﻿using System.Text.RegularExpressions;
+using System.Xml;
 using Microsoft.Office.Interop.Word;
 using SmartBid;
 using Outlook = Microsoft.Office.Interop.Outlook;
@@ -85,16 +86,15 @@ public static class H //Helper class for reading properties from an XML file
     {
         if (GetNProperty("printLevel") <= level)
         {
-            Console.WriteLine($"{level} - user: {user} >> {eventLog}: {message}");
-        }
-        if (GetNProperty("logLevel") <= level)
+			Console.WriteLine($"{level} - user: {user} >> {eventLog}: {message}");
+		}
+		if (GetNProperty("logLevel") <= level)
         {
             DBtools.LogMessage(level, user, eventLog, message);
         }
-
     }
 
-    public static XmlElement CreateElement(XmlDocument doc, string name, string value)
+	public static XmlElement CreateElement(XmlDocument doc, string name, string value)
     {
         XmlElement element = doc.CreateElement(name);
         element.InnerText = value;
@@ -127,7 +127,7 @@ public static class H //Helper class for reading properties from an XML file
         }
         catch (Exception ex)
         {
-            PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "_EnviarMail:", $"Error al enviar el correo.");
+            PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "_EnviarMail:", $"❌Error❌ al enviar el correo.");
             return false;
         }
         return true;
@@ -146,7 +146,7 @@ public static class H //Helper class for reading properties from an XML file
         }
         catch (Exception e)
         {
-            PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "DeleteBookmarkText:", @$"Error al Editar: {RutaProcessedWordDoc}");
+            PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "DeleteBookmarkText:", @$"❌Error❌ al Editar: {RutaProcessedWordDoc}");
         }
     }
 

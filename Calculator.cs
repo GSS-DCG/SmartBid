@@ -129,7 +129,7 @@ namespace SmartBid
 
             H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", $"Return from Preparation");
             H.PrintXML(xmlDoc);
-            if (error != "") H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", $"Error:\n{error}");
+            if (error != "") H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", $"❌Error❌:\n{error}");
             H.PrintLog(0, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", "-----------------------------------");
 
             return xmlDoc;

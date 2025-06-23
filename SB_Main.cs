@@ -14,6 +14,9 @@ namespace SmartBid
 
         static void Main()
         {
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
+
+
             string path = H.GetSProperty("callsPath");
 
             watcher = new FileSystemWatcher
@@ -95,39 +98,52 @@ namespace SmartBid
             int callID = DBtools.InsertCallStart(xmlCall); // Report starting process to DB
 
             DataMaster dm = CreateDataMaster(xmlCall); //Create New DataMaster
+                try
+                {
 
-            ProcessInputFiles(dm, 1); // checks that all files declare exits and stores the checksum of the file for comparison
+                ProcessInputFiles(dm, 1); // checks that all files declare exits and stores the checksum of the file for comparison
 
-            if (H.GetBProperty("storeXmlCall")) //Stores de call file in case configuration says so
-                StoreCallFile(filePath, Path.GetDirectoryName(dm.FileName));
+                if (H.GetBProperty("storeXmlCall")) //Stores de call file in case configuration says so
+                    StoreCallFile(filePath, Path.GetDirectoryName(dm.FileName));
 
-            Calculator calculator = new Calculator(dm, xmlCall);
+                Calculator calculator = new Calculator(dm, xmlCall);
 
-            calculator.RunCalculations();
+                calculator.RunCalculations();
 
-            ReturnRemoveFiles(dm); // Returns or removes files depending on configuration
+                ReturnRemoveFiles(dm); // Returns or removes files depending on configuration
 
-            DBtools.UpdateCallRegistry(callID, "DONE", "OK");
+                DBtools.UpdateCallRegistry(callID, "DONE", "OK");
 
-            H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--***************************************--");
-            H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--****||PROJECT: {dm.GetValueString("opportunityFolder")} DONE||****--");
-            H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--***************************************--");
+                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--***************************************--");
+                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--****||PROJECT: {dm.GetValueString("opportunityFolder")} DONE||****--");
+                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--***************************************--");
 
-            // H.DeleteBookmarkText("ES_Informe de corrosión_Rev0.0.docx", "Ruta_05", dm, "OUTPUT");
+                // H.DeleteBookmarkText("ES_Informe de corrosión_Rev0.0.docx", "Ruta_05", dm, "OUTPUT");
 
 
-            List<string> emailRecipients = new List<string>();
+                List<string> emailRecipients = new List<string>();
 
-            // Add KAM email if configured to do so
-            if (H.GetBProperty("mailKAM"))
-                emailRecipients.Add(dm.GetValueString("kam"));
+                // Add KAM email if configured to do so
+                if (H.GetBProperty("mailKAM"))
+                    emailRecipients.Add(dm.GetValueString("kam"));
 
-            // Add CreatedBy email if configured to do so
-            if (H.GetBProperty("mailCreatedBy"))
-                emailRecipients.Add(dm.GetValueString("createdBy"));
+                // Add CreatedBy email if configured to do so
+                if (H.GetBProperty("mailCreatedBy"))
+                    emailRecipients.Add(dm.GetValueString("createdBy"));
 
-            _ = H.MailTo(emailRecipients, "Mail de Prueba", "Enviado desde SmartBid");
+                _ = H.MailTo(emailRecipients, "Mail de Prueba", "Enviado desde SmartBid");
 
+            }
+            catch (Exception ex)
+            {
+                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌--");
+                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--❌❌ Error al procesar {dm.GetValueString("opportunityFolder")}❌❌");
+
+                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"🧨 Excepción: {ex.GetType().Name}");
+                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"📄 Mensaje: {ex.Message}");
+                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"🧭 StackTrace:\n{ex.StackTrace}");
+                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌--");
+            }
 
 
         }
@@ -192,7 +208,7 @@ namespace SmartBid
                 }
                 catch (Exception ex)
                 {
-                    H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - StoreCallFile", $"Error al mover '{callFile}': {ex.Message}");
+                    H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - StoreCallFile", $"❌Error❌ al mover '{callFile}': {ex.Message}");
                 }
             }
         }

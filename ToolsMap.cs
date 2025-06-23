@@ -537,7 +537,7 @@ namespace SmartBid
                         }
                         catch (Exception ex)
                         {
-                            H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"Error reading range '{rangeName}': {ex.Message}");
+                            H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"❌Error❌ reading range '{rangeName}': {ex.Message}");
                         }
                         finally
                         {
@@ -696,7 +696,7 @@ namespace SmartBid
             }
             catch (Exception ex)
             {
-                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "** Error - GenerateOuputWord", $"Error con el documento {Path.GetFileName(filePath)}");
+                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "** Error - GenerateOuputWord", $"❌Error❌ con el documento {Path.GetFileName(filePath)}");
                 H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", "Error: " + ex.Message);
             }
             finally

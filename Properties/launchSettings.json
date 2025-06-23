@@ -6,7 +6,8 @@
     },
     "SmartBid": {
       "commandName": "Project",
-      "workingDirectory": "C:\\InSync\\SmartBid"
+      "workingDirectory": "C:\\InSync\\SmartBid",
+      "nativeDebugging": true
     }
   }
 }

@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 using DocumentFormat.OpenXml.Packaging;
@@ -160,12 +160,12 @@ namespace SmartBid
             return bookmarks;
         }
 
-        private Dictionary<string, string[]> ExtractVariablesFromDocx(string docxPath)
+        private Dictionary<string, string[]> ExtractVariablesFromDocx(string fileName)
         {
             List<string> varList = new List<string>();
             try
             {
-                using (WordprocessingDocument doc = WordprocessingDocument.Open(docxPath, false))
+                using (WordprocessingDocument doc = WordprocessingDocument.Open(fileName, false))
                 {
                     var body = doc.MainDocumentPart.Document.Body;
                     var runs = body.Descendants<Run>();
@@ -189,7 +189,7 @@ namespace SmartBid
                         }
                         if (fldCharEnd != null)
                         {
-                            isFieldActive = false; // Una vez que hemos encontrado una marca completa la a�adimos a la lista.
+                            isFieldActive = false; // Una vez que hemos encontrado una marca completa la añadimos a la lista.
                             if (!string.IsNullOrEmpty(currentField))
                             {
                                 // Remove unwanted characters and add to the list
@@ -205,14 +205,14 @@ namespace SmartBid
             }
             catch (Exception ex)
             {
-                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - ExtractVariablesFromDocx", $"Error reading DOCX: {ex.Message}");
+                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - ExtractVariablesFromDocx", $"❌Error❌ reading DOCX: {ex.Message}");
             }
 
             string varPrefix = H.GetSProperty("VarPrefix");
 
 
             varList = varList
-                .Where(item => //dejamos s�lo las que empiecen por el prejijo
+                .Where(item => //dejamos sólo las que empiecen por el prejijo
                     !string.IsNullOrWhiteSpace(item) &&
                     item.StartsWith(varPrefix, StringComparison.OrdinalIgnoreCase))
                 .Select(item => item // eliminamos el prefijo y otras marcas que pueden aparecer
@@ -228,12 +228,18 @@ namespace SmartBid
 
             VariablesMap varMap = VariablesMap.Instance;
 
-            foreach (string var in varList) // Comprobamos que todas las variables est�n declaradas en el VariableMap
+            foreach (string var in varList) // Comprobamos que todas las variables están declaradas en el VariableMap
             {
+                List<string> nonDeclaredVar = new List<string>();
                 if (!varMap.IsVariableExists(var))
                 {
-                    H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - ExtractVariablesFromDocx", $" Variable {var} No est� definida en VariableMap");
-                    throw new InvalidOperationException($" Variable {var} No est� definida en VariableMap");
+                    nonDeclaredVar.Add(var);
+                }
+                if (nonDeclaredVar.Count > 0)
+                {
+                    H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - ExtractVariablesFromDocx", $"Declaration Error");
+
+                    throw new InvalidOperationException($" {nonDeclaredVar.Count} Variables found in {Path.GetFileName(fileName)} are not declared in VariableMap \n\n {string.Join("\n", nonDeclaredVar)}\n");
                 }
             }
 
@@ -303,6 +309,20 @@ namespace SmartBid
                     varList.Add(new string(varName), value);
                 }
 
+                VariablesMap varMap = VariablesMap.Instance;
+                foreach (string var in varList.Keys) // Comprobamos que todas las variables están declaradas en el VariableMap
+                {
+                    List<string> nonDeclaredVar = new List<string>();
+                    if (!varMap.IsVariableExists(var))
+                    {
+                        nonDeclaredVar.Add(var);
+                    }
+                    if (nonDeclaredVar.Count > 0)
+                    {
+                        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - ExtractVariablesFromXlsx", $"Declaration Error");
+                        throw new InvalidOperationException($" {nonDeclaredVar.Count} Variables found in {Path.GetFileName(fileName)} are not declared in VariableMap \n\n {string.Join("\n", nonDeclaredVar)}\n");
+                    }
+                }
             }
             return varList;
 
@@ -325,7 +345,7 @@ namespace SmartBid
             }
             catch (Exception ex)
             {
-                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"Error reading range names: {ex.Message}");
+                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"❌Error❌ reading range names: {ex.Message}");
             }
             return rangeNames;
         }
@@ -391,7 +411,7 @@ namespace SmartBid
             }
             catch (Exception ex)
             {
-                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"Error reading {rangeName} range: {ex.Message}");
+                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"❌Error❌ reading {rangeName} range: {ex.Message}");
             }
             return cellValues;
         }

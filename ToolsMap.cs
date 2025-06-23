@@ -614,9 +614,24 @@ namespace SmartBid
             // Confeccionamos la lista de marcas a reemplazar
             Dictionary<string, XmlNode> varList = new Dictionary<string, XmlNode>();
 
+
+            List<string> varNotFound = new List<string>();
+
             foreach (string var in mirror.VarList.Keys)
             {
-                varList[var] = dm.GetValueXmlNode(var);
+                try
+                {
+                    varList[var] = dm.GetValueXmlNode(var);
+                }
+                catch (KeyNotFoundException)
+                {
+                    varNotFound.Add(var);
+                }
+            }
+
+            if (varNotFound.Count > 0) // If there are variables not found in the DataMaster stop process and print out missing variables
+            {
+                throw new Exception("keysNotFoundInDataMaster: " + string.Join(", ", varNotFound));
             }
 
 

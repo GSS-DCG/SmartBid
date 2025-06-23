@@ -271,62 +271,63 @@ namespace SmartBid
         private static Dictionary<string, string[]> ExtractVariablesFromXlsx(string fileName)
         {
             Dictionary<string, string[]> varList = new Dictionary<string, string[]>();
+            List<string> varNames;
+
             using (SpreadsheetDocument document = SpreadsheetDocument.Open(fileName, false))
             {
                 WorkbookPart workbookPart = document.WorkbookPart;
-                var varNames = GetAllRangeNames(workbookPart);
+                varNames = GetAllRangeNames(workbookPart);
+            }
 
-                string inPrefix = H.GetSProperty("IN_VarPrefix");
-                string outPrefix = H.GetSProperty("OUT_VarPrefix");
+            string inPrefix = H.GetSProperty("IN_VarPrefix").ToLower();
+            string outPrefix = H.GetSProperty("OUT_VarPrefix").ToLower();
 
-                _ = varNames.Remove("GSS_DATA"); // Remove GSS_DATA from the list
-                foreach (string item in varNames)
+            _ = varNames.Remove("GSS_DATA"); // Remove GSS_DATA from the list
+
+            foreach (string item in varNames)
+            {
+                string varName = item;
+                string[] value = new string[3] { "", "", "1" };
+
+                if (varName.ToLower().StartsWith(inPrefix))
                 {
-                    string varName = item;
-                    string[] value = new string[3] { "", "", "1" };
-
-                    if (varName.ToLower().StartsWith("sbin_"))
-                    {
-                        value[1] = "in";
-                        varName = varName.Substring(5);
-                    }
-                    else if (varName.ToLower().StartsWith("sbout_"))
-                    {
-                        value[1] = "out";
-                        varName = varName.Substring(6);
-                    }
-
-                    Match match = Regex.Match(varName.ToLower(), @"^call(\d)_");
-                    if (match.Success) value[2] = match.Groups[1].Value; varName = varName.Substring(match.Length);
-
-
-                    if (varList.ContainsKey(varName))
-                    {
-                        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - ExtractVariablesFromXlsx", $"Ya existe una variable con el nombre '{varName}' en en la herramienta.");
-                        throw new InvalidOperationException($"Ya existe una variable con el nombre '{varName}' en en la herramienta.");
-                    }
-
-                    varList.Add(new string(varName), value);
+                    value[1] = "in";
+                    varName = varName.Substring(inPrefix.Length);
+                }
+                else if (varName.ToLower().StartsWith(outPrefix))
+                {
+                    value[1] = "out";
+                    varName = varName.Substring(outPrefix.Length);
                 }
 
-                VariablesMap varMap = VariablesMap.Instance;
-                foreach (string var in varList.Keys) // Comprobamos que todas las variables están declaradas en el VariableMap
+                Match match = Regex.Match(varName.ToLower(), @"^call(\d)_");
+                if (match.Success) value[2] = match.Groups[1].Value; varName = varName.Substring(match.Length);
+
+
+                if (varList.ContainsKey(varName))
                 {
-                    List<string> nonDeclaredVar = new List<string>();
-                    if (!varMap.IsVariableExists(var))
-                    {
-                        nonDeclaredVar.Add(var);
-                    }
-                    if (nonDeclaredVar.Count > 0)
-                    {
-                        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - ExtractVariablesFromXlsx", $"Declaration Error");
-                        throw new InvalidOperationException($" {nonDeclaredVar.Count} Variables found in {Path.GetFileName(fileName)} are not declared in VariableMap \n\n {string.Join("\n", nonDeclaredVar)}\n");
-                    }
+                    H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - ExtractVariablesFromXlsx", $"Ya existe una variable con el nombre '{varName}' en en la herramienta.");
+                    throw new InvalidOperationException($"Ya existe una variable con el nombre '{varName}' en en la herramienta.");
+                }
+                varList.Add(new string(varName), value);
+            }
+
+            VariablesMap varMap = VariablesMap.Instance;
+            foreach (string var in varList.Keys) // Comprobamos que todas las variables están declaradas en el VariableMap
+            {
+                List<string> nonDeclaredVar = new List<string>();
+                if (!varMap.IsVariableExists(var))
+                {
+                    nonDeclaredVar.Add(var);
+                }
+                if (nonDeclaredVar.Count > 0)
+                {
+                    H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - ExtractVariablesFromXlsx", $"Declaration Error");
+                    throw new InvalidOperationException($" {nonDeclaredVar.Count} Variables found in {Path.GetFileName(fileName)} are not declared in VariableMap \n\n {string.Join("\n", nonDeclaredVar)}\n");
                 }
             }
+          
             return varList;
-
-
         }
 
         private static List<string> GetAllRangeNames(WorkbookPart workbookPart)

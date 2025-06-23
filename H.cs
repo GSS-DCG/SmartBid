@@ -111,19 +111,23 @@ public static class H //Helper class for reading properties from an XML file
 
             mailItem.Subject = $"Prueba C#"; //Asunto del correo
 
-            foreach (string _email in email)
+            if (email.Count > 0)
             {
-                _ = mailItem.Recipients.Add(_email);
+                foreach (string _email in email)
+                {
+                    _ = mailItem.Recipients.Add(_email);
+                }
+
+                mailItem.Body = $"Correo enviado desde C#"; //Texto dentro del correo
+
+                //mailItem.Attachments.Add(""); //Ruta de archivo adjunto
+
+                mailItem.Send();
+
+                PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "_EnviarMail:", $"Correo enviado a:\n  {string.Join("\n  ", email)}"
+
+                );
             }
-
-            mailItem.Body = $"Correo enviado desde C#"; //Texto dentro del correo
-
-            //mailItem.Attachments.Add(""); //Ruta de archivo adjunto
-
-            mailItem.Send();
-
-            PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "_EnviarMail:", $"Correo enviado a:\n  {string.Join("\n  ", email)}"
-            );
         }
         catch (Exception ex)
         {

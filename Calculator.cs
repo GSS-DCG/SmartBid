@@ -243,8 +243,8 @@ namespace SmartBid
 
             if (deliveryDocsNode != null) foreach (XmlNode docNode in deliveryDocsNode.SelectNodes("doc")) deliveryDocs.Add(docNode.InnerText);
 
-            H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", "\n\n-----------EXECUTING THE FOLLOWING DOCUMENTS:-----------\n");
-            H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"{deliveryDocs.ToString}\n");
+            H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "GetDeliveryDocs", "\n\n-----------EXECUTING THE FOLLOWING DOCUMENTS:-----------\n");
+            H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "GetDeliveryDocs", $"{deliveryDocs.ToString}\n");
 
             return deliveryDocs;
         }

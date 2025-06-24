@@ -94,7 +94,7 @@ namespace SmartBid
             string vmFile = Path.GetFullPath(H.GetSProperty("VarMap"));
             if (!File.Exists(vmFile))
             {
-                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $" ****** FILE: {vmFile} NOT FOUND. ******\n Review value 'VarMap' in properties.xml it should point to the location of the Variables Map file.\n\n");
+                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ToolsMap", $" ****** FILE: {vmFile} NOT FOUND. ******\n Review value 'VarMap' in properties.xml it should point to the location of the Variables Map file.\n\n");
                 _ = new FileNotFoundException("PROPERTIES FILE NOT FOUND", vmFile);
             }
             string directoryPath = Path.GetDirectoryName(vmFile);
@@ -106,7 +106,7 @@ namespace SmartBid
             {
                 LoadFromXLS(vmFile);
                 SaveToXml(xmlFile);
-                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"XML file created at: {xmlFile}");
+                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ToolsMap", $"XML file created at: {xmlFile}");
             }
             else
             {
@@ -199,185 +199,6 @@ namespace SmartBid
             return Tools.FirstOrDefault(tool => tool.ID == code);
         }
 
-        public XmlDocument _CalculateExcel(string toolID, DataMaster dm)
-        {
-            // 1. Retrieve the tool data by ID
-            ToolData tool = ToolsMap.Instance.getToolDataByCode(toolID);
-            if (tool == null)
-                throw new ArgumentException($"ToolID '{toolID}' not found.");
-
-            // 2. Check if the file type is Excel
-            if (!(tool.FileType.Equals("xlsx", StringComparison.OrdinalIgnoreCase) ||
-                  tool.FileType.Equals("xlsm", StringComparison.OrdinalIgnoreCase)))
-                throw new InvalidOperationException("The file is not an Excel type (.xlsx or .xlsm)");
-
-            // 3. Create a MirrorXML instance
-            MirrorXML mirror = new MirrorXML(toolID);
-
-            // 4. Get the XXXX list from the mirror
-            var variableMap = mirror.VarList;
-
-            // 5. Build the full path to the Excel file
-            string filePath = Path.Combine(
-                tool.Resource == "TOOL" ? H.GetSProperty("ToolsPath") : H.GetSProperty("TemplatesPath"),
-                tool.FileName
-            );
-
-            // 6. Crear copia del archivo para trabajar
-            string newFilePath = Path.Combine(
-                H.GetSProperty("processPath"),
-                dm.DM.SelectSingleNode(@"dm/utils/utilsData/opportunityFolder")?.InnerText ?? "",
-                "TOOLS",
-                tool.FileName
-            );
-
-            // Asegurar que la carpeta de destino existe antes de copiar
-            _ = Directory.CreateDirectory(Path.GetDirectoryName(newFilePath)!);
-
-            // Copiar y sobrescribir si ya existe
-            File.Copy(filePath, newFilePath, true);
-
-
-            // 7. Abrir el archivo en Excel Interop
-            H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "CalculateExcel", $"Calculating tool {toolID}");
-            Excel.Application excelApp = new Excel.Application();
-            excelApp.Visible = false;
-            Excel.Workbook workbook = excelApp.Workbooks.Open(newFilePath);
-
-            // Escribir valores en las celdas
-            foreach (var entry in variableMap)
-            {
-                if (mirror.GetVarCallLevel(entry.Key) == tool.Call)
-                {
-                    string variableID = entry.Key;
-                    string direction = entry.Value[1];
-
-                    if (direction == "in")
-                    {
-                        string rangeName = $"{H.GetSProperty("IN_VarPrefix")}{((tool.Call > 1) ? $"call{tool.Call}_" : "")}{variableID}";
-                        string type = _variablesMap.GetVariableData(variableID).Type;
-
-                        if (type != "table")
-                        {
-                            Excel.Range cell = null;
-                            try
-                            {
-                                cell = workbook.Names.Item(rangeName).RefersToRange;
-                                if (cell == null)
-                                    throw new Exception($"Named range '{rangeName}' not found in worksheet.");
-                            }
-                            catch (Exception ex)
-                            {
-                                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", "Error accessing range: " + ex.Message);
-                            }
-
-                            cell.Value = dm.GetValueString(variableID);
-                        }
-                        else // Si es una tabla, obtenemos el XML de la tabla y lo escribimos en la hoja de Excel
-                        {
-                            XmlNode tableData = dm.GetValueXmlNode(variableID);
-                            if (tableData.SelectSingleNode("t") != null && tableData.SelectSingleNode("t").HasChildNodes)
-                            {
-                                WriteTableToExcel(workbook, rangeName, tableData);
-                            }
-                            else
-                            {
-                                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"No table data found for variable '{variableID}'.");
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Forzar cálculo de fórmulas en Excel
-            excelApp.Calculate();
-
-            // Guardar los cambios y cerrar Excel
-            workbook.Save();
-            excelApp.Calculate();
-
-            // Crear un nuevo documento XML para salida
-            XmlDocument results = new XmlDocument();
-            XmlElement root = results.CreateElement("root");
-            _ = results.AppendChild(root);
-
-            XmlElement varNode = results.CreateElement("variables");
-            _ = root.AppendChild(varNode);
-
-            // Obtener la fecha y hora actual en formato dd-HH:mm
-            string timestamp = DateTime.Now.ToString("dd-HH:mm");
-
-            foreach (var entry in variableMap)
-            {
-                string variableID = entry.Key;
-                string direction = entry.Value[1];
-
-                if (mirror.GetVarCallLevel(variableID) == tool.Call && (direction == "out"))
-                {
-                    XmlElement newElement = results.CreateElement(variableID);
-                    string rangeName = $"{H.GetSProperty("OUT_VarPrefix")}{((tool.Call > 1) ? $"call{tool.Call}_" : "")}{variableID}";
-                    Excel.Range cell = workbook.Names.Item(rangeName).RefersToRange;
-
-
-
-                    if (cell.Value != null)
-                    {
-
-                        if (_variablesMap.GetVariableData(variableID).Type != "table")
-                        {
-                            // Si el tipo no es tabla, simplemente añadimos el valor
-                            _ = newElement.AppendChild(H.CreateElement(results, "value", cell.Value.ToString()));
-                        }
-                        else // Si es una tabla, obtenemos los datos de la tabla y los añadimos
-                        {
-                            XmlNode tableDataXml = ReadTableFromExcel(workbook, rangeName, results);
-                            if (tableDataXml != null && tableDataXml.HasChildNodes)
-                            {
-                                XmlElement value = results.CreateElement("value");
-                                value.SetAttribute("type", "table");
-                                _ = value.AppendChild(tableDataXml);
-                                _ = newElement.AppendChild(value);
-                            }
-                            else
-                            {
-                                _ = newElement.AppendChild(H.CreateElement(results, "value", "No data found in table."));
-                            }
-                        }
-                        _ = newElement.AppendChild(H.CreateElement(results, "origin", $"{toolID}+{timestamp}"));
-                        _ = newElement.AppendChild(H.CreateElement(results, "note", $"Value calculated"));
-                    }
-                    else
-                    {
-                        _ = newElement.AppendChild(H.CreateElement(results, "value", VariablesMap.Instance.GetVariableData(variableID).Default));
-                        _ = newElement.AppendChild(H.CreateElement(results, "origin", $"{toolID}+{timestamp}"));
-                        _ = newElement.AppendChild(H.CreateElement(results, "note", $"Value calculated"));
-                    }
-                    _ = varNode.AppendChild(newElement);
-                }
-
-            }
-
-            // Close Excel
-            workbook.Close(false);
-            excelApp.Quit();
-
-            try
-            {
-                _ = Marshal.ReleaseComObject(workbook);
-                _ = Marshal.ReleaseComObject(excelApp);
-            }
-            catch (Exception ex)
-            {
-                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ExcelCleanup", "Error releasing Excel objects: " + ex.Message);
-            }
-
-            // Additional cleanup
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-
-            return results;
-        }
-
         public XmlDocument CalculateExcel(string toolID, DataMaster dm)
         {
             // 1. Retrieve the tool data by ID
@@ -451,7 +272,7 @@ namespace SmartBid
                                 }
                                 catch (Exception ex)
                                 {
-                                    H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", "Error accessing range: " + ex.Message);
+                                    H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "CalculateExcel", "Error accessing range: " + ex.Message);
                                 }
                                 finally
                                 {
@@ -467,7 +288,7 @@ namespace SmartBid
                                 }
                                 else
                                 {
-                                    H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"No table data found for variable '{variableID}'.");
+                                    H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "CalculateExcel", $"No table data found for variable '{variableID}'.");
                                 }
                             }
                         }
@@ -536,7 +357,7 @@ namespace SmartBid
                         }
                         catch (Exception ex)
                         {
-                            H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"❌Error❌ reading range '{rangeName}': {ex.Message}");
+                            H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "CalculateExcel", $"❌Error❌ reading range '{rangeName}': {ex.Message}");
                         }
                         finally
                         {
@@ -692,7 +513,7 @@ namespace SmartBid
                                 // 📌 Remove the reference mark after insertion
                                 field.Delete();
 
-                                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"Tabla insertada y referencia '{variableID}' eliminada correctamente.");
+                                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOuputWord", $"Tabla insertada y referencia '{variableID}' eliminada correctamente.");
                             }
                             //NO ES TABLA
                             else
@@ -706,12 +527,13 @@ namespace SmartBid
                 }
 
                 doc.Save();
-                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", "Reemplazo realizado con éxito.");
+                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOuputWord", "Reemplazo realizado con éxito.");
             }
             catch (Exception ex)
             {
                 H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "** Error - GenerateOuputWord", $"❌Error❌ con el documento {Path.GetFileName(filePath)}");
-                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", "Error: " + ex.Message);
+                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOuputWord", "Error: " + ex.Message);
+                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "", "       " + ex.StackTrace);
             }
             finally
             {
@@ -751,7 +573,7 @@ namespace SmartBid
 
                 if (inputRange.Rows.Count != rowCount || inputRange.Columns.Count != colCount)
                 {
-                    H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"Size mismatch: Input ({rowCount}x{colCount}) vs Range ({inputRange.Rows.Count}x{inputRange.Columns.Count}).");
+                    H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "WriteTableToExcel", $"Size mismatch: Input ({rowCount}x{colCount}) vs Range ({inputRange.Rows.Count}x{inputRange.Columns.Count}).");
                     return;
                 }
 
@@ -762,7 +584,7 @@ namespace SmartBid
             }
             catch (Exception ex)
             {
-                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", "Error writing table to Excel: " + ex.Message);
+                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "WriteTableToExcel", "Error writing table to Excel: " + ex.Message);
             }
         }
 
@@ -796,7 +618,7 @@ namespace SmartBid
             }
             catch (Exception ex)
             {
-                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", "Error reading from Excel: " + ex.Message);
+                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ReadTableFromExcel", "Error reading from Excel: " + ex.Message);
                 return null;
             }
         }

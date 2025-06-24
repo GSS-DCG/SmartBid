@@ -23,7 +23,7 @@ public static class H //Helper class for reading properties from an XML file
         {
             PROPERTIES_FILEPATH = Path.Combine(baseDirectory, "properties.xml");
         }
-        H.PrintLog(2, "Helper", "myEvent", $"PROPERTIES_FILEPATH: {PROPERTIES_FILEPATH}");
+        H.PrintLog(2, "Helper", "Helper", $"PROPERTIES_FILEPATH: {PROPERTIES_FILEPATH}");
     }
 
     public static string GetSProperty(string name)
@@ -35,7 +35,7 @@ public static class H //Helper class for reading properties from an XML file
 
         if (!File.Exists(Path.GetFullPath(PROPERTIES_FILEPATH)))
         {
-            PrintLog(2, "Helper", "myEvent", $" ****** FILE: {PROPERTIES_FILEPATH} NOT FOUND. ******\n Review properties.xml file location or update PROPERTIES_FILEPATH in H.cs Class file\n\n");
+            PrintLog(2, "Helper", "GetSProperty", $" ****** FILE: {PROPERTIES_FILEPATH} NOT FOUND. ******\n Review properties.xml file location or update PROPERTIES_FILEPATH in H.cs Class file\n\n");
             _ = new FileNotFoundException("PROPERTIES FILE NOT FOUND", PROPERTIES_FILEPATH);
         }
 

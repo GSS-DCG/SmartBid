@@ -30,6 +30,16 @@ namespace SmartBid
             _dm = new XmlDocument();
             _data = new Dictionary<string, XmlNode>();
 
+            // Check if opportunityFolder exists, otherwise throw an exception
+            if (GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder") == null)
+            {
+                H.PrintLog(5, User, "CargaXML", "⚠️ Nodo 'opportunityFolder' no encontrado.");
+                throw new InvalidOperationException("El XML está incompleto: falta '//requestInfo/opportunityFolder'.");
+            }
+
+            string opportunityFolder = GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder").InnerText;
+            FileName = Path.Combine(H.GetSProperty("processPath"), opportunityFolder, $"{opportunityFolder.Substring(0, 7)}_DataMaster.xml");
+
             // register actual revision number in _data (no need to store it in DM)
             StoreValue("revision", H.CreateElement(DM, "value", "rev_01"));
 
@@ -60,10 +70,9 @@ namespace SmartBid
                 XmlElement variables = configDataXML.CreateElement("variables");
                 _ = configDataRoot.AppendChild(variables);
 
-
+                //Saving INIT variables in DataMaster
                 foreach (VariableData variable in varList)
                 {
-
                     // Load PROJECTDATA Data
                     if (variable.Area == "projectData")
                     {
@@ -73,7 +82,8 @@ namespace SmartBid
                         StoreValue(variable.ID, element);
                     }
 
-                    // Load CONFIG Init Data (creating an xml with config data variables and send it to UpdateData for inserting in DM
+                    // Load CONFIG Init Data
+                    // (creating an xml with config data variables and send it to UpdateData for inserting in DM)
                     if (variable.Area == "config")
                     {
                         //tomamos el nombre de la variable
@@ -96,20 +106,14 @@ namespace SmartBid
                         _ = newVar.AppendChild(CreateElement(configDataXML, "note", "Variable leida de Hermes"));
                     }
                 }
-                // Adding variable to the data dictionary
                 UpdateData(configDataXML);
 
                 // Load Utils Data
                 XmlNode utilsData = _utilsNode.AppendChild(DM.CreateElement("utilsData"));
 
-                // Check if opportunityFolder exists, otherwise throw an exception
-                if (GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder") == null)
-                {
-                    H.PrintLog(5, User, "CargaXML", "⚠️ Nodo 'opportunityFolder' no encontrado.");
-                    throw new InvalidOperationException("El XML está incompleto: falta '//requestInfo/opportunityFolder'.");
-                }
 
                 // Add opportunityFolder to dataMaster and _data dictionary
+                _ = utilsData.AppendChild(CreateElement("dataMasterFileName", FileName));
                 _ = utilsData.AppendChild(GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder"));
                 StoreValue("opportunityFolder", GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder"));
                 StoreValue("createdBy", GetImportedElement(xmlRequest, "//requestInfo/createdBy"));
@@ -155,11 +159,11 @@ namespace SmartBid
                 rev01Element.InnerText = $"set{sBidRevision}";
                 _ = revisionElement.AppendChild(rev01Element);
 
-                XmlElement set01Element = _dm.CreateElement($"set{sBidRevision}");
+                XmlElement setElment = _dm.CreateElement($"set{sBidRevision}");
 
                 foreach (XmlNode child in importedNode.ChildNodes)
                 {
-                    _ = set01Element.AppendChild(child.CloneNode(true));
+                    _ = setElment.AppendChild(child.CloneNode(true));
                     if (child.Name == "value")
                     {
                        StoreValue(variable.Name, (XmlElement)child);
@@ -168,7 +172,7 @@ namespace SmartBid
 
                 importedNode.RemoveAll();
                 _ = importedNode.AppendChild(revisionElement);
-                _ = importedNode.AppendChild(set01Element);
+                _ = importedNode.AppendChild(setElment);
 
                 _ = _dataNode.AppendChild(importedNode);
             }
@@ -176,20 +180,8 @@ namespace SmartBid
 
         public void SaveDataMaster()
         {
-            string filePath;
-            if (FileName == null)
-            {
-                string opportunityFolder = _utilsNode["utilsData"]["opportunityFolder"]?.InnerText ?? "";
-                filePath = Path.Combine(H.GetSProperty("processPath"), opportunityFolder, $"{opportunityFolder.Substring(0, 7)}_DataMaster.xml");
-                FileName = filePath;
-            }
-            else
-            {
-                filePath = FileName;
-            }
-
-            _dm.Save(filePath);
-            H.PrintLog(4, User, "DM", $"XML guardado en {filePath}");
+            _dm.Save(FileName);
+            H.PrintLog(4, User, "DM", $"XML guardado en {FileName}");
         }
 
         public string GetValueString(string key)

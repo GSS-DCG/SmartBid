@@ -45,18 +45,31 @@ namespace SmartBid
         {
             target = Regex.Replace(target, "_Call\\d+", "");
 
-             string? directoryPath = (ToolsMap.Instance.getToolDataByCode(target).Resource == "TOOL")
-                ? Path.GetDirectoryName(H.GetSProperty("ToolsPath"))
-                : (ToolsMap.Instance.getToolDataByCode(target).Resource == "TEMPLATE")
-                ? Path.GetDirectoryName(H.GetSProperty("TemplatesPath"))
-                : "";
+
+            string? toolResoruce = ToolsMap.Instance.getToolDataByCode(target).Resource;
+            string toolsPath = Path.Combine (H.GetSProperty("ToolsPath"));
+            string templatesPath = Path.Combine (H.GetSProperty("TemplatesPath"));
+            string? directoryPath;
+
+            if ((toolResoruce != null) && (toolResoruce == "TOOL"))
+            {
+                directoryPath = toolsPath;
+            }
+            else if ((toolResoruce == "TEMPLATE"))
+            {
+                directoryPath = templatesPath;
+            } else
+            {
+                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - LoadData", $"Tool Resource not found for file: {target}:{toolResoruce}");
+                return;
+            }
 
             FileName = ToolsMap.Instance.getToolDataByCode(target).FileName;
             target = Path.Combine(directoryPath, FileName);
 
             if (!File.Exists(target))
             {
-                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"{target} does not exist.");
+                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "LoadData", $"{target} does not exist.");
                 return;
             }
 
@@ -147,11 +160,11 @@ namespace SmartBid
             }
             catch (FileNotFoundException)
             {
-                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"File not found: {docxPath}");
+                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ExtractGSSDataFromDocx", $"File not found: {docxPath}");
             }
             catch (Exception ex)
             {
-                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"An error occurred: {ex.Message}");
+                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ExtractGSSDataFromDocx", $"An error occurred: {ex.Message}");
             }
 
             bookmarks = bookmarks.Where(kvp => kvp.Key.StartsWith("GSS_"))
@@ -346,7 +359,7 @@ namespace SmartBid
             }
             catch (Exception ex)
             {
-                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"❌Error❌ reading range names: {ex.Message}");
+                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "GetAllRangeNames", $"❌Error❌ reading range names: {ex.Message}");
             }
             return rangeNames;
         }
@@ -397,22 +410,22 @@ namespace SmartBid
                         }
                         else
                         {
-                            H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"Sheet {sheetName} not found.");
+                            H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "GetCellValuesFromRange", $"Sheet {sheetName} not found.");
                         }
                     }
                     else
                     {
-                        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"Range {rangeName} not found.");
+                        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "GetCellValuesFromRange", $"Range {rangeName} not found.");
                     }
                 }
                 else
                 {
-                    H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", "No defined names found.");
+                    H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "GetCellValuesFromRange", "No defined names found.");
                 }
             }
             catch (Exception ex)
             {
-                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"❌Error❌ reading {rangeName} range: {ex.Message}");
+                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "GetCellValuesFromRange", $"❌Error❌ reading {rangeName} range: {ex.Message}");
             }
             return cellValues;
         }
@@ -467,7 +480,7 @@ namespace SmartBid
             var outputPath = Path.Combine(directory, fileNameWithoutExtension + ".xml");
 
             ToXMLDocument().Save(outputPath);
-            H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "myEvent", $"XML file created at: {outputPath}");
+            H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "CreateXMLMirror", $"XML file created at: {outputPath}");
 
             ToXMLDocument().Load(outputPath);
         }

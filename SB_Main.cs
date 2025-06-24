@@ -28,7 +28,7 @@ namespace SmartBid
 
             watcher.Created += (sender, e) =>
             {
-                H.PrintLog(5, "Main", "myEvent", $"Evento detectado: {e.FullPath}");
+                H.PrintLog(5, "Main", "Main", $"Evento detectado: {e.FullPath}");
 
                 if (Regex.IsMatch(Path.GetFileName(e.FullPath), @"^call_\d+\.xml$", RegexOptions.IgnoreCase))
                 {
@@ -38,8 +38,8 @@ namespace SmartBid
             };
 
             watcher.EnableRaisingEvents = true;
-            H.PrintLog(5, "Main", "myEvent", $"Observando el directorio: {path}");
-            H.PrintLog(5, "Main", "myEvent", "Presiona 'Q' para salir...");
+            H.PrintLog(5, "Main", "Main", $"Observando el directorio: {path}");
+            H.PrintLog(5, "Main", "Main", "Presiona 'Q' para salir...");
 
             // Procesamiento en un hilo separado
             _ = Task.Run(ProcessFiles);
@@ -49,7 +49,7 @@ namespace SmartBid
             {
                 if (Console.KeyAvailable && Console.ReadKey(true).Key == ConsoleKey.Q)
                 {
-                    H.PrintLog(5, "Main", "myEvent", "Salida solicitada... deteniendo el watcher.");
+                    H.PrintLog(5, "Main", "Main", "Salida solicitada... deteniendo el watcher.");
                     watcher.EnableRaisingEvents = false; // Detiene la detección de archivos nuevos
                     _stopRequested = true;
                     break;
@@ -57,7 +57,7 @@ namespace SmartBid
                 Thread.Sleep(1000); // Reduce la carga de la CPU
             }
 
-            H.PrintLog(5, "Main", "myEvent", "Todos los archivos han sido procesados. Programa terminado.");
+            H.PrintLog(5, "Main", "Main", "Todos los archivos han sido procesados. Programa terminado.");
         }
 
         static void ProcessFiles()
@@ -222,7 +222,7 @@ namespace SmartBid
         }
         private static void ReturnRemoveFiles(DataMaster dm)
         {
-            string revisionDateStamp = dm.GetInnerText(@"dm/utils/rev_01/dateTimequedar").Substring(0, 6);
+            string revisionDateStamp = dm.GetInnerText(@"dm/utils/rev_01/dateTime").Substring(0, 6);
             string projectFolder = dm.GetInnerText(@"dm/utils/utilsData/opportunityFolder");
 
             string processedToolsPath = Path.Combine(H.GetSProperty("processPath"), projectFolder, "TOOLS");
@@ -255,9 +255,7 @@ namespace SmartBid
                     File.Delete(file);
 
             if (H.GetBProperty("returnDataMaster"))
-                File.Copy(dm.FileName, Path.Combine(H.GetSProperty("oppsPath"), projectFolder), overwrite: true);
-
-
+                File.Copy(dm.FileName, Path.Combine(H.GetSProperty("oppsPath"), projectFolder, Path.GetFileName(dm.FileName)), overwrite: true);
         }
 
     }

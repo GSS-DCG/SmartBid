@@ -25,9 +25,9 @@
 	<storeTools>true</storeTools>
 	<storeDeliveries>true</storeDeliveries>
 	
-	<returnTools>false</returnTools>	<!-- Copiar las herramientas al directorio Opps -->
+	<returnTools>true</returnTools>	<!-- Copiar las herramientas al directorio Opps -->
 	<returnDeliveries>true</returnDeliveries>
-	<returnDataMaster>false</returnDataMaster>
+	<returnDataMaster>true</returnDataMaster>
 
 	<mailKAM>false</mailKAM>
 	<mailCreatedBy>false</mailCreatedBy>

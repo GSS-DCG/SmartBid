@@ -103,8 +103,8 @@ namespace SmartBid
 
                 ProcessInputFiles(dm, 1); // checks that all files declare exits and stores the checksum of the file for comparison
 
-                if (H.GetBProperty("storeXmlCall")) //Stores de call file in case configuration says so
-                    StoreCallFile(filePath, Path.GetDirectoryName(dm.FileName));
+                //Stores de call file in case configuration says so
+                StoreCallFile(H.GetBProperty("storeXmlCall"), filePath, Path.GetDirectoryName(dm.FileName));
 
                 Calculator calculator = new Calculator(dm, xmlCall);
 
@@ -193,9 +193,16 @@ namespace SmartBid
 
 
         }
-        private static void StoreCallFile(string callFile, string oppFolder)
+        private static string CalcularMD5(string path)
         {
-            if (!string.IsNullOrEmpty(callFile))
+            using var stream = File.OpenRead(path);
+            using var md5 = MD5.Create();
+            byte[] hash = md5.ComputeHash(stream);
+            return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+        }
+        private static void StoreCallFile(bool store, string callFile, string oppFolder)
+        {
+            if (store)
             {
                 try
                 {
@@ -204,28 +211,24 @@ namespace SmartBid
 
                     File.Move(callFile, Path.Combine(targetDir, oppFolder, fileName));
 
-                    H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "StoreCallFile", $"Archivo '{callFile}' movido a '{targetDir}'.");
+                    H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "StoreCallFile", $"Call File '{callFile}' moved to '{targetDir}'.");
                 }
                 catch (Exception ex)
                 {
                     H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - StoreCallFile", $"❌Error❌ al mover '{callFile}': {ex.Message}");
                 }
-            }
-        }
-        private static string CalcularMD5(string path)
-        {
-            using var stream = File.OpenRead(path);
-            using var md5 = MD5.Create();
-            byte[] hash = md5.ComputeHash(stream);
-            return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+            }else
+                File.Delete(callFile);
         }
         private static void ReturnRemoveFiles(DataMaster dm)
         {
-            string projectFolder = dm.DM.SelectSingleNode(@"dm/utils/utilsData/opportunityFolder")?.InnerText ?? "";
+            string revisionDateStamp = dm.GetInnerText(@"dm/utils/rev_01/dateTimequedar").Substring(0, 6);
+            string projectFolder = dm.GetInnerText(@"dm/utils/utilsData/opportunityFolder");
+
             string processedToolsPath = Path.Combine(H.GetSProperty("processPath"), projectFolder, "TOOLS");
-            string processedDeliveriesPath = Path.Combine(H.GetSProperty("processPath"), projectFolder, "OUTPUT");
-            string oppsToolsPath = Path.Combine(H.GetSProperty("oppsPath"), projectFolder, @"2.ING\OBS");
-            string oppsDeliveriesPath = Path.Combine(H.GetSProperty("oppsPath"), projectFolder, @"2.ING\OBS");
+            string processedOutputsPath = Path.Combine(H.GetSProperty("processPath"), projectFolder, "OUTPUT");
+            string oppsToolsPath = Path.Combine(H.GetSProperty("oppsPath"), projectFolder, @$"2.ING\{revisionDateStamp}\TOOLS");
+            string oppsDeliveriesPath = Path.Combine(H.GetSProperty("oppsPath"), projectFolder, @$"2.ING\{revisionDateStamp}");
 
 
             if (H.GetBProperty("returnTools"))
@@ -235,26 +238,21 @@ namespace SmartBid
                     File.Copy(file, Path.Combine(oppsToolsPath, Path.GetFileName(file)), overwrite: true);
                 }
 
-            if (H.GetBProperty("removeTools"))
+            if (!H.GetBProperty("storeTools"))
                 foreach (string file in Directory.GetFiles(processedToolsPath))
-                {
                     File.Delete(file);
-                }
 
 
             if (H.GetBProperty("returnDeliveries"))
-                foreach (string file in Directory.GetFiles(processedDeliveriesPath))
+                foreach (string file in Directory.GetFiles(processedOutputsPath))
                 {
                     _ = Directory.CreateDirectory(oppsDeliveriesPath); // Crea si no existe
                     File.Copy(file, Path.Combine(oppsDeliveriesPath, Path.GetFileName(file)), overwrite: true);
                 }
 
-            if (H.GetBProperty("removeDeliveries"))
-                foreach (string file in Directory.GetFiles(processedDeliveriesPath))
-                {
+            if (!H.GetBProperty("storeDeliveries"))
+                foreach (string file in Directory.GetFiles(processedOutputsPath))
                     File.Delete(file);
-                }
-
 
             if (H.GetBProperty("returnDataMaster"))
                 File.Copy(dm.FileName, Path.Combine(H.GetSProperty("oppsPath"), projectFolder), overwrite: true);

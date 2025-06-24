@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Xml;
+using DocumentFormat.OpenXml.Wordprocessing;
 
 namespace SmartBid
 {
@@ -121,15 +122,11 @@ namespace SmartBid
                 StoreValue("opportunityFolder", GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder"));
                 StoreValue("createdBy", GetImportedElement(xmlRequest, "//requestInfo/createdBy"));
 
-
-
-            
-
-
                 //Add first revision element
                 _ = _utilsNode.AppendChild(_dm.CreateComment("First Revision"));
                 XmlElement revision = _dm.CreateElement("rev_01");
-                XmlElement unused = (XmlElement)xmlRequest.SelectSingleNode("//requestInfo");
+
+                revision.AppendChild(CreateElement("dateTime", DateTime.Now.ToString("yyMMdd_HHmm")));
 
                 XmlElement importedNode = (XmlElement)xmlRequest.SelectSingleNode("//requestInfo");
                 _ = importedNode != null ? revision.AppendChild(_dm.ImportNode(importedNode, true)) : null;

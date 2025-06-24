@@ -174,6 +174,12 @@ namespace SmartBid
 
             deep++; //Registering the depth of the recursion
 
+            if (deep > 10)
+            {
+                throw new Exception("Entrada en recursividad");
+            }
+
+
             calcTools.Add(new List<string>(targets)); //Adding the current _targets to the list of calculation tools
 
             if (targets.Count == 0)

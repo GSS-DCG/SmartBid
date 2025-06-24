@@ -18,6 +18,8 @@ namespace SmartBid
         public Dictionary<string, XmlNode> Data { get { return _data; } }
         public XmlDocument DM { get { return _dm; } }
         public int BidRevision { get; set; }
+        public string sBidRevision => BidRevision.ToString("D2");
+
 
 
         // Constructor público con XmlDocument ==> para crear un nuevo DataMaster
@@ -71,37 +73,27 @@ namespace SmartBid
                         StoreValue(variable.ID, element);
                     }
 
-                    // Load Config. Init Data (creating an xml with config data variables and send it to UpdateData for inserting in DM
+                    // Load CONFIG Init Data (creating an xml with config data variables and send it to UpdateData for inserting in DM
                     if (variable.Area == "config")
                     {
-                        _ = _dataNode.AppendChild(GetImportedElement(xmlRequest, @$"//config/{variable.ID}"));
+                        //tomamos el nombre de la variable
+//                        _ = _dataNode.AppendChild(GetImportedElement(xmlRequest, @$"//config/{variable.ID}"));
 
                         // Variable 
                         XmlElement newVar = configDataXML.CreateElement(variable.ID);
                         _ = variables.AppendChild(newVar);
 
                         // Value node
-                        XmlElement value = configDataXML.CreateElement("value");
 
                         XmlElement importedElement = GetImportedElement(xmlRequest, @$"//config/{variable.ID}");
                         XmlAttribute unitAttribute = importedElement?.GetAttributeNode("unit");
 
-                        if (unitAttribute != null) // Only add "unit" if it exists
-                            value.SetAttribute("unit", unitAttribute.Value);
 
-                        value.InnerText = importedElement?.InnerText ?? ""; // Avoid null reference
-
-                        _ = newVar.AppendChild(value);
-
-                        // Origin node
-                        XmlElement origin = configDataXML.CreateElement("origin");
-                        origin.InnerText = "INIT from callXML";
-                        _ = newVar.AppendChild(origin);
-
-                        // Note node
-                        XmlElement note = configDataXML.CreateElement("note");
-                        note.InnerText = "Variable leida de Hermes";
-                        _ = newVar.AppendChild(note);
+                        XmlNode value = newVar.AppendChild(CreateElement(configDataXML, "value", importedElement?.InnerText ?? ""));
+                        if (unitAttribute != null)
+                            ((XmlElement)value).SetAttribute("unit", unitAttribute.Value);
+                        _ = newVar.AppendChild(CreateElement(configDataXML, "origin", "INIT from callXML"));
+                        _ = newVar.AppendChild(CreateElement(configDataXML, "note", "Variable leida de Hermes"));
                     }
                 }
                 // Adding variable to the data dictionary
@@ -159,11 +151,11 @@ namespace SmartBid
                 XmlNode importedNode = _dm.ImportNode(variable, true);
 
                 XmlElement revisionElement = _dm.CreateElement("revision");
-                XmlElement rev01Element = _dm.CreateElement("rev01");
-                rev01Element.InnerText = "set01";
+                XmlElement rev01Element = _dm.CreateElement($"rev{sBidRevision}");
+                rev01Element.InnerText = $"set{sBidRevision}";
                 _ = revisionElement.AppendChild(rev01Element);
 
-                XmlElement set01Element = _dm.CreateElement("set01");
+                XmlElement set01Element = _dm.CreateElement($"set{sBidRevision}");
 
                 foreach (XmlNode child in importedNode.ChildNodes)
                 {

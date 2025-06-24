@@ -21,7 +21,6 @@ namespace SmartBid
         public string Description { get; set; }
         public string FileName { get; set; }
 
-
         // Constructor to initialize all properties
         public ToolData(string resource, string id, int call, string name, string version, string filetype, string description)
         {

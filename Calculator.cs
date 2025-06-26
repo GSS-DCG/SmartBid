@@ -2,7 +2,9 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
+using Microsoft.Office.Interop.Word;
 using Org.BouncyCastle.Asn1.X509;
+using Windows.UI.ViewManagement;
 
 namespace SmartBid
 {
@@ -49,7 +51,7 @@ namespace SmartBid
                         H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "RunCalculations", $"Calling Tool: {toolData.ID} - {toolData.Description}");
                         XmlDocument results = tm.CalculateExcel(target, dm);
                         dm.UpdateData(results); //Update the DataMaster with the results from the tool
-                        H.PrintXML(results);
+                        H.PrintXML(2, results);
                     }
                 }
                 else
@@ -92,7 +94,7 @@ namespace SmartBid
             H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", $"\n");
             H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", $"- CALLING PREPARATION: {prepToolPath} ------------------");
             H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", "- ARGUMENTO PASADO A PREPTOOL:");
-            H.PrintXML(myArgument); // Print the XML for debugging
+            H.PrintXML(2, myArgument); // Print the XML for debugging
             H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", $"\n");
 
 
@@ -125,10 +127,11 @@ namespace SmartBid
             }
 
             XmlDocument xmlDoc = new XmlDocument();
+
             xmlDoc.LoadXml(output); // Load the XML content
 
             H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", $"Return from Preparation");
-            H.PrintXML(xmlDoc);
+            H.PrintXML(2, xmlDoc);
             if (error != "") H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", $"❌Error❌:\n{error}");
             H.PrintLog(0, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", "-----------------------------------");
 
@@ -141,6 +144,7 @@ namespace SmartBid
 
             List<VariableData> prepVarList = new List<VariableData>();
             List<List<string>> calcTools = new List<List<string>>(); //List to keep track of the calculation tools used in the recursion
+            XmlDocument prepCallXML; 
 
             prepVarList.AddRange(Get_PREP_Variables(targets, sourcesSearched, 0, calcTools));
 
@@ -164,10 +168,30 @@ namespace SmartBid
 
             List<string> prepVarIDList = prepVarList.Select(variable => variable.ID).ToList(); //Getting the list of IDs for the preparation variables  
 
-            // Si fuera necesario podemos escribir la salida en un fichero XML
-            VariablesMap.Instance.SaveToXml(Path.Combine(Path.GetDirectoryName(H.GetSProperty("ToolsPath")), "preparationCall.xml"), prepVarIDList); //Saving the VariablesMap to XML
+            prepCallXML = VariablesMap.Instance.ToXml(prepVarIDList);
 
-            return VariablesMap.Instance.ToXml(prepVarIDList); //Returning all variables to be read at Preparation in XML format
+
+            XmlNode inputDocsNode = H.CreateElement(prepCallXML, "inputDocs", ""); //Adding the call element to the XML   
+            prepCallXML.DocumentElement.AppendChild(inputDocsNode); //Adding the call element to the XML
+
+
+            string inputFilesTimeStamp = dm.DM.SelectSingleNode(@$"dm/utils/rev_{dm.BidRevision:D2}/inputDocs")?.Attributes?["timeStamp"]?.Value?? DateTime.Now.ToString("yyMMdd");
+
+
+            foreach (XmlElement doc in dm.DM.SelectNodes(@$"dm/utils/rev_{dm.BidRevision.ToString("D2")}/inputDocs/doc"))
+            {
+                string fileType = doc.GetAttribute("type");
+                string fileName = doc.InnerText;
+                string filePath = Path.Combine(Path.Combine(H.GetSProperty("oppsPath"), dm.GetValueString("opportunityFolder")), "1.DOC", inputFilesTimeStamp, fileType, fileName);
+
+                XmlElement docElement = H.CreateElement(prepCallXML, "doc", filePath);
+                docElement.SetAttribute("type", fileType);
+                inputDocsNode.AppendChild(docElement); //Adding the input documents to the XML
+            }
+
+            // Guardamos el XML por si fuese necesario
+            prepCallXML.Save(Path.Combine(Path.GetDirectoryName(H.GetSProperty("ToolsPath")), "preparationCall.xml"));
+            return prepCallXML; //Returning all variables to be read at Preparation in XML format
         }
         private static List<VariableData> Get_PREP_Variables(List<string> targets, List<string> sourcesExcluded, int deep, List<List<string>> calcTools)
         {
@@ -243,8 +267,7 @@ namespace SmartBid
 
             if (deliveryDocsNode != null) foreach (XmlNode docNode in deliveryDocsNode.SelectNodes("doc")) deliveryDocs.Add(docNode.InnerText);
 
-            H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "GetDeliveryDocs", "\n\n-----------EXECUTING THE FOLLOWING DOCUMENTS:-----------\n");
-            H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "GetDeliveryDocs", $"{deliveryDocs.ToString}\n");
+            H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "GetDeliveryDocs", $"-----------EXECUTING THE FOLLOWING DOCUMENTS:-----------\n{string.Join("\n", deliveryDocs)}\n\n");
 
             return deliveryDocs;
         }

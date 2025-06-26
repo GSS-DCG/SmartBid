@@ -1,7 +1,9 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Diagnostics;
+using System.Text.RegularExpressions;
 using System.Xml;
 using Microsoft.Office.Interop.Word;
 using SmartBid;
+using Windows.System;
 using Outlook = Microsoft.Office.Interop.Outlook;
 
 public static class H //Helper class for reading properties from an XML file 
@@ -69,10 +71,10 @@ public static class H //Helper class for reading properties from an XML file
         return false;
     }
 
-    public static void PrintXML(XmlDocument xmlDoc)
+    public static void PrintXML(int level, XmlDocument xmlDoc)
     {
 
-        if (GetNProperty("printLevel") <= 2)
+        if (GetNProperty("printLevel") <= level)
         {
             StringWriter sw = new StringWriter();
             XmlTextWriter writer = new XmlTextWriter(sw) { Formatting = Formatting.Indented };

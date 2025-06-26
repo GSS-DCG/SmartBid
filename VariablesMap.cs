@@ -174,6 +174,8 @@ public class VariablesMap
             H.PrintLog(2, "VarMap", "VariablesMap", $" ****** FILE: {vmFile} NOT FOUND. ******\n Review value 'VarMap' in properties.xml it should point to the location of the Variables Map file.\n\n");
             _ = new FileNotFoundException("PROPERTIES FILE NOT FOUND", vmFile);
         }
+        H.PrintLog(2, "VarMap", "VariablesMap", $" Utilizando el mapa de Variables:{vmFile} \n");
+
         string directoryPath = Path.GetDirectoryName(vmFile);
         string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(vmFile);
         string xmlFile = Path.Combine(directoryPath, "VariablesMap" + ".xml");
@@ -266,7 +268,7 @@ public class VariablesMap
         }
         DataTable dataTable = dataSet.Tables["VarMap"];
         // Iterate over the rows from row 3 until column A is empty
-        for (int i = 1; i < dataTable.Rows.Count; i++)
+        for (int i = 2; i < dataTable.Rows.Count; i++)
         {
             DataRow row = dataTable.Rows[i];
             if (row.IsNull(0))

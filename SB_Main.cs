@@ -100,10 +100,10 @@ namespace SmartBid
             DataMaster dm = CreateDataMaster(xmlCall); //Create New DataMaster
                 try
                 {
+                // checks that all files declare exits and stores the checksum of the fileName for comparison
+                ProcessInputFiles(dm, 1);
 
-                ProcessInputFiles(dm, 1); // checks that all files declare exits and stores the checksum of the file for comparison
-
-                //Stores de call file in case configuration says so
+                //Stores de call fileName in case configuration says so
                 StoreCallFile(H.GetBProperty("storeXmlCall"), filePath, Path.GetDirectoryName(dm.FileName));
 
                 Calculator calculator = new Calculator(dm, xmlCall);
@@ -150,7 +150,7 @@ namespace SmartBid
 
         private static DataMaster CreateDataMaster(XmlDocument xmlCall) //Creamos el datamaster
         {
-            H.PrintXML(xmlCall); //Print the XML call for debugging
+            H.PrintXML(2, xmlCall); //Print the XML call for debugging
 
             //Instantiating the DataMaster class with the XML string 
             DataMaster dm = new DataMaster(xmlCall);
@@ -165,34 +165,38 @@ namespace SmartBid
 
             return dm;
         }
-        private static void ProcessInputFiles(DataMaster dm, int rev)
+        private static void ProcessInputFiles(DataMaster dm, int revision)
         {
             string inputPath = Path.Combine(H.GetSProperty("oppsPath"), dm.DM.SelectSingleNode(@"dm/utils/utilsData/opportunityFolder")?.InnerText ?? "");
 
-            foreach (XmlElement doc in dm.DM.SelectNodes(@$"dm/utils/rev_{rev.ToString("D2")}/inputDocs/doc"))
-            {
-                string fileName = Path.Combine(inputPath, "1.DOC", doc.GetAttribute("type"), doc.InnerText);
 
-                if (!File.Exists(fileName))
+
+            foreach (XmlElement doc in dm.DM.SelectNodes(@$"dm/utils/rev_{revision.ToString("D2")}/inputDocs/doc"))
+            {
+                string fileType = doc.GetAttribute("type");
+                string fileName = doc.InnerText;
+                string filePath = Path.Combine(inputPath, "1.DOC", fileType, fileName);
+
+                if (!File.Exists(filePath))
                 {
-                    H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - ProcessFile", $"⚠️ El archivo '{fileName}' no existe.");
+                    H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - ProcessFile", $"⚠️ El archivo '{filePath}' no existe.");
                     continue; // Saltar este documento y seguir con los demás
                 }
-                string hash = CalcularMD5(fileName); // Calculate MD5 hash for the file
-                string lastModified = File.GetLastWriteTime(fileName).ToString("yyyy-MM-dd HH:mm:ss");
+
+                string hash = CalcularMD5(filePath); // Calculate MD5 hash for the fileName
+                string lastModified = File.GetLastWriteTime(filePath).ToString("yyyy-MM-dd HH:mm:ss");
 
                 doc.SetAttribute("hash", hash); // Set the hash attribute in the XML
                 doc.SetAttribute("lastModified", lastModified); // Set the hash attribute in the XML
 
-                DBtools.InsertFileHash(fileName, doc.GetAttribute("type"), hash, lastModified); // Store the file hash in the database
+                DBtools.InsertFileHash(filePath, doc.GetAttribute("type"), hash, lastModified); // Store the fileName hash in the database
 
-                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"Archivo '{fileName}' registered");
+                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"Archivo '{filePath}' registered");
 
             }
             H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"All input files have been registered'.");
-
-
         }
+
         private static string CalcularMD5(string path)
         {
             using var stream = File.OpenRead(path);

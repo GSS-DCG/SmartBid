@@ -64,7 +64,7 @@ namespace SmartBid
                 return;
             }
 
-            FileName = ToolsMap.Instance.getToolDataByCode(target).FileName;
+             FileName = ToolsMap.Instance.getToolDataByCode(target).FileName;
             target = Path.Combine(directoryPath, FileName);
 
             if (!File.Exists(target))
@@ -88,7 +88,8 @@ namespace SmartBid
                     BasicData = ExtractGSSDataFromDocx(target);
                     VarList = ExtractVariablesFromDocx(target);
                 }
-                else if (fileExtension.ToLower() == ".xlsx")
+
+                else if (fileExtension.ToLower().StartsWith(".xls"))
                 {
                     BasicData = ExtractGSSDataFromXlsx(target);
                     VarList = ExtractVariablesFromXlsx(target);
@@ -297,7 +298,14 @@ namespace SmartBid
             string outPrefix = H.GetSProperty("OUT_VarPrefix").ToLower();
             string opPrefix = H.GetSProperty("OptionPrefix").ToLower();
 
-            _ = varNames.Remove("GSS_DATA"); // Remove GSS_DATA from the list
+            // Filtrar la lista
+            varNames = varNames
+                .Where(name => name.StartsWith(inPrefix, StringComparison.OrdinalIgnoreCase) ||
+                               name.StartsWith(outPrefix, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            varNames.Remove("GSS_DATA"); // Remove GSS_DATA from the list
+
 
             foreach (string item in varNames)
             {
@@ -482,8 +490,8 @@ namespace SmartBid
 
         private void CreateXMLMirror(string directory)
         {
-            var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(FileName);
-            var outputPath = Path.Combine(directory, fileNameWithoutExtension + ".xml");
+            string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(FileName);
+            string outputPath = Path.Combine(directory, fileNameWithoutExtension + ".xml");
 
             ToXMLDocument().Save(outputPath);
             H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "CreateXMLMirror", $"XML file created at: {outputPath}");

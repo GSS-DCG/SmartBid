@@ -37,6 +37,11 @@ namespace SmartBid
                 }
             };
 
+            Console.WriteLine("                                                                             \r\n ██████\\                                     ██\\     ███████\\  ██\\       ██\\ \r\n██  __██\\                                    ██ |    ██  __██\\ \\__|      ██ |\r\n██ /  \\__|██████\\████\\   ██████\\   ██████\\ ██████\\   ██ |  ██ |██\\  ███████ |\r\n\\██████\\  ██  _██  _██\\  \\____██\\ ██  __██\\\\_██  _|  ███████\\ |██ |██  __██ |\r\n \\____██\\ ██ / ██ / ██ | ███████ |██ |  \\__| ██ |    ██  __██\\ ██ |██ /  ██ |\r\n██\\   ██ |██ | ██ | ██ |██  __██ |██ |       ██ |██\\ ██ |  ██ |██ |██ |  ██ |\r\n\\██████  |██ | ██ | ██ |\\███████ |██ |       \\████  |███████  |██ |\\███████ |\r\n \\______/ \\__| \\__| \\__| \\_______|\\__|        \\____/ \\_______/ \\__| \\_______|\r\n                                                                             ");
+
+            Auxiliar.CloseWord();
+            Auxiliar.CloseExcel();
+
             watcher.EnableRaisingEvents = true;
             H.PrintLog(5, "Main", "Main", $"Observando el directorio: {path}");
             H.PrintLog(5, "Main", "Main", "Presiona 'Q' para salir...");
@@ -118,7 +123,7 @@ namespace SmartBid
                 H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--****||PROJECT: {dm.GetValueString("opportunityFolder")} DONE||****--");
                 H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--***************************************--");
 
-                // H.DeleteBookmarkText("ES_Informe de corrosión_Rev0.0.docx", "Ruta_05", dm, "OUTPUT");
+                //Auxiliar.DeleteBookmarkText("ES_Informe de corrosión_Rev0.0.docx", "Ruta_05", dm, "OUTPUT");
 
 
                 List<string> emailRecipients = new List<string>();

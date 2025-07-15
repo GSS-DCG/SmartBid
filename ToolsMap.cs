@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Xml;
 using ExcelDataReader;
@@ -20,6 +21,8 @@ namespace SmartBid
         public string Version { get; set; }
         public string Description { get; set; }
         public string FileName { get; set; }
+
+        public static Dictionary<string, string> OpcionesHerramientas = new Dictionary<string, string>();
 
         // Constructor to initialize all properties
         public ToolData(string resource, string id, int call, string name, string version, string filetype, string description)
@@ -266,9 +269,27 @@ namespace SmartBid
                                 try
                                 {
                                     cell = workbook.Names.Item(rangeName).RefersToRange;
-                                    if (cell == null)
-                                        throw new Exception($"Named range '{rangeName}' not found in worksheet.");
-                                    cell.Value = dm.GetValueString(variableID);
+                                    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                    try
+                                    {
+                                        if (cell.Validation.Type != 0)
+                                        {
+                                            cell.Validation.Delete();
+                                        }
+                                    }
+                                    catch
+                                    {
+                                        if (cell == null)
+                                            throw new Exception($"Named range '{rangeName}' not found in worksheet.");
+                                        cell.Value2 = dm.GetValueString(variableID);
+                                    }
+                                    finally
+                                    {
+                                        if (cell == null)
+                                            throw new Exception($"Named range '{rangeName}' not found in worksheet.");
+                                        cell.Value2 = dm.GetValueString(variableID);
+                                    }
+                                    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////                                        
                                 }
                                 catch (Exception ex)
                                 {
@@ -293,6 +314,13 @@ namespace SmartBid
                             }
                         }
                     }
+                }
+
+                Dictionary<string, string> _OpcionesHerramientas = Auxiliar.GetOptionValue(workbook);
+
+                foreach(var Opciones in _OpcionesHerramientas.Keys)
+                {
+                    ToolData.OpcionesHerramientas[Opciones] = _OpcionesHerramientas[Opciones];
                 }
 
                 // Forzar cálculo de fórmulas en Excel
@@ -464,7 +492,9 @@ namespace SmartBid
             {
                 H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOutputWord", $"Generating output - Open file: {templateID}");
                 wordApp = new Word.Application();
-                doc = wordApp.Documents.Open(filePath, ReadOnly: false);
+                doc = wordApp.Documents.Open(filePath, ReadOnly: false, Visible:true); //visibilidad añadida
+
+                Auxiliar.DeleteBookmarkLoop(templateID, doc, ToolData.OpcionesHerramientas, H.GetSProperty("OptionPrefix"));
 
                 string prefix = H.GetSProperty("VarPrefix");
 
@@ -527,7 +557,11 @@ namespace SmartBid
                 }
 
                 doc.Save();
+
                 H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOuputWord", "Reemplazo realizado con éxito.");
+
+                bool _wordToPdf = Auxiliar.wordToPdf(doc, filePath.Replace(".docx",".pdf"));
+                if (_wordToPdf) { H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOuputWord", "Archivo docx exportado a pdf con éxito."); }
             }
             catch (Exception ex)
             {
@@ -559,7 +593,6 @@ namespace SmartBid
 
         static void WriteTableToExcel(Excel.Workbook workbook, string rangeName, XmlNode doc)
         {
-
             try
             {
                 // 📌 Parse XML Input
@@ -590,7 +623,6 @@ namespace SmartBid
 
         static XmlElement ReadTableFromExcel(Excel.Workbook workbook, string rangeName, XmlDocument outputDoc)
         {
-
             try
             {
                 // 📌 Read data from range

@@ -285,6 +285,7 @@ namespace SmartBid
         {
             Dictionary<string, string[]> varList = new Dictionary<string, string[]>();
             List<string> varNames;
+            List<string> ListaOpcionesHerramientas;
 
             using (SpreadsheetDocument document = SpreadsheetDocument.Open(fileName, false))
             {
@@ -294,6 +295,7 @@ namespace SmartBid
 
             string inPrefix = H.GetSProperty("IN_VarPrefix").ToLower();
             string outPrefix = H.GetSProperty("OUT_VarPrefix").ToLower();
+            string opPrefix = H.GetSProperty("OptionPrefix").ToLower();
 
             _ = varNames.Remove("GSS_DATA"); // Remove GSS_DATA from the list
 
@@ -312,8 +314,12 @@ namespace SmartBid
                     value[1] = "out";
                     varName = varName.Substring(outPrefix.Length);
                 }
+                else if (varName.ToLower().StartsWith(opPrefix))
+                {
+                    continue;
+                }
 
-                Match match = Regex.Match(varName.ToLower(), @"^call(\d)_");
+                    Match match = Regex.Match(varName.ToLower(), @"^call(\d)_");
                 if (match.Success) value[2] = match.Groups[1].Value; varName = varName.Substring(match.Length);
 
 

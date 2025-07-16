@@ -281,7 +281,7 @@ namespace SmartBid
 
         #region Gestion de opciones de una herramienta
         /// <summary>
-        /// Obtiene los nombres de las distitnas opciones de una herramienta con prefijo "OP_"
+        /// Obtiene los nombres de las distitnas opciones de una herramienta con prefijo "sbOP_"
         /// </summary>
         /// <param name="workbook"></param>
         /// <returns></returns>

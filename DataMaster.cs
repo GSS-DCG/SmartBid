@@ -183,18 +183,19 @@ namespace SmartBid
             _dm.Save(FileName);
             H.PrintLog(4, User, "DM", $"XML guardado en {FileName}");
         }
-
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         public string GetValueString(string key)
         {
-            if (_data.ContainsKey(key))
+            if (_data.TryGetValue(key, out var node))
             {
-                return _data[key]?.FirstChild.Value.ToString() ?? string.Empty;
+                return node?.FirstChild?.Value ?? string.Empty;
             }
             else
             {
                 throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
             }
         }
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         public double? GetValueNumber(string key)
         {

@@ -20,7 +20,7 @@
 	<OUT_VarPrefix>sbOUT_</OUT_VarPrefix>  <!-- prefijo que indica la variables de salida en las herramientas excel -->
 	<VarPrefix>SB_</VarPrefix>  <!-- Prefijo que marca las variables en las plantillas -->
 	<tableStyle>MyStyle</tableStyle>  <!-- Nombre del formato que se dará a las tablas insertadas en los Templates -->
-	<OptionPrefix>OP_</OptionPrefix> <!-- Prefijo que marca la variable de las opciones de una herramienta de una plantilla-->
+	<OptionPrefix>sbOP_</OptionPrefix> <!-- Prefijo que marca la variable de las opciones de una herramienta de una plantilla-->
 
 	<!-- Log/Storage -->
 	<storeXmlCall>true</storeXmlCall>	<!-- Archivar el fichero Call.xml-->

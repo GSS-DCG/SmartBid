@@ -269,7 +269,6 @@ namespace SmartBid
                                 try
                                 {
                                     cell = workbook.Names.Item(rangeName).RefersToRange;
-                                    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                     try
                                     {
                                         if (cell.Validation.Type != 0)
@@ -288,8 +287,7 @@ namespace SmartBid
                                         if (cell == null)
                                             throw new Exception($"Named range '{rangeName}' not found in worksheet.");
                                         cell.Value2 = dm.GetValueString(variableID);
-                                    }
-                                    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////                                        
+                                    }                                     
                                 }
                                 catch (Exception ex)
                                 {
@@ -356,7 +354,7 @@ namespace SmartBid
                             {
                                 if (_variablesMap.GetVariableData(variableID).Type != "table")
                                 {
-                                    _ = newElement.AppendChild(H.CreateElement(results, "value", cell.Value.ToString()));
+                                    _ = newElement.AppendChild(H.CreateElement(results, "value", cell.Text.ToString()));
                                 }
                                 else
                                 {

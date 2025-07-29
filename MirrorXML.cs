@@ -340,26 +340,20 @@ namespace SmartBid
             }
 
             VariablesMap varMap = VariablesMap.Instance;
-
-            List<string> nonDeclaredVars = new List<string>();
-
             foreach (string var in varList.Keys) // Comprobamos que todas las variables están declaradas en el VariableMap
             {
+                List<string> nonDeclaredVar = new List<string>();
                 if (!varMap.IsVariableExists(var))
                 {
-                    nonDeclaredVars.Add(var);
+                    nonDeclaredVar.Add(var);
+                }
+                if (nonDeclaredVar.Count > 0)
+                {
+                    H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - ExtractVariablesFromXlsx", $"Declaration Error");
+                    throw new InvalidOperationException($" {nonDeclaredVar.Count} Variables found in {Path.GetFileName(fileName)} are not declared in VariableMap \n\n {string.Join("\n", nonDeclaredVar)}\n");
                 }
             }
-
-            if (nonDeclaredVars.Count > 0)
-            {
-                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - ExtractVariablesFromXlsx", $"Declaration Error");
-                throw new InvalidOperationException(
-                    $"{nonDeclaredVars.Count} variables found in {Path.GetFileName(fileName)} are not declared in VariableMap:\n\n{string.Join("\n", nonDeclaredVars)}\n"
-                );
-            }
-
-
+          
             return varList;
         }
 

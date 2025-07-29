@@ -37,7 +37,9 @@ namespace SmartBid
                 }
             };
 
-            Console.WriteLine("                                                                             \r\n ██████\\                                     ██\\     ███████\\  ██\\       ██\\ \r\n██  __██\\                                    ██ |    ██  __██\\ \\__|      ██ |\r\n██ /  \\__|██████\\████\\   ██████\\   ██████\\ ██████\\   ██ |  ██ |██\\  ███████ |\r\n\\██████\\  ██  _██  _██\\  \\____██\\ ██  __██\\\\_██  _|  ███████\\ |██ |██  __██ |\r\n \\____██\\ ██ / ██ / ██ | ███████ |██ |  \\__| ██ |    ██  __██\\ ██ |██ /  ██ |\r\n██\\   ██ |██ | ██ | ██ |██  __██ |██ |       ██ |██\\ ██ |  ██ |██ |██ |  ██ |\r\n\\██████  |██ | ██ | ██ |\\███████ |██ |       \\████  |███████  |██ |\\███████ |\r\n \\______/ \\__| \\__| \\__| \\_______|\\__|        \\____/ \\_______/ \\__| \\_______|\r\n                                                                             ");
+            //Console.WriteLine("                                                                             \r\n ██████\\                                     ██\\     ███████\\  ██\\       ██\\ \r\n██  __██\\                                    ██ |    ██  __██\\ \\__|      ██ |\r\n██ /  \\__|██████\\████\\   ██████\\   ██████\\ ██████\\   ██ |  ██ |██\\  ███████ |\r\n\\██████\\  ██  _██  _██\\  \\____██\\ ██  __██\\\\_██  _|  ███████\\ |██ |██  __██ |\r\n \\____██\\ ██ / ██ / ██ | ███████ |██ |  \\__| ██ |    ██  __██\\ ██ |██ /  ██ |\r\n██\\   ██ |██ | ██ | ██ |██  __██ |██ |       ██ |██\\ ██ |  ██ |██ |██ |  ██ |\r\n\\██████  |██ | ██ | ██ |\\███████ |██ |       \\████  |███████  |██ |\\███████ |\r\n \\______/ \\__| \\__| \\__| \\_______|\\__|        \\____/ \\_______/ \\__| \\_______|\r\n                                                                             ");
+
+            //Auxiliar.DividirPdfPorIndice(@"C:\Users\darien.callejo\Downloads\Informe Eg-242340.pdf");ç
 
             Auxiliar.CloseWord();
             Auxiliar.CloseExcel();
@@ -122,9 +124,6 @@ namespace SmartBid
                 H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--***************************************--");
                 H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--****||PROJECT: {dm.GetValueString("opportunityFolder")} DONE||****--");
                 H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--***************************************--");
-
-                //Auxiliar.DeleteBookmarkText("ES_Informe de corrosión_Rev0.0.docx", "Ruta_05", dm, "OUTPUT");
-
 
                 List<string> emailRecipients = new List<string>();
 

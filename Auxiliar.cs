@@ -1,6 +1,14 @@
-﻿using Microsoft.Office.Interop.Word;
+﻿using iText.Kernel.Pdf;
+using iText.Kernel.Pdf.Navigation;
+using iText.Kernel.Utils;
+using iText.Kernel.XMP;
+using iText.Kernel.XMP.Options;
+using iText.Kernel.XMP.Properties;
+using Microsoft.Office.Interop.Word;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 using Excel = Microsoft.Office.Interop.Excel;
@@ -407,5 +415,71 @@ namespace SmartBid
         }
 
         #endregion
+
+        #region Dividir PDF
+
+        public static void DividirPdfPorIndice(string rutaPdf)
+        {
+            string carpetaSalida = Path.GetDirectoryName(rutaPdf);
+            using var pdfDoc = new PdfDocument(new PdfReader(rutaPdf));
+
+            IList<PdfOutline> outlines = pdfDoc.GetOutlines(false).GetAllChildren();
+
+            for (int i = 0; i < outlines.Count; i++)
+            {
+                var outline = outlines[i];
+                string titulo = SanearNombre(outline.GetTitle());
+
+                int paginaInicio = ObtenerNumeroPaginaDesdeDestino(pdfDoc, outline.GetDestination());
+                int paginaFin = (i + 1 < outlines.Count)
+                    ? ObtenerNumeroPaginaDesdeDestino(pdfDoc, outlines[i + 1].GetDestination()) - 1
+                    : pdfDoc.GetNumberOfPages();
+
+                string rutaSalida = Path.Combine(carpetaSalida, $"{titulo}.pdf");
+
+                ExtraerPaginas(rutaPdf, rutaSalida, paginaInicio, paginaFin);
+            }
+        }
+
+        private static int ObtenerNumeroPaginaDesdeDestino(PdfDocument pdfDoc, PdfDestination destino)
+        {
+            if (destino == null) return 1;
+
+            PdfObject pageRef = destino.GetPdfObject();
+
+            if (pageRef.IsIndirectReference())
+            {
+                for (int i = 1; i <= pdfDoc.GetNumberOfPages(); i++)
+                {
+                    if (pdfDoc.GetPage(i).GetPdfObject().GetIndirectReference().Equals(pageRef))
+                    {
+                        return i;
+                    }
+                }
+            }
+
+            return 1; // fallback
+        }
+
+        private static void ExtraerPaginas(string rutaOrigen, string rutaDestino, int paginaInicio, int paginaFin)
+        {
+            using var pdfReader = new PdfReader(rutaOrigen);
+            using var pdfWriter = new PdfWriter(rutaDestino);
+            using var pdfDocOrigen = new PdfDocument(pdfReader);
+            using var pdfDocNuevo = new PdfDocument(pdfWriter);
+            var merger = new PdfMerger(pdfDocNuevo);
+
+            merger.Merge(pdfDocOrigen, paginaInicio, paginaFin);
+        }
+
+        private static string SanearNombre(string nombre)
+        {
+            foreach (char c in Path.GetInvalidFileNameChars())
+            {
+                nombre = nombre.Replace(c, '_');
+            }
+            return nombre.Trim();
+        }
     }
+    #endregion
 }

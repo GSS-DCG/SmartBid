@@ -132,108 +132,9 @@ namespace SmartBid
         importedNode = (XmlElement)xmlRequest.SelectSingleNode("//bidVersion/inputDocs");
         _ = importedNode != null ? revision.AppendChild(_dm.ImportNode(importedNode, true)) : null;
 
-        public void SaveDataMaster()
-        {
-            _dm.Save(FileName);
-            H.PrintLog(4, User, "DM", $"XML guardado en {FileName}");
-        }
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        public string GetValueString(string key)
-        {
-            if (_data.TryGetValue(key, out var node))
-            {
-                return node?.FirstChild?.Value ?? string.Empty;
-            }
-            else
-            {
-                throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
-            }
-        }
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        _ = _utilsNode.AppendChild(revision);
+      }
 
-        public double? GetValueNumber(string key)
-        {
-            if (_data.ContainsKey(key))
-            {
-                return double.TryParse(_data[key]?.FirstChild.Value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out double num) ? num : null;
-            }
-            else
-            {
-                H.PrintLog(5, User, "Error - DM", $"Key '{key}' not found in DataMaster.");
-                throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
-            }
-        }
-
-        public bool? GetValueBoolean(string key)
-        {
-            if (_data.ContainsKey(key))
-            {
-                return bool.TryParse(_data[key]?.FirstChild.Value.ToString(), out bool num) ? num : null;
-            }
-            else
-            {
-                H.PrintLog(5, User, "Error - DM", $"Key '{key}' not found in DataMaster.");
-                throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
-            }
-        }
-
-        public XmlNode GetValueXmlNode(string key)
-        {
-            if (_data.ContainsKey(key))
-            {
-                return _data[key];
-            }
-            else
-            {
-                H.PrintLog(5, User, "Error - DM", $"Key '{key}' not found in DataMaster.");
-                throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
-            }
-        }
-
-        public string GetInnerText(string xpath)
-        {
-            XmlNode node = _dm.SelectSingleNode(xpath);
-            if (node != null)
-            {
-                return node.InnerText;
-            }
-            else
-            {
-                throw new XmlException($"Node not found for XPath: {xpath}");
-            }
-        }
-
-        private void StoreValue(string id, XmlElement value)
-        {
-            H.PrintLog(1, User, "StoreValue", $"variable ||{id}|| added to DataMaster data");
-            _data.Add(id, value);
-        }
-
-        private XmlElement GetImportedElement(XmlDocument sourceDoc, string elementName)
-        {
-            XmlElement sourceElement = (XmlElement)sourceDoc.DocumentElement.SelectSingleNode(elementName);
-            if (sourceElement == null)
-            {
-                throw new XmlException($"Element '{elementName}' not found in the source document.");
-            }
-
-            XmlElement importedElement = (XmlElement)_dm.ImportNode(sourceElement, true);
-            return importedElement;
-        }
-
-        private XmlElement CreateElement(string name, string value)
-        {
-            XmlElement element = _dm.CreateElement(name);
-            element.InnerText = value;
-            return element;
-        }
-
-        private static XmlElement CreateElement(XmlDocument doc, string name, string value)
-        {
-            XmlElement element = doc.CreateElement(name);
-            element.InnerText = value;
-            return element;
-        }
     }
 
     // Constructor público con nombre de archivo ==> para cargar un DataMaster existente
@@ -284,14 +185,14 @@ namespace SmartBid
 
     public string GetValueString(string key)
     {
-      if (_data.ContainsKey(key))
-      {
-        return _data[key]?.FirstChild.Value.ToString() ?? string.Empty;
-      }
-      else
-      {
+        if (_data.TryGetValue(key, out var node))
+        {
+            return node?.FirstChild?.Value ?? string.Empty;
+        }
+        else
+        {
         throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
-      }
+        }
     }
 
     public double? GetValueNumber(string key)

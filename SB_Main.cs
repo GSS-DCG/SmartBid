@@ -32,57 +32,8 @@ namespace SmartBid
 
         if (Regex.IsMatch(Path.GetFileName(e.FullPath), @"^call_\d+\.xml$", RegexOptions.IgnoreCase))
         {
-            Console.OutputEncoding = System.Text.Encoding.UTF8;
-
-
-            string path = H.GetSProperty("callsPath");
-
-            watcher = new FileSystemWatcher
-            {
-                Path = path,
-                Filter = "*.*",
-                NotifyFilter = NotifyFilters.FileName
-            };
-
-            watcher.Created += (sender, e) =>
-            {
-                H.PrintLog(5, "Main", "Main", $"Evento detectado: {e.FullPath}");
-
-                if (Regex.IsMatch(Path.GetFileName(e.FullPath), @"^call_\d+\.xml$", RegexOptions.IgnoreCase))
-                {
-                    _fileQueue.Enqueue(e.FullPath);
-                    _ = _eventSignal.Set();
-                }
-            };
-
-            //Console.WriteLine("                                                                             \r\n ██████\\                                     ██\\     ███████\\  ██\\       ██\\ \r\n██  __██\\                                    ██ |    ██  __██\\ \\__|      ██ |\r\n██ /  \\__|██████\\████\\   ██████\\   ██████\\ ██████\\   ██ |  ██ |██\\  ███████ |\r\n\\██████\\  ██  _██  _██\\  \\____██\\ ██  __██\\\\_██  _|  ███████\\ |██ |██  __██ |\r\n \\____██\\ ██ / ██ / ██ | ███████ |██ |  \\__| ██ |    ██  __██\\ ██ |██ /  ██ |\r\n██\\   ██ |██ | ██ | ██ |██  __██ |██ |       ██ |██\\ ██ |  ██ |██ |██ |  ██ |\r\n\\██████  |██ | ██ | ██ |\\███████ |██ |       \\████  |███████  |██ |\\███████ |\r\n \\______/ \\__| \\__| \\__| \\_______|\\__|        \\____/ \\_______/ \\__| \\_______|\r\n                                                                             ");
-
-            //Auxiliar.DividirPdfPorIndice(@"C:\Users\darien.callejo\Downloads\Informe Eg-242340.pdf");ç
-
-            Auxiliar.CloseWord();
-            Auxiliar.CloseExcel();
-
-            watcher.EnableRaisingEvents = true;
-            H.PrintLog(5, "Main", "Main", $"Observando el directorio: {path}");
-            H.PrintLog(5, "Main", "Main", "Presiona 'Q' para salir...");
-
-            // Procesamiento en un hilo separado
-            _ = Task.Run(ProcessFiles);
-
-            // Monitor de entrada para salir con 'Q'
-            while (true)
-            {
-                if (Console.KeyAvailable && Console.ReadKey(true).Key == ConsoleKey.Q)
-                {
-                    H.PrintLog(5, "Main", "Main", "Salida solicitada... deteniendo el watcher.");
-                    watcher.EnableRaisingEvents = false; // Detiene la detección de archivos nuevos
-                    _stopRequested = true;
-                    break;
-                }
-                Thread.Sleep(1000); // Reduce la carga de la CPU
-            }
-
-            H.PrintLog(5, "Main", "Main", "Todos los archivos han sido procesados. Programa terminado.");
+          _fileQueue.Enqueue(e.FullPath);
+          _ = _eventSignal.Set();
         }
       };
 
@@ -122,66 +73,12 @@ namespace SmartBid
 
         while (_fileQueue.TryDequeue(out string filePath))
         {
-
-            XmlDocument xmlCall = new XmlDocument();
-            using (var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-            {
-                xmlCall.Load(stream);
-            }
-
-            // ✅ Inicializar el contexto lógico (seguro para ejecución en paralelo)
-            string userName = xmlCall.SelectSingleNode(@"request/requestInfo/createdBy")?.InnerText ?? "UnknownUser";
-            ThreadContext.CurrentThreadInfo.Value = new ThreadContext.ThreadInfo(userName);
-
-            H.PrintLog(5, userName, "ProcessFile", $"Procesando archivo: {filePath}");
-
-            int callID = DBtools.InsertCallStart(xmlCall); // Report starting process to DB
-
-            DataMaster dm = CreateDataMaster(xmlCall); //Create New DataMaster
-                try
-                {
-                // checks that all files declare exits and stores the checksum of the fileName for comparison
-                ProcessInputFiles(dm, 1);
-
-                //Stores de call fileName in case configuration says so
-                StoreCallFile(H.GetBProperty("storeXmlCall"), filePath, Path.GetDirectoryName(dm.FileName));
-
-                Calculator calculator = new Calculator(dm, xmlCall);
-
-                calculator.RunCalculations();
-
-                ReturnRemoveFiles(dm); // Returns or removes files depending on configuration
-
-                DBtools.UpdateCallRegistry(callID, "DONE", "OK");
-
-                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--***************************************--");
-                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--****||PROJECT: {dm.GetValueString("opportunityFolder")} DONE||****--");
-                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--***************************************--");
-
-                List<string> emailRecipients = new List<string>();
-
-                // Add KAM email if configured to do so
-                if (H.GetBProperty("mailKAM"))
-                    emailRecipients.Add(dm.GetValueString("kam"));
-
-                // Add CreatedBy email if configured to do so
-                if (H.GetBProperty("mailCreatedBy"))
-                    emailRecipients.Add(dm.GetValueString("createdBy"));
-
-                _ = H.MailTo(emailRecipients, "Mail de Prueba", "Enviado desde SmartBid");
-
-            }
-            catch (Exception ex)
-            {
-                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌--");
-                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--❌❌ Error al procesar {dm.GetValueString("opportunityFolder")}❌❌");
-
-                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"🧨 Excepción: {ex.GetType().Name}");
-                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"📄 Mensaje: {ex.Message}");
-                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"🧭 StackTrace:\n{ex.StackTrace}");
-                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌--");
-            }
-
+          // Procesamiento paralelo de cada archivo
+          _ = Task.Run(() =>
+          {
+            ThreadContext.CurrentThreadInfo.Value = null;
+            ProcessFile(filePath);
+          });
 
         }
         Thread.Sleep(250); // Reduce la carga de la CPU

@@ -10,16 +10,17 @@
 	<oppsPath>C:\InSync\SmartBid\files\oportunidades</oppsPath>  <!-- Directorio de entrada -->
 	<processPath>C:\InSync\SmartBid\files\processed</processPath>  <!-- Directorio de salida -->
 
-	<VarMap>C:\InSync\SmartBid\files\tools\_ResourcesMap2.xlsx</VarMap>  <!-- Excel con el mapa de variables y de herramientas -->
+	<VarMap>C:\InSync\SmartBid\files\tools\VariableMap_REV00.xlsx</VarMap>  <!-- Excel con el mapa de variables y de herramientas -->
 	<PreparationTool>C:\InSync\Preparation\publish\Preparation.exe</PreparationTool>  <!-- applicacion de preparación .exe  -->
 	<ToolsPath>C:\InSync\SmartBid\files\tools\</ToolsPath>  <!-- Carpeta donde encontrar las herramientas -->
 	<TemplatesPath>C:\InSync\SmartBid\files\templates\</TemplatesPath>  <!-- Carpeta donde encontrar las plantillas -->
 
 	<!-- Prefix -->
 	<IN_VarPrefix>sbIN_</IN_VarPrefix>  <!-- prefijo que indica las variables de entrada en las herramientas excel-->
+	<OUT_VarPrefix>sbOUT_</OUT_VarPrefix>  <!-- prefijo que indica las variables de entrada en las herramientas excel-->
 	<VarPrefix>SB_</VarPrefix>  <!-- Prefijo que marca las variables en las plantillas -->
 	<tableStyle>MyStyle</tableStyle>  <!-- Nombre del formato que se dará a las tablas insertadas en los Templates -->
-	<allowableVarTypes>num;text;code;bool;table;route</allowableVarTypes> <!-- Lista de tipos de variable permitidos-->
+	<allowableVarTypes>num;text;code;bool;date;image;table;route</allowableVarTypes> <!-- Lista de tipos de variable permitidos-->
 	<ExcelValidationCheck>true</ExcelValidationCheck>
 	<!-- set whether or not validation rules on excel shoud be enforced or allowed to break the validations rules-->
 

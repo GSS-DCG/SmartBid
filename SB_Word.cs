@@ -61,9 +61,8 @@ namespace SmartBid
       }
     }
 
-    public void ReplaceFieldMarks(Dictionary<string, XmlNode> varList)
+    public void ReplaceFieldMarks(Dictionary<string, VariableData> varList)
     {
-
       string prefix = H.GetSProperty("VarPrefix");
 
       foreach (Field field in doc.Fields) //each mark in the word document
@@ -76,13 +75,25 @@ namespace SmartBid
 
           if (field.Code.Text.Contains(variableID))
           {
-            //ES TABLA (esta forma de detectar que es tabla es poco robusta, debería conocer el tipo de variable)
-            if (varList[variableID].SelectSingleNode("t") != null && varList[variableID].SelectSingleNode("t").HasChildNodes)
+            if (varList[variableID].Type == "table") // If the variable is a table
             {
-              XmlNode tableNode = varList[variableID].SelectSingleNode("t");
+             
+              XmlDocument xmlDoc = new XmlDocument();
+              try { 
+                xmlDoc.LoadXml(varList[variableID].Value);
+              }
+              catch (XmlException ex)
+              {
+                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, $"❌❌Error❌❌ - GenerateOuputWord", $"Invalid XML format for (table) variable {variableID}:found text: {varList[variableID].Value}\n   {ex.Message}");
+                return;
+              }
+              xmlDoc.LoadXml(varList[variableID].Value);
+
+              XmlNode tableNode = xmlDoc.DocumentElement;
               if (tableNode == null)
               {
-                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - GenerateOuputWord", $"No valid table data {variableID} found in XML.");
+                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, $"❌❌ Error ❌❌  - GenerateOuputWord", $"No valid XML data found for variable {variableID}.");
+                return;
               }
 
               // 📌 Count how many rows and columns the table has
@@ -113,7 +124,7 @@ namespace SmartBid
             //NO ES TABLA
             else
             {
-              fieldRange.Text = varList[variableID].InnerText;
+              fieldRange.Text = varList[variableID].Value;
               field.Unlink(); // Convierte la referencia en texto estático
             }
           }
@@ -153,7 +164,7 @@ namespace SmartBid
         }
         catch (Exception ex)
         {
-          Console.WriteLine($"Error liberando objeto COM: {ex.Message}");
+          Console.WriteLine($"❌❌ Error ❌❌  liberando objeto COM: {ex.Message}");
         }
       }
     }

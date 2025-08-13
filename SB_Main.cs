@@ -185,7 +185,7 @@ namespace SmartBid
 
         if (!File.Exists(filePath))
         {
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - ProcessFile", $"⚠️ El archivo '{filePath}' no existe.");
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, $"❌❌ Error ❌❌  - ProcessFile", $"⚠️ El archivo '{filePath}' no existe.");
           continue; // Saltar este documento y seguir con los demás
         }
 
@@ -225,7 +225,7 @@ namespace SmartBid
         }
         catch (Exception ex)
         {
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - StoreCallFile", $"❌Error❌ al mover '{callFile}': {ex.Message}");
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, $"❌❌ Error ❌❌  - StoreCallFile", $"❌Error❌ al mover '{callFile}': {ex.Message}");
         }
       }
       else

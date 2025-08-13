@@ -52,7 +52,7 @@ static class DBtools
       }
       catch (Exception ex)
       {
-        H.PrintLog(5, "DBtools", "Error - InsertCallStart", "Error inserting callsTracker registry: " + ex.Message);
+        H.PrintLog(5, "DBtools", $"❌❌ Error ❌❌  - InsertCallStart", $"❌❌ Error ❌❌  inserting callsTracker registry: " + ex.Message);
         return -1;
       }
     }
@@ -79,7 +79,7 @@ static class DBtools
       }
       catch (Exception ex)
       {
-        H.PrintLog(5, "DBtools", "Error - UpdateCallRegistry", "Error updating callsTracker registry: " + ex.Message);
+        H.PrintLog(5, "DBtools", $"❌❌ Error ❌❌  - UpdateCallRegistry", $"❌❌ Error ❌❌  updating callsTracker registry: " + ex.Message);
       }
     }
   }
@@ -184,7 +184,7 @@ static class DBtools
       catch (Exception ex)
       {
         transaction.Rollback();
-        H.PrintLog(5, "DBtools", "Error - InsertNewProjectWithBid", "Error during insert: " + ex.Message);
+        H.PrintLog(5, "DBtools", $"❌❌ Error ❌❌  - InsertNewProjectWithBid", $"❌❌ Error ❌❌  during insert: " + ex.Message);
         return -1;
       }
     }
@@ -206,7 +206,7 @@ static class DBtools
     }
     catch (Exception ex)
     {
-      Console.WriteLine("DBtools", "Error - LogMessage", "Error during insert: " + ex.Message);
+      Console.WriteLine("DBtools", $"❌❌ Error ❌❌  - LogMessage", $"❌❌ Error ❌❌  during insert: " + ex.Message);
     }
   }
 
@@ -228,7 +228,7 @@ static class DBtools
     }
     catch (Exception ex)
     {
-      H.PrintLog(5, "DBtools", "Error - InsertFileHash", "Error during insert inputFileHashs: " + ex.Message);
+      H.PrintLog(5, "DBtools", $"❌❌ Error ❌❌  - InsertFileHash", $"❌❌ Error ❌❌  during insert inputFileHashs: " + ex.Message);
     }
   }
 

@@ -62,7 +62,7 @@ namespace SmartBid
       }
       else
       {
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - LoadData", $"Tool Resource not found for file: {target}:{toolResoruce}");
+        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, $"❌❌ Error ❌❌  - LoadData", $"Tool Resource not found for file: {target}:{toolResoruce}");
         return;
       }
 
@@ -265,7 +265,7 @@ namespace SmartBid
 
         if (nonDeclaredVars.Count > 0)
         {
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - ExtractVariablesFromDocx", $"Declaration Error");
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, $"❌❌ Error ❌❌  - ExtractVariablesFromDocx", $"Declaration Error");
           throw new InvalidOperationException(
               $"{nonDeclaredVars.Count} variables found in {Path.GetFileName(fileName)} are not declared in VariableMap:\n\n{string.Join("\n", nonDeclaredVars)}\n");
         }
@@ -274,7 +274,7 @@ namespace SmartBid
       }
       catch (Exception ex)
       {
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - ExtractVariablesFromDocx", $"❌ Error reading DOCX: {ex.Message}");
+        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, $"❌❌ Error ❌❌  - ExtractVariablesFromDocx", $"❌ Error reading DOCX: {ex.Message}");
         return new Dictionary<string, string[]>();
       }
       finally
@@ -360,7 +360,7 @@ namespace SmartBid
 
         if (varList.ContainsKey(varName))
         {
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - ExtractVariablesFromXlsx", $"Ya existe una variable con el nombre '{varName}' en en la herramienta.");
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, $"❌❌ Error ❌❌  - ExtractVariablesFromXlsx", $"Ya existe una variable con el nombre '{varName}' en en la herramienta.");
           throw new InvalidOperationException($"Ya existe una variable con el nombre '{varName}' en en la herramienta.");
         }
         varList.Add(new string(varName), value);
@@ -368,7 +368,7 @@ namespace SmartBid
 
       if (nonDeclaredVars.Count > 0)
       {
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - ExtractVariablesFromXlsx", $"Declaration Error");
+        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, $"❌❌ Error ❌❌  - ExtractVariablesFromXlsx", $"Declaration Error");
         throw new InvalidOperationException(
             $"{nonDeclaredVars.Count} variables found in {Path.GetFileName(fileName)} are not declared in VariableMap:\n\n{string.Join("\n", nonDeclaredVars)}\n"
         );

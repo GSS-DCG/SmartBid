@@ -29,6 +29,7 @@ namespace SmartBid
 
       //Buscamos los datos necesarios con la PreparationTool y los guardamos en el DataMaster
       dm.UpdateData(CallPrepTool(xmlPrepVarList));
+      dm.CheckMandatoryValues(); // thows and exception if not all Mandatory values are present in the DataMaster
       dm.SaveDataMaster(); //Save the DataMaster after preparation
 
       //Generate files structure and move input files
@@ -54,7 +55,7 @@ namespace SmartBid
         }
         else
         {
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - RunCalculations", $"Tool {target} not found in ToolsMap.");
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, $"❌❌ Error ❌❌  - RunCalculations", $"Tool {target} not found in ToolsMap.");
         }
       }
 
@@ -77,7 +78,7 @@ namespace SmartBid
         }
         else
         {
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "Error - RunCalculations", $"Template {target} not found in ToolsMap.");
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, $"❌❌ Error ❌❌  - RunCalculations", $"Template {target} not found in ToolsMap.");
         }
       }
 
@@ -184,7 +185,7 @@ namespace SmartBid
         string fileName = doc.InnerText;
         string filePath = Path.Combine(Path.Combine
           (H.GetSProperty("oppsPath"),
-          dm.GetValueString("opportunityFolder")),
+          dm.GetInnerText(@"dm/utils/utilsData/opportunityFolder")),
           "1.DOC",
           inputFilesTimeStamp,
           fileType,
@@ -213,7 +214,7 @@ namespace SmartBid
       calcTools.Add(new List<string>(targets)); //Adding the current _targets to the list of calculation tools
 
       if (targets.Count == 0)
-        return new List<VariableData>();
+        return new List<VariableData>(); 
 
       VariablesMap varMap = VariablesMap.Instance;
       List<string> newSources = new List<string>();

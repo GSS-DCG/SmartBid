@@ -332,7 +332,6 @@ public class VariablesMap
       }
       throw new ArgumentException("One or more variable IDs are not normalized.");
     }
-
   }
 
   public bool IsVariableExists(string id)

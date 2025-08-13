@@ -7,14 +7,14 @@ namespace SmartBid
   {
     private XmlDocument _dm;
     private VariablesMap _vm;
-    private Dictionary<string, XmlNode> _data;
+    private Dictionary<string, VariableData> _data;
     private XmlNode _projectDataNode;
     private XmlNode _utilsNode;
     private XmlNode _dataNode;
 
     public string FileName { get; set; }
     public string User { get; set; } = ThreadContext.CurrentThreadInfo.Value.User;
-    public Dictionary<string, XmlNode> Data { get { return _data; } }
+    public Dictionary<string, VariableData> Data { get { return _data; } }
     public XmlDocument DM { get { return _dm; } }
     public int BidRevision { get; set; }
     public string sBidRevision => BidRevision.ToString("D2");
@@ -27,7 +27,7 @@ namespace SmartBid
       _vm = VariablesMap.Instance;
       BidRevision = 1;
       _dm = new XmlDocument();
-      _data = new Dictionary<string, XmlNode>();
+      _data = new Dictionary<string, VariableData>();
 
       // Check if opportunityFolder exists, otherwise throw an exception
       if (GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder") == null)
@@ -40,7 +40,7 @@ namespace SmartBid
       FileName = Path.Combine(H.GetSProperty("processPath"), opportunityFolder, $"{opportunityFolder.Substring(0, 7)}_DataMaster.xml");
 
       // register actual revision number in _data (no need to store it in DM)
-      StoreValue("revision", H.CreateElement(DM, "value", "rev_01"));
+      StoreValue("revision", new VariableData("revision", "current Revision", "utils", "utils", true, true, "code", "", "", "", 0, [], "rev_01"));
 
       if (((XmlElement)xmlRequest.SelectSingleNode("/request/requestInfo")).GetAttribute("Type") == "create")
       {
@@ -75,10 +75,10 @@ namespace SmartBid
           // Load PROJECTDATA Data
           if (variable.Area == "projectData")
           {
-            XmlElement element = GetImportedElement(xmlRequest, @$"//projectData/{variable.ID}");
+            XmlNode element = GetImportedElement(xmlRequest, @$"//projectData/{variable.ID}");
             _ = _projectDataNode.AppendChild(element);
 
-            StoreValue(variable.ID, element);
+            StoreValue(variable.ID, element.InnerText);//Extraer el valor para almacenar en _data.
           }
 
           // Load CONFIG Init Data
@@ -114,8 +114,8 @@ namespace SmartBid
         // Add opportunityFolder to dataMaster and _data dictionary
         _ = utilsData.AppendChild(CreateElement("dataMasterFileName", FileName));
         _ = utilsData.AppendChild(GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder"));
-        StoreValue("opportunityFolder", GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder"));
-        StoreValue("createdBy", GetImportedElement(xmlRequest, "//requestInfo/createdBy"));
+        StoreValue("opportunityFolder", GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder").InnerText);
+        StoreValue("createdBy", GetImportedElement(xmlRequest, "//requestInfo/createdBy").InnerText);
 
         //Add first revision element
         _ = _utilsNode.AppendChild(_dm.CreateComment("First Revision"));
@@ -165,7 +165,7 @@ namespace SmartBid
           _ = setElment.AppendChild(child.CloneNode(true));
           if (child.Name == "value")
           {
-            StoreValue(variable.Name, (XmlElement)child);
+            StoreValue(variable.Name, child.InnerText);
           }
         }
 
@@ -187,10 +187,11 @@ namespace SmartBid
     {
       if (_data.ContainsKey(key))
       {
-        return _data[key]?.FirstChild.Value.ToString() ?? string.Empty;
+        return _data[key]?.Value;
       }
       else
       {
+        H.PrintLog(5, User, $"❌❌ Error ❌❌ - DM.GetValueString ", $"Key '{key}' not found in DataMaster.");
         throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
       }
     }
@@ -199,11 +200,11 @@ namespace SmartBid
     {
       if (_data.ContainsKey(key))
       {
-        return double.TryParse(_data[key]?.FirstChild.Value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out double num) ? num : null;
+        return double.TryParse(_data[key]?.Value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out double num) ? num : null;
       }
       else
       {
-        H.PrintLog(5, User, "Error - DM", $"Key '{key}' not found in DataMaster.");
+        H.PrintLog(5, User, $"❌❌ Error ❌❌  - DM.GetValueNumber", $"Key '{key}' not found in DataMaster.");
         throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
       }
     }
@@ -212,21 +213,52 @@ namespace SmartBid
     {
       if (_data.ContainsKey(key))
       {
-        return bool.TryParse(_data[key]?.FirstChild.Value.ToString(), out bool num) ? num : null;
+        return bool.TryParse(_data[key]?.Value.ToString(), out bool num) ? num : null;
       }
       else
       {
-        H.PrintLog(5, User, "Error - DM", $"Key '{key}' not found in DataMaster.");
+        H.PrintLog(5, User, $"❌❌ Error ❌❌  - DM.GetValueBoolean", $"Key '{key}' not found in DataMaster.");
         throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
       }
     }
 
+
     public XmlNode GetValueXmlNode(string key)
     {
-      if (_data.ContainsKey(key)) return _data[key];
+      if (_data.ContainsKey(key))
+      {
+        string xmlString = _data[key]?.Value ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(xmlString))
+          return null;
+
+        XmlDocument tempDoc = new XmlDocument();
+        try
+        {
+          tempDoc.LoadXml($"<root>{xmlString}</root>");
+          return tempDoc.DocumentElement.FirstChild;
+        }
+        catch
+        {
+          return null; // returns NULL when the Value has not XML format
+        }
+      }
       else
       {
-        H.PrintLog(5, User, "Error - DM", $"Key '{key}' not found in DataMaster.");
+        H.PrintLog(5, User, $"❌❌ Error ❌❌  - DM", $"Key '{key}' not found in DataMaster.");
+        throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
+      }
+    }
+
+    public VariableData GetVariableData(string key)
+    {
+      if (_data.ContainsKey(key))
+      {
+        return _data[key];
+      }
+      else
+      {
+        H.PrintLog(5, User, $"❌❌ Error ❌❌  - DM.GetVariableData", $"Key '{key}' not found in DataMaster.");
         throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
       }
     }
@@ -244,10 +276,17 @@ namespace SmartBid
       }
     }
 
-    private void StoreValue(string id, XmlElement value)
+    private void StoreValue(string id, string value)
     {
       H.PrintLog(1, User, "StoreValue", $"variable ||{id}|| added to DataMaster data");
-      _data.Add(id, value);
+      VariableData varData = _vm.GetVariableData(id);
+      varData.Value = value;
+      _data.Add(id, varData);
+    }
+    private void StoreValue(string id, VariableData varData)
+    {
+      H.PrintLog(1, User, "StoreValue", $"variable ||{id}|| added to DataMaster data");
+      _data.Add(id, varData);
     }
 
     private XmlElement GetImportedElement(XmlDocument sourceDoc, string elementName)
@@ -261,6 +300,30 @@ namespace SmartBid
       XmlElement importedElement = (XmlElement)_dm.ImportNode(sourceElement, true);
       return importedElement;
     }
+
+    public void CheckMandatoryValues()
+    {
+      List<string> missingValues = new List<string>();
+
+      foreach (var kvp in _data)
+      {
+        string variableId = kvp.Key;
+        string variableValue = GetValueString(variableId);
+
+        if (_data[kvp.Key].Mandatory && string.IsNullOrWhiteSpace(_data[kvp.Key].Value))
+        {
+          missingValues.Add(variableId);
+        }
+
+      }
+
+      if (missingValues.Count > 0) 
+      {
+        H.PrintLog(5, User, "CheckMandatoryValues", $"❌Error❌: Mandatory values not found in DataMaster. Cannot continue with calculations. Faltan: {string.Join(", ", missingValues)}");
+        throw new InvalidOperationException("MandatoryValues missing");
+      }
+    }
+
 
     private XmlElement CreateElement(string name, string value)
     {

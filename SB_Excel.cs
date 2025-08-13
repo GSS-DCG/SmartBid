@@ -67,7 +67,7 @@ namespace SmartBid
           }
           catch (Exception ex)
           {
-            H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.FillUpValue", $"Error al acceder al rango de fórmula: {ex.Message}");
+            H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.FillUpValue", $"❌❌ Error ❌❌  al acceder al rango de fórmula: {ex.Message}");
             return false;
           }
         }
@@ -93,7 +93,7 @@ namespace SmartBid
         }
         else
         {
-          H.PrintLog(3, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.FillUpValue", $"ERROR: El valor '{value}' no está permitido en '{rangeName}'.");
+          H.PrintLog(3, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.FillUpValue", $"❌❌ Error ❌❌ : El valor '{value}' no está permitido en '{rangeName}'.");
           return false;
         }
       }
@@ -132,7 +132,7 @@ namespace SmartBid
       }
       catch (Exception ex)
       {
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.WriteTable", "ERROR:  writing table to Excel: " + ex.Message);
+        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.WriteTable", $"❌❌ Error ❌❌ :  writing table to Excel: " + ex.Message);
       }
     }
 
@@ -189,7 +189,7 @@ namespace SmartBid
       }
       catch (Exception ex)
       {
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.GetTValue", $"Error reading table from Excel range '{rangeName}': {ex.Message}");
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.GetTValue", $"❌❌ Error ❌❌  reading table from Excel range '{rangeName}': {ex.Message}");
         // Re-throw or return null depending on desired error propagation
         throw; // Propagate the exception to the caller
       }
@@ -238,7 +238,7 @@ namespace SmartBid
         }
         catch (Exception ex)
         {
-          H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.ReleaseComObjectSafely", $"ERROR:  liberando objeto COM: {ex.Message}");
+          H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.ReleaseComObjectSafely", $"❌❌ Error ❌❌ :  liberando objeto COM: {ex.Message}");
         }
       }
     }
@@ -317,7 +317,7 @@ namespace SmartBid
         else if (var == "n") { }
         else
         {
-          Console.WriteLine("SB_Excel.CloseExcel", "ERROR: Argumento no valido.");
+          Console.WriteLine("SB_Excel.CloseExcel", $"❌❌ Error ❌❌ : Argumento no valido.");
           goto CerrarProcesos;
         }
       }

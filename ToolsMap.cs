@@ -388,13 +388,13 @@ namespace SmartBid
       }
 
       // Confeccionamos la lista de marcas a reemplazar
-      Dictionary<string, XmlNode> varList = new Dictionary<string, XmlNode>();
+      Dictionary<string, VariableData> varList = new Dictionary<string, VariableData>();
 
       List<string> varNotFound = new List<string>();
 
       mirror.VarList.Keys.ToList().ForEach(var =>
       {
-        try { varList[var] = dm.GetValueXmlNode(var); }
+        try { varList[var] = dm.GetVariableData(var); }
         catch (KeyNotFoundException) { varNotFound.Add(var); }
       });
 
@@ -432,7 +432,7 @@ namespace SmartBid
       catch (Exception ex)
       {
         H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "** Error - GenerateOuputWord", $"❌Error❌ con el documento {Path.GetFileName(filePath)}");
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOuputWord", "Error: " + ex.Message);
+        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOuputWord", $"❌❌ Error ❌❌ : " + ex.Message);
         H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "", "       " + ex.StackTrace);
       }
       finally

@@ -193,7 +193,7 @@ namespace SmartBid
       {
         H.PrintLog(5, User, $"❌❌ Error ❌❌ - DM.GetValueString ", $"Key '{key}' not found in DataMaster.");
         throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
-      }
+        }
     }
 
     public double? GetValueNumber(string key)

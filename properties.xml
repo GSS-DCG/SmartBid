@@ -38,7 +38,7 @@
 	<mailKAM>false</mailKAM>
 	<mailCreatedBy>false</mailCreatedBy>
 	
-	<logLevel>4</logLevel>  <!-- Nivel de anotaciones en el Log: 0-Todo 5-Mínimo -->
+	<logLevel>5</logLevel>  <!-- Nivel de anotaciones en el Log: 0-Todo 5-Mínimo -->
 	<printLevel>1</printLevel>  <!-- Nivel de printouts en consola: 0-Todo 5-Mínimo -->
 
 	<autorun>pasteFiles_00.bat</autorun>

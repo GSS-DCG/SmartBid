@@ -50,7 +50,6 @@ namespace SmartBid
       if (validationType == Excel.XlDVType.xlValidateList)
       {
         string formula = validation.Formula1;
-        H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.FillUpValue", $"Formula1: {formula}");
 
         string[] allowedValues;
 
@@ -104,7 +103,6 @@ namespace SmartBid
         return true;
       }
     }
-
 
     public void WriteTable(string rangeName, XmlNode doc)
     {

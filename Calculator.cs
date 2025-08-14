@@ -272,7 +272,7 @@ namespace SmartBid
     }
     public static List<string> GetDeliveryDocs(XmlDocument xmlDoc)
     {
-      XmlNode deliveryDocsNode = xmlDoc.SelectSingleNode("/request/bidVersion/deliveryDocs");
+      XmlNode deliveryDocsNode = xmlDoc.SelectSingleNode("/request/requestInfo/deliveryDocs");
       List<string> deliveryDocs = new List<string>();
 
       if (deliveryDocsNode != null) foreach (XmlNode docNode in deliveryDocsNode.SelectNodes("doc")) deliveryDocs.Add(docNode.InnerText);

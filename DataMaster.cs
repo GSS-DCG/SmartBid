@@ -116,6 +116,7 @@ namespace SmartBid
         _ = utilsData.AppendChild(GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder"));
         StoreValue("opportunityFolder", GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder").InnerText);
         StoreValue("createdBy", GetImportedElement(xmlRequest, "//requestInfo/createdBy").InnerText);
+        StoreValue("requestTimestap", GetImportedElement(xmlRequest, "//requestInfo/requestTimestap").InnerText);
 
         //Add first revision element
         _ = _utilsNode.AppendChild(_dm.CreateComment("First Revision"));
@@ -126,10 +127,10 @@ namespace SmartBid
         XmlElement importedNode = (XmlElement)xmlRequest.SelectSingleNode("//requestInfo");
         _ = importedNode != null ? revision.AppendChild(_dm.ImportNode(importedNode, true)) : null;
 
-        importedNode = (XmlElement)xmlRequest.SelectSingleNode("//bidVersion/deliveryDocs");
+        importedNode = (XmlElement)xmlRequest.SelectSingleNode("//requestInfo/deliveryDocs");
         _ = importedNode != null ? revision.AppendChild(_dm.ImportNode(importedNode, true)) : null;
 
-        importedNode = (XmlElement)xmlRequest.SelectSingleNode("//bidVersion/inputDocs");
+        importedNode = (XmlElement)xmlRequest.SelectSingleNode("//requestInfo/inputDocs");
         _ = importedNode != null ? revision.AppendChild(_dm.ImportNode(importedNode, true)) : null;
 
         _ = _utilsNode.AppendChild(revision);

@@ -280,9 +280,9 @@ public class VariablesMap
     }
     DataTable dataTable = dataSet.Tables["VarMap"];
     // Iterate over the rows from row 3 until column A is empty
-    for (int i = 2; i < dataTable.Rows.Count; i++)
+    for (int i = 1; i < dataTable.Rows.Count; i++)
     {
-      DataRow row = dataTable.Rows[i];
+       DataRow row = dataTable.Rows[i];
       if (row.IsNull(0))
         break;
       VariableData data = new VariableData(
@@ -290,18 +290,18 @@ public class VariablesMap
           row[1]?.ToString(), // varName
           row[2]?.ToString(), // area
           row[3]?.ToString(), // Source 
-          Convert.ToBoolean(row[19]?.ToString()), // critic
-          Convert.ToBoolean(row[20]?.ToString()), // mandatory
-          row[22]?.ToString(), // type
-          row[23]?.ToString(), // unit
-          row[24]?.ToString(), // defaultValue
-          row[25]?.ToString(), // description
-          row[26]?.ToString()  // prompt
+          Convert.ToBoolean(row[4]?.ToString()), // critic
+          Convert.ToBoolean(row[5]?.ToString()), // mandatory
+          row[7]?.ToString(), // type
+          row[8]?.ToString(), // unit
+          row[9]?.ToString(), // defaultValue
+          row[10]?.ToString(), // description
+          row[11]?.ToString()  // prompt
       );
-      if (!row.IsNull(22))
+      if (!row.IsNull(6))
       {
         var rangeList = new List<string>();
-        foreach (var value in row[21].ToString().Split(';')) //AllowableRange
+        foreach (var value in row[6].ToString().Split(';')) //AllowableRange
         {
           rangeList.Add(value.Trim());
         }

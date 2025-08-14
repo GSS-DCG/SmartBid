@@ -19,6 +19,7 @@ public class VariableData
   public string Unit { get; set; }
   public string Default { get; set; }
   public string Description { get; set; }
+  public string Prompt { get; set; }
   public string InOut { get; set; }
   public int Call { get; set; }
   public int Deep { get; set; }
@@ -39,6 +40,7 @@ public class VariableData
       string unit = "",
       string defaultValue = "",
       string description = "",
+      string prompt = "",
       int deep = 0,
       List<string> allowableRange = null,
       string value = "")
@@ -53,6 +55,7 @@ public class VariableData
     this.Unit = unit;
     this.Default = defaultValue;
     this.Description = description;
+    this.Prompt = prompt;
     this.AllowableRange = allowableRange ?? new List<string>();
     this.Value = value;
   }
@@ -75,6 +78,7 @@ public class VariableData
         this.Unit,
         this.Default,
         this.Description,
+        this.Prompt,
         this.Deep,
         new List<string>(this.AllowableRange) // Ensure a new list instance
     );
@@ -108,9 +112,6 @@ public class VariableData
     descriptionElem.InnerText = Description;
     _ = varElem.AppendChild(descriptionElem);
 
-
-
-
     // Add allowableRange if present
     var ranges = AllowableRange;
     if (ranges != null && ranges.Count > 0)
@@ -131,6 +132,14 @@ public class VariableData
       XmlElement defaultElem = mainDoc.CreateElement("default");
       defaultElem.InnerText = Default;
       _ = varElem.AppendChild(defaultElem);
+    }
+
+    // Add promt if present
+    if (!string.IsNullOrEmpty(Prompt))
+    {
+      XmlElement promptElem = mainDoc.CreateElement("prompt");
+      promptElem.InnerText = Prompt;
+      _ = varElem.AppendChild(promptElem);
     }
 
     return varElem;
@@ -215,6 +224,7 @@ public class VariablesMap
 
       data.Default = node.SelectSingleNode("default")?.InnerText ?? "";
       data.Description = node.SelectSingleNode("description")?.InnerText ?? "";
+      data.Prompt = node.SelectSingleNode("prompt")?.InnerText ?? "";
       data.Deep = Convert.ToInt16(node.Attributes["deep"]?.InnerText ?? "0");
       var rangeNode = node.SelectSingleNode("allowableRange");
       if (rangeNode != null)
@@ -285,7 +295,8 @@ public class VariablesMap
           row[22]?.ToString(), // type
           row[23]?.ToString(), // unit
           row[24]?.ToString(), // defaultValue
-          row[25]?.ToString()  // description
+          row[25]?.ToString(), // description
+          row[26]?.ToString()  // prompt
       );
       if (!row.IsNull(22))
       {

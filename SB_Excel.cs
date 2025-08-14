@@ -296,14 +296,20 @@ namespace SmartBid
     /// <summary>
     /// Fuerza el cierre de el proceso de excel en el arbol de procesos
     /// </summary>
-    public static void CloseExcel()
+    public static void CloseExcel(bool forceClose = false)
     {
       Process[] excelProcesses = Process.GetProcessesByName("EXCEL");
 
       if (ExcelAppDetection(excelProcesses))
       {
+        if (forceClose)
+        {
+          ExcelAppClose(excelProcesses);
+          return;
+        }
+
       CerrarProcesos:
-        Console.WriteLine("Existen procesos de Excel abiertos desea cerrarlos (s/n): ");
+        Console.WriteLine("Existen procesos de Excel abiertos. ¿Desea cerrarlos? (s/n): ");
         string var = Console.ReadLine();
 
         if (var == null)
@@ -317,7 +323,7 @@ namespace SmartBid
         else if (var == "n") { }
         else
         {
-          Console.WriteLine("SB_Excel.CloseExcel", $"❌❌ Error ❌❌ : Argumento no valido.");
+          Console.WriteLine("SB_Excel.CloseExcel", $"❌❌ Error ❌❌ : Argumento no válido.");
           goto CerrarProcesos;
         }
       }

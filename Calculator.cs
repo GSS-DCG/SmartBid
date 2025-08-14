@@ -87,15 +87,17 @@ namespace SmartBid
     }
     private XmlDocument CallPrepTool(string xmlVarList)
     {
-      XmlDocument myArgument = new XmlDocument();
-      myArgument.LoadXml(xmlVarList); // Load the XML string into the XmlDocument 
+      XmlDocument prepCall = new XmlDocument();
+      prepCall.LoadXml(xmlVarList); // Load the XML string into the XmlDocument 
       string prepToolPath = Path.GetFullPath(H.GetSProperty("PreparationTool"));
 
       H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", $"\n");
       H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", $"- CALLING PREPARATION: {prepToolPath} ------------------");
       H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", "- ARGUMENTO PASADO A PREPTOOL:");
-      H.PrintXML(2, myArgument); // Print the XML for debugging
-      H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", $"\n");
+      H.PrintXML(2, prepCall); // Print the XML for debugging
+      H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", $"\n\n\n\n");
+      H.SaveXML(1, prepCall, Path.Combine(H.GetSProperty("processPath"),dm.GetValueString("opportunityFolder"),  "prepCall.xml")); // Save the XML to a file for debugging
+
 
 
       ProcessStartInfo psi = new ProcessStartInfo
@@ -126,17 +128,18 @@ namespace SmartBid
         process.WaitForExit();
       }
 
-      XmlDocument xmlDoc = new XmlDocument();
+      XmlDocument xmlPrepAnswer = new XmlDocument();
 
-
-      xmlDoc.LoadXml(output); // Load the XML content
+      xmlPrepAnswer.LoadXml(output); // Load the XML content
 
       H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", $"Return from Preparation");
-      H.PrintXML(2, xmlDoc);
+      H.PrintXML(2, xmlPrepAnswer);
+      H.SaveXML(1, xmlPrepAnswer, Path.Combine(H.GetSProperty("processPath"), dm.GetValueString("opportunityFolder"), "PrepAnswer.xml")); // Save the XML to a file for debugging
+
       if (error != "") H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", $"❌Error❌:\n{error}");
       H.PrintLog(0, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", "-----------------------------------");
 
-      return xmlDoc;
+      return xmlPrepAnswer;
     }
     public XmlDocument GetRouteMap(List<string> targets)
     {

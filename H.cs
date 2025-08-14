@@ -81,6 +81,19 @@ public static class H //Helper class for reading properties from an XML file
     }
     return; // Only print if log level is sufficient
   }
+  public static void SaveXML(int level, XmlDocument xmlDoc, string fileName)
+  {
+    if (GetNProperty("printLevel") <= level)
+    {
+      using (var writer = new XmlTextWriter(fileName, System.Text.Encoding.UTF8))
+      {
+        writer.Formatting = Formatting.Indented;
+        xmlDoc.WriteTo(writer);
+      }
+    }
+    return; // Only save if log level is sufficient
+  }
+
 
   public static void PrintLog(int level = 2, string user = "", string eventLog = "info", string message = "")
   {

@@ -208,14 +208,20 @@ namespace SmartBid
     /// Fuerza el cierre de el proceso de word en el arbol de procesos
     /// </summary>
 
-    public static void CloseWord()
+    public static void CloseWord(bool forceClose = false)
     {
       Process[] wordProcesses = Process.GetProcessesByName("WINWORD");
 
       if (WordAppDetection(wordProcesses))
       {
+        if (forceClose)
+        {
+          WordAppClose(wordProcesses);
+          return;
+        }
+
       CerrarProcesos:
-        Console.WriteLine("Existen procesos de WordAbiertos desea cerrarlos (s/n): ");
+        Console.WriteLine("Existen procesos de Word abiertos. ¿Desea cerrarlos? (s/n): ");
         string var = Console.ReadLine();
         if (var == null)
         {
@@ -228,7 +234,7 @@ namespace SmartBid
         else if (var == "n") { }
         else
         {
-          Console.WriteLine("Argumento no valido.");
+          Console.WriteLine("Argumento no válido.");
           goto CerrarProcesos;
         }
       }

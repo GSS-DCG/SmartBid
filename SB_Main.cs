@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Xml;
@@ -39,15 +40,23 @@ namespace SmartBid
 
       Console.WriteLine("                                                                             \r\n ██████\\                                     ██\\     ███████\\  ██\\       ██\\ \r\n██  __██\\                                    ██ |    ██  __██\\ \\__|      ██ |\r\n██ /  \\__|██████\\████\\   ██████\\   ██████\\ ██████\\   ██ |  ██ |██\\  ███████ |\r\n\\██████\\  ██  _██  _██\\  \\____██\\ ██  __██\\\\_██  _|  ███████\\ |██ |██  __██ |\r\n \\____██\\ ██ / ██ / ██ | ███████ |██ |  \\__| ██ |    ██  __██\\ ██ |██ /  ██ |\r\n██\\   ██ |██ | ██ | ██ |██  __██ |██ |       ██ |██\\ ██ |  ██ |██ |██ |  ██ |\r\n\\██████  |██ | ██ | ██ |\\███████ |██ |       \\████  |███████  |██ |\\███████ |\r\n \\______/ \\__| \\__| \\__| \\_______|\\__|        \\____/ \\_______/ \\__| \\_______|\r\n                                                                             ");
 
-      SB_Word.CloseWord();
-      SB_Excel.CloseExcel();
+      SB_Word.CloseWord(H.GetBProperty("closeWord"));
+      SB_Excel.CloseExcel(H.GetBProperty("closeExcel"));
 
       watcher.EnableRaisingEvents = true;
       H.PrintLog(5, "Main", "Main", $"Observando el directorio: {path}");
       H.PrintLog(5, "Main", "Main", "Presiona 'Q' para salir...");
 
+
       // Procesamiento en un hilo separado
       _ = Task.Run(ProcessFiles);
+
+      //Autorun si está configurado
+      Thread.Sleep(400); // Espera para asegurar que el watcher esté listo
+      if (!string.IsNullOrEmpty(H.GetSProperty("autorun")))
+      {
+        Process.Start(Path.Combine(H.GetSProperty("callsPath"), H.GetSProperty("autorun")));
+      }
 
       // Monitor de entrada para salir con 'Q'
       while (true)

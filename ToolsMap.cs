@@ -445,7 +445,7 @@ namespace SmartBid
         GC.Collect();
         GC.WaitForPendingFinalizers();
       }
-      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOutputWord", $"Generated output: {templateID} finished");
+      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOutputWord", $"Generated output: {templateID} finished\n\n");
     }
 
   }// End of class ToolsMap

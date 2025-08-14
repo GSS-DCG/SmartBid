@@ -40,7 +40,7 @@ namespace SmartBid
       FileName = Path.Combine(H.GetSProperty("processPath"), opportunityFolder, $"{opportunityFolder.Substring(0, 7)}_DataMaster.xml");
 
       // register actual revision number in _data (no need to store it in DM)
-      StoreValue("revision", new VariableData("revision", "current Revision", "utils", "utils", true, true, "code", "", "", "", 0, [], "rev_01"));
+      StoreValue("revision", new VariableData("revision", "current Revision", "utils", "utils", true, true, "code", "", "", "", "", 0, [], "rev_01"));
 
       if (((XmlElement)xmlRequest.SelectSingleNode("/request/requestInfo")).GetAttribute("Type") == "create")
       {

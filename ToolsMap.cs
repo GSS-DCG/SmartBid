@@ -415,6 +415,9 @@ namespace SmartBid
             .Select(kvp => kvp.Key)
             .ToList();
 
+        removeBkm.RemoveAll(key => varList.ContainsKey(key) && bool.TryParse(varList[key].Value.Trim(), out var result) && result || varList[key].Value.Trim() == "1");
+
+
 
         doc.DeleteBookmarks(removeBkm);
 

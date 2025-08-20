@@ -23,7 +23,8 @@ namespace SmartBid
 
     public void DeleteBookmarks(List<string> removeBkm)
     {
-      string prefix = "SB_";
+      string prefix = H.GetSProperty("VarPrefix").ToLower();
+      string removePrefix = H.GetSProperty("RemoveBkmPrefix").ToLower();
 
       // Normalizar la lista de entrada a minúsculas con prefijo
       removeBkm = removeBkm.Select(b => (prefix + b).ToLower()).ToList();
@@ -32,32 +33,28 @@ namespace SmartBid
       Dictionary<string, string> bookmarkDict = doc.Bookmarks.Cast<Bookmark>()
           .ToDictionary(b => b.Name.ToLower(), b => b.Name);
 
-      Console.WriteLine("Lista de bookmarks:");
+      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, $"SB_Word.DeleteBookmarks", "Lista de bookmarks:");
+
       foreach (var kvp in bookmarkDict)
       {
-        Console.WriteLine(kvp.Value);
+        H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, $"SB_Word.DeleteBookmarks", kvp.Value);
       }
 
-      foreach (string bookmarkName in removeBkm)
+      foreach (var kvp in bookmarkDict)
       {
-        if (!bookmarkDict.ContainsKey(bookmarkName))
+        string bookmarkName = kvp.Key;
+
+        // Verificar si está en la lista o si empieza por el prefijo de eliminación
+        if (!removeBkm.Contains(bookmarkName) && !bookmarkName.StartsWith(removePrefix))
           continue;
 
-
-        Bookmark bookmark = doc.Bookmarks[bookmarkDict[bookmarkName]];
+        Bookmark bookmark = doc.Bookmarks[kvp.Value];
         Microsoft.Office.Interop.Word.Range range = bookmark.Range;
 
-        if (!Regex.IsMatch(bookmarkName, @"^s\d+$")) // ya está en minúsculas
-        {
-          Console.WriteLine($"removing mark: {bookmarkDict[bookmarkName]}");
-          bookmark.Delete();
-          range.Text = "";
-        }
-        else
-        {
-          bookmark.Delete();
-          range.Text = "";
-        }
+        H.PrintLog(3, ThreadContext.CurrentThreadInfo.Value.User, $"SB_Word.DeleteBookmarks", $"removing mark: {kvp.Value}");
+
+        bookmark.Delete();
+        range.Text = "";
       }
     }
 
@@ -168,8 +165,6 @@ namespace SmartBid
         }
       }
     }
-
-
 
     public bool SaveAsPDF(string filePath = null)
     {

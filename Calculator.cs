@@ -69,8 +69,7 @@ namespace SmartBid
           {
             H.PrintLog(3, ThreadContext.CurrentThreadInfo.Value.User, "RunCalculations", $"Populating Template: {toolData.ID} - {toolData.Description}");
 
-            //Call generate output document
-            tm.GenerateOuputWord(target, dm);
+              tm.GenerateOuput(target, dm);
 
             // GENERATE INFO ABOUT TEMPLATES GENERATED (PENDIENTE)
             // dm.UpdateData(NEW_INFO); //Update the DataMaster with the information about generated documents

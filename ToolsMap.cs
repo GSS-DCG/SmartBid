@@ -347,7 +347,7 @@ namespace SmartBid
 
     }
 
-    public void GenerateOuputWord(string templateID, DataMaster dm)
+    public void _GenerateOuputWord(string templateID, DataMaster dm)
     {
       // 1. Retrieve the tool data by ID
       ToolData tool = ToolsMap.Instance.getToolDataByCode(templateID);
@@ -450,6 +450,238 @@ namespace SmartBid
       }
       H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOutputWord", $"Generated output: {templateID} finished\n\n");
     }
+    public void GenerateOuput(string templateID, DataMaster dm)
+    {
+      // 1. Retrieve the tool data by ID
+      ToolData tool = ToolsMap.Instance.getToolDataByCode(templateID);
+      if (tool == null)
+        throw new ArgumentException($"ToolID '{templateID}' not found.");
+
+      // 3. Retrieves the MirrorXML instance
+      MirrorXML mirror = new MirrorXML(templateID);
+
+      // 4. Get the variables list from the mirror
+      var variableMap = mirror.VarList;
+
+      // 5. Build the full path to the file
+      string templatePath = Path.Combine(tool.Resource == "TEMPLATE" ? H.GetSProperty("TemplatesPath") : H.GetSProperty("ToolsPath"), tool.FileName);
+
+      // 6. Crear copia del archivo para trabajar
+      string filePath = Path.Combine(H.GetSProperty("processPath"), dm.GetValueString("opportunityFolder"), "OUTPUT", tool.FileName);
+
+      // 7. Ensure the output directory exists and copy the template file if it doesn't exist
+      if (!File.Exists(filePath))
+      {
+        if (!Directory.Exists(Path.GetDirectoryName(filePath)))
+          Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+      }
+
+      try
+      {
+        File.Copy(templatePath, filePath, true);
+      }
+      catch (Exception)
+      {
+        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "** Error - GenerateOutputWord", $"Cannot copy template {filePath}");
+        throw;
+      }
+
+      // Confeccionamos la lista de marcas a reemplazar
+      Dictionary<string, VariableData> varList = new Dictionary<string, VariableData>();
+
+      List<string> varNotFound = new List<string>();
+
+      mirror.VarList.Keys.ToList().ForEach(var =>
+      {
+        try { varList[var] = dm.GetVariableData(var); }
+        catch (KeyNotFoundException) { varNotFound.Add(var); }
+      });
+
+      // If there are variables not found in the DataMaster stop process and print out missing variables
+      if (varNotFound.Count > 0) throw new Exception("keysNotFoundInDataMaster: " + string.Join(", ", varNotFound));
+
+
+      if (tool.FileType.Equals("docx", StringComparison.OrdinalIgnoreCase))
+      {
+        SB_Word? doc = null;
+
+        // 8. Open the Word document using SB_Word class
+        try
+        {
+          H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOutputWord", $"Generating output - Open file: {templateID}");
+          doc = new SB_Word(filePath);
+
+          List<string> removeBkm = mirror.VarList
+              .Where(kvp => kvp.Value.Length > 3 && kvp.Value[3] == "bookmark")
+              .Select(kvp => kvp.Key)
+              .ToList();
+
+          removeBkm.RemoveAll(key => varList.ContainsKey(key) && bool.TryParse(varList[key].Value.Trim(), out var result) && result || varList[key].Value.Trim() == "1");
+
+          doc.DeleteBookmarks(removeBkm);
+
+          doc.ReplaceFieldMarks(varList);
+
+          doc.Save();
+
+          H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOuputWord", "Reemplazo realizado con éxito.");
+
+          if (H.GetBProperty("generatePDF"))
+          {
+            _ = doc.SaveAsPDF();
+          }
+        }
+        catch (Exception ex)
+        {
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "** Error - GenerateOuputWord", $"❌Error❌ con el documento {Path.GetFileName(filePath)}");
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOuputWord", $"❌❌ Error ❌❌ : " + ex.Message);
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "", "       " + ex.StackTrace);
+        }
+        finally
+        {
+          // 🔒 Ensure Word document and app close cleanly
+          doc.Close(); // Close the document
+          doc.ReleaseComObjectSafely();
+
+          // 🧹 Clean up unmanaged resources
+          GC.Collect();
+          GC.WaitForPendingFinalizers();
+        }
+        H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOutputWord", $"Generated output: {templateID} finished\n\n");
+
+      }
+      else if (tool.FileType.Equals("xlsx", StringComparison.OrdinalIgnoreCase) ||
+                 tool.FileType.Equals("xlsm", StringComparison.OrdinalIgnoreCase))
+      {
+
+        SB_Excel? doc = null;
+
+        // 8. Open the Word document using SB_Word class
+        try
+        {
+          H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOutputWord", $"Generating output - Open file: {templateID}");
+          doc = new SB_Excel(filePath);
+
+          foreach(VariableData entry in varList.Values)
+            {
+              string variableID = entry.ID;
+              string rangeName = $"{H.GetSProperty("VarPrefix")}{variableID}";
+              string type = _variablesMap.GetVariableData(variableID).Type;
+
+              if (type == "table")
+              {
+                XmlNode tableData = dm.GetValueXmlNode(variableID);
+                if (tableData.SelectSingleNode("t") != null && tableData.SelectSingleNode("t").HasChildNodes)
+                {
+                doc.WriteTable(rangeName, tableData);
+                }
+                else
+                {
+                  H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "CalculateExcel", $"No table data found for variable '{variableID}'.");
+                }
+              }
+              else
+              {
+                doc.FillUpValue(rangeName, dm.GetValueString(variableID));
+              }
+            }
+
+          doc.Save();
+
+          H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOuputWord", "Reemplazo realizado con éxito.");
+
+          //if (H.GetBProperty("generatePDF"))
+          //{
+          //  _ = doc.SaveAsPDF();
+          //}
+        }
+        catch (Exception ex)
+        {
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "** Error - GenerateOuputWord", $"❌Error❌ con el documento {Path.GetFileName(filePath)}");
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOuputWord", $"❌❌ Error ❌❌ : " + ex.Message);
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "", "       " + ex.StackTrace);
+        }
+        finally
+        {
+          // 🔒 Ensure Word document and app close cleanly
+          doc.Close(); // Close the document
+          doc.ReleaseComObjectSafely();
+
+          // 🧹 Clean up unmanaged resources
+          GC.Collect();
+          GC.WaitForPendingFinalizers();
+        }
+        H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOutputWord", $"Generated output: {templateID} finished\n\n");
+
+      }
+      else
+      {
+        throw new InvalidOperationException($"Unsupported file type: {tool.FileType}");
+
+      }
+    }
+
+    public XmlDocument _GenerateOutputExcel(string templateID, DataMaster dm)
+    {
+      ToolData tool = ToolsMap.Instance.getToolDataByCode(templateID);
+      if (tool == null)
+        throw new ArgumentException($"ToolID '{templateID}' not found.");
+
+      if (!tool.FileType.Equals("xlsx", StringComparison.OrdinalIgnoreCase) &&
+          !tool.FileType.Equals("xlsm", StringComparison.OrdinalIgnoreCase))
+        throw new InvalidOperationException("The file is not an Excel file (.xlsx or .xlsm)");
+
+      MirrorXML mirror = new MirrorXML(templateID);
+      var variableMap = mirror.VarList;
+
+      string templatePath = Path.Combine(
+          tool.Resource == "TEMPLATE" ? H.GetSProperty("TemplatesPath") : H.GetSProperty("ToolsPath"),
+          tool.FileName);
+
+      string filePath = Path.Combine(
+          H.GetSProperty("processPath"),
+          dm.GetValueString("opportunityFolder"),
+          "OUTPUT",
+          tool.FileName);
+
+      if (!File.Exists(filePath))
+      {
+        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+      }
+
+      File.Copy(templatePath, filePath, true);
+
+      SB_Excel workbook = new SB_Excel(filePath);
+      foreach (var entry in variableMap)
+      {
+        if (entry.Value[1] == "in")
+        {
+          string variableID = entry.Key;
+          string rangeName = $"{H.GetSProperty("IN_VarPrefix")}{variableID}";
+          string type = VariablesMap.Instance.GetVariableData(variableID).Type;
+
+          if (type == "table")
+          {
+            XmlNode tableData = dm.GetValueXmlNode(variableID);
+            if (tableData.SelectSingleNode("t") != null && tableData.SelectSingleNode("t").HasChildNodes)
+            {
+              workbook.WriteTable(rangeName, tableData);
+            }
+          }
+          else
+          {
+            workbook.FillUpValue(rangeName, dm.GetValueString(variableID));
+          }
+        }
+      }
+
+      workbook.Calculate();
+      workbook.Close();
+      workbook.ReleaseComObjectSafely();
+
+      return new XmlDocument(); // Opcional: puedes devolver info si lo necesitas
+    }
+
 
   }// End of class ToolsMap
 }// End of namespace SmartBid

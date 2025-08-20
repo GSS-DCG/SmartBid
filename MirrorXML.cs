@@ -309,35 +309,40 @@ namespace SmartBid
       List<string> ListaOpcionesHerramientas;
       VariablesMap varMap = VariablesMap.Instance;
 
-
       using (SpreadsheetDocument document = SpreadsheetDocument.Open(fileName, false))
       {
         WorkbookPart workbookPart = document.WorkbookPart;
         varNames = GetAllRangeNames(workbookPart);
       }
 
-      string inPrefix = H.GetSProperty("IN_VarPrefix").ToLower();
+      string inPrefix1 = H.GetSProperty("IN_VarPrefix").ToLower();
+      string inPrefix2 = H.GetSProperty("VarPrefix").ToLower();
       string outPrefix = H.GetSProperty("OUT_VarPrefix").ToLower();
 
       // Filtrar la lista
       varNames = varNames
-          .Where(name => name.StartsWith(inPrefix, StringComparison.OrdinalIgnoreCase) ||
+          .Where(name => name.StartsWith(inPrefix1, StringComparison.OrdinalIgnoreCase) ||
+                         name.StartsWith(inPrefix2, StringComparison.OrdinalIgnoreCase) ||
                          name.StartsWith(outPrefix, StringComparison.OrdinalIgnoreCase))
           .ToList();
 
       _ = varNames.Remove("GSS_DATA"); // Remove GSS_DATA from the list
       List<string> nonDeclaredVars = new List<string>();
 
-
       foreach (string item in varNames)
       {
         string varName = item;
         string[] value = new string[4] { "", "", "1", "" };
 
-        if (varName.ToLower().StartsWith(inPrefix))
+        if (varName.ToLower().StartsWith(inPrefix1))
         {
           value[1] = "in";
-          varName = varName.Substring(inPrefix.Length);
+          varName = varName.Substring(inPrefix1.Length);
+        }
+        else if (varName.ToLower().StartsWith(inPrefix2))
+        {
+          value[1] = "in";
+          varName = varName.Substring(inPrefix2.Length);
         }
         else if (varName.ToLower().StartsWith(outPrefix))
         {
@@ -345,9 +350,12 @@ namespace SmartBid
           varName = varName.Substring(outPrefix.Length);
         }
 
-
         Match match = Regex.Match(varName.ToLower(), @"^call(\d)_");
-        if (match.Success) value[2] = match.Groups[1].Value; varName = varName.Substring(match.Length);
+        if (match.Success)
+        {
+          value[2] = match.Groups[1].Value;
+          varName = varName.Substring(match.Length);
+        }
 
         if (varMap.IsVariableExists(varName))
         {
@@ -363,6 +371,7 @@ namespace SmartBid
           H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, $"❌❌ Error ❌❌  - ExtractVariablesFromXlsx", $"Ya existe una variable con el nombre '{varName}' en en la herramienta.");
           throw new InvalidOperationException($"Ya existe una variable con el nombre '{varName}' en en la herramienta.");
         }
+
         varList.Add(new string(varName), value);
       }
 

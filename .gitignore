@@ -3,4 +3,5 @@ bin
 files
 obj
 _files
+__files
 publish

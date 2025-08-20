@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Xml;
+using Org.BouncyCastle.Asn1.BC;
 using Excel = Microsoft.Office.Interop.Excel;
 
 namespace SmartBid
@@ -238,6 +239,25 @@ namespace SmartBid
         {
           H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.ReleaseComObjectSafely", $"❌❌ Error ❌❌ :  liberando objeto COM: {ex.Message}");
         }
+      }
+    }
+
+    public void Save()
+    {
+      try
+      {
+        if (workbook == null)
+        {
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.Save", $"Workbook object is null. Cannot save '{filePath}'. Ensure the workbook is opened in the constructor or an 'Open' method.");
+          throw new InvalidOperationException($"Workbook is not loaded for file: {filePath}");
+        }
+        workbook.Save();
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.Save", $"Workbook '{filePath}' saved successfully.");
+      }
+      catch (Exception ex)
+      {
+        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.Save", $"❌ Error saving workbook '{filePath}': {ex.Message}");
+        throw;
       }
     }
 

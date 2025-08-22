@@ -26,35 +26,43 @@ namespace SmartBid
       string prefix = H.GetSProperty("VarPrefix").ToLower();
       string removePrefix = H.GetSProperty("RemoveBkmPrefix").ToLower();
 
-      // Normalizar la lista de entrada a minúsculas con prefijo
       removeBkm = removeBkm.Select(b => (prefix + b).ToLower()).ToList();
 
-      // Crear diccionario: clave = nombre en minúsculas, valor = nombre original
       Dictionary<string, string> bookmarkDict = doc.Bookmarks.Cast<Bookmark>()
           .ToDictionary(b => b.Name.ToLower(), b => b.Name);
 
-      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, $"SB_Word.DeleteBookmarks", "Lista de bookmarks:");
-
+      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "SB_Word.DeleteBookmarks", "Lista de bookmarks:");
       foreach (var kvp in bookmarkDict)
       {
-        H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, $"SB_Word.DeleteBookmarks", kvp.Value);
+        H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "SB_Word.DeleteBookmarks", kvp.Value);
       }
 
-      foreach (var kvp in bookmarkDict)
-      {
-        string bookmarkName = kvp.Key;
+      var orderedBookmarks = bookmarkDict.Keys
+          .OrderByDescending(name => name.StartsWith(removePrefix))
+          .ToList();
 
-        // Verificar si está en la lista o si empieza por el prefijo de eliminación
+      foreach (string bookmarkName in orderedBookmarks)
+      {
         if (!removeBkm.Contains(bookmarkName) && !bookmarkName.StartsWith(removePrefix))
           continue;
 
-        Bookmark bookmark = doc.Bookmarks[kvp.Value];
-        Microsoft.Office.Interop.Word.Range range = bookmark.Range;
+        if (!bookmarkDict.ContainsKey(bookmarkName))
+          continue;
 
-        H.PrintLog(3, ThreadContext.CurrentThreadInfo.Value.User, $"SB_Word.DeleteBookmarks", $"removing mark: {kvp.Value}");
+        try
+        {
+          Bookmark bookmark = doc.Bookmarks[bookmarkDict[bookmarkName]];
+          Microsoft.Office.Interop.Word.Range range = bookmark.Range;
 
-        bookmark.Delete();
-        range.Text = "";
+          H.PrintLog(3, ThreadContext.CurrentThreadInfo.Value.User, "SB_Word.DeleteBookmarks", $"removing mark: {bookmarkDict[bookmarkName]}");
+
+          bookmark.Delete();
+          range.Text = "";
+        }
+        catch
+        {
+          // Silently ignore if bookmark no longer exists
+        }
       }
     }
 

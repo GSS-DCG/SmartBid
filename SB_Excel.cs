@@ -25,12 +25,12 @@ namespace SmartBid
       bool validationCheck = H.GetBProperty("ExcelValidationCheck");
       Excel.Range range = workbook.Names.Item(rangeName).RefersToRange;
 
-      H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.FillUpValue", $"Procesando celda '{rangeName}'...");
+      H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Excel.FillUpValue", $"Procesando celda '{rangeName}'...");
 
       if (!validationCheck)
       {
         range.Value = value;
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.FillUpValue", $"Validación desactivada. Valor '{value}' escrito directamente en '{rangeName}'.");
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Excel.FillUpValue", $"Validación desactivada. Valor '{value}' escrito directamente en '{rangeName}'.");
         return true;
       }
 
@@ -44,7 +44,7 @@ namespace SmartBid
       catch
       {
         range.Value = value;
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.FillUpValue", $"La celda '{rangeName}' no tiene validación. Valor '{value}' escrito directamente.");
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Excel.FillUpValue", $"La celda '{rangeName}' no tiene validación. Valor '{value}' escrito directamente.");
         return true;
       }
 
@@ -67,7 +67,7 @@ namespace SmartBid
           }
           catch (Exception ex)
           {
-            H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.FillUpValue", $"❌❌ Error ❌❌  al acceder al rango de fórmula: {ex.Message}");
+            H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Excel.FillUpValue", $"❌❌ Error ❌❌  al acceder al rango de fórmula: {ex.Message}");
             return false;
           }
         }
@@ -81,26 +81,26 @@ namespace SmartBid
             .ToArray();
         }
 
-        H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.FillUpValue", "Valores permitidos:");
+        H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Excel.FillUpValue", "Valores permitidos:");
         foreach (var val in allowedValues)
-          H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.FillUpValue", $"- {val}");
+          H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Excel.FillUpValue", $"- {val}");
 
         if (allowedValues.Contains(value))
         {
           range.Value = value;
-          H.PrintLog(3, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.FillUpValue", $"Valor '{value}' escrito correctamente en '{rangeName}'.");
+          H.PrintLog(3, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Excel.FillUpValue", $"Valor '{value}' escrito correctamente en '{rangeName}'.");
           return true;
         }
         else
         {
-          H.PrintLog(3, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.FillUpValue", $"❌❌ Error ❌❌ : El valor '{value}' no está permitido en '{rangeName}'.");
+          H.PrintLog(3, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Excel.FillUpValue", $"❌❌ Error ❌❌ : El valor '{value}' no está permitido en '{rangeName}'.");
           return false;
         }
       }
       else
       {
         range.Value = value;
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.FillUpValue", $"La celda '{rangeName}' no tiene validación de lista. Valor '{value}' escrito directamente.");
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Excel.FillUpValue", $"La celda '{rangeName}' no tiene validación de lista. Valor '{value}' escrito directamente.");
         return true;
       }
     }
@@ -120,7 +120,7 @@ namespace SmartBid
 
         if (inputRange.Rows.Count != rowCount || inputRange.Columns.Count != colCount)
         {
-          H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "WriteTableToExcel", $"Size mismatch: Input ({rowCount}x{colCount}) vs Range ({inputRange.Rows.Count}x{inputRange.Columns.Count}).");
+          H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "WriteTableToExcel", $"Size mismatch at {rangeName} in {Path.GetFileName(filePath)}: Input ({rowCount}x{colCount}) vs Range ({inputRange.Rows.Count}x{inputRange.Columns.Count}).");
           return;
         }
 
@@ -131,7 +131,7 @@ namespace SmartBid
       }
       catch (Exception ex)
       {
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.WriteTable", $"❌❌ Error ❌❌ :  writing table to Excel: " + ex.Message);
+        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Excel.WriteTable", $"❌❌ Error ❌❌ :  writing table to Excel: " + ex.Message);
       }
     }
 
@@ -144,7 +144,7 @@ namespace SmartBid
       }
       else
       {
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.getValue", $"❌ Named range '{rangeName}' is empty or not found in the workbook '{filePath}'.");
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Excel.getValue", $"❌ Named range '{rangeName}' is empty or not found in the workbook '{filePath}'.");
         return string.Empty;
       }
     }
@@ -156,7 +156,7 @@ namespace SmartBid
       {
         if (workbook == null)
         {
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.GetTValue", $"Workbook object is null. Cannot read table from range '{rangeName}'.");
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Excel.GetTValue", $"Workbook object is null. Cannot read table from range '{rangeName}'.");
           throw new InvalidOperationException($"Workbook is not loaded. Cannot read table from range '{rangeName}'.");
         }
 
@@ -188,7 +188,7 @@ namespace SmartBid
       }
       catch (Exception ex)
       {
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.GetTValue", $"❌❌ Error ❌❌  reading table from Excel range '{rangeName}': {ex.Message}");
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Excel.GetTValue", $"❌❌ Error ❌❌  reading table from Excel range '{rangeName}': {ex.Message}");
         // Re-throw or return null depending on desired error propagation
         throw; // Propagate the exception to the caller
       }
@@ -219,11 +219,11 @@ namespace SmartBid
           _ = Marshal.ReleaseComObject(excelApp);
           excelApp = null;
         }
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.Close", $"Workbook '{filePath}' closed successfully.");
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Excel.Close", $"Workbook '{filePath}' closed successfully.");
       }
       catch (Exception ex)
       {
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.Close", $"❌ Error closing workbook '{filePath}': {ex.Message}");
+        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Excel.Close", $"❌ Error closing workbook '{filePath}': {ex.Message}");
       }
     }
 
@@ -237,7 +237,7 @@ namespace SmartBid
         }
         catch (Exception ex)
         {
-          H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.ReleaseComObjectSafely", $"❌❌ Error ❌❌ :  liberando objeto COM: {ex.Message}");
+          H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Excel.ReleaseComObjectSafely", $"❌❌ Error ❌❌ :  liberando objeto COM: {ex.Message}");
         }
       }
     }
@@ -248,15 +248,15 @@ namespace SmartBid
       {
         if (workbook == null)
         {
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.Save", $"Workbook object is null. Cannot save '{filePath}'. Ensure the workbook is opened in the constructor or an 'Open' method.");
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Excel.Save", $"Workbook object is null. Cannot save '{filePath}'. Ensure the workbook is opened in the constructor or an 'Open' method.");
           throw new InvalidOperationException($"Workbook is not loaded for file: {filePath}");
         }
         workbook.Save();
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.Save", $"Workbook '{filePath}' saved successfully.");
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Excel.Save", $"Workbook '{filePath}' saved successfully.");
       }
       catch (Exception ex)
       {
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.Save", $"❌ Error saving workbook '{filePath}': {ex.Message}");
+        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Excel.Save", $"❌ Error saving workbook '{filePath}': {ex.Message}");
         throw;
       }
     }
@@ -267,7 +267,7 @@ namespace SmartBid
       {
         if (workbook == null)
         {
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.Calculate", $"Workbook object is null. Cannot calculate or save '{filePath}'. Ensure the workbook is opened in the constructor or an 'Open' method.");
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Excel.Calculate", $"Workbook object is null. Cannot calculate or save '{filePath}'. Ensure the workbook is opened in the constructor or an 'Open' method.");
           throw new InvalidOperationException($"Workbook is not loaded for file: {filePath}");
         }
 
@@ -275,11 +275,11 @@ namespace SmartBid
 
         workbook.Save();
 
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.Calculate", $"Workbook '{filePath}' calculated and saved successfully.");
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Excel.Calculate", $"Workbook '{filePath}' calculated and saved successfully.");
       }
       catch (Exception ex)
       {
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "SB_Excel.Calculate", $"❌ Error calculating or saving workbook '{filePath}': {ex.Message}");
+        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Excel.Calculate", $"❌ Error calculating or saving workbook '{filePath}': {ex.Message}");
         throw;
       }
     }
@@ -292,7 +292,7 @@ namespace SmartBid
       {
         if (workbook == null)
         {
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ListNamedRanges", "❌ Workbook is null.");
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "ListNamedRanges", "❌ Workbook is null.");
           return namedRanges;
         }
 
@@ -304,7 +304,7 @@ namespace SmartBid
       }
       catch (Exception ex)
       {
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ListNamedRanges", $"❌ Error listing named ranges: {ex.Message}");
+        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "ListNamedRanges", $"❌ Error listing named ranges: {ex.Message}");
       }
 
       return namedRanges;

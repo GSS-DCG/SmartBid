@@ -137,14 +137,14 @@ public static class H //Helper class for reading properties from an XML file
 
         mailItem.Send();
 
-        PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "_EnviarMail:", $"Correo enviado a:\n  {string.Join("\n  ", email)}"
+        PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "_EnviarMail:", $"Correo enviado a:\n  {string.Join("\n  ", email)}"
 
         );
       }
     }
     catch (Exception ex)
     {
-      PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "_EnviarMail:", $"❌Error❌ al enviar el correo.");
+      PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "_EnviarMail:", $"❌Error❌ al enviar el correo.");
       return false;
     }
     return true;

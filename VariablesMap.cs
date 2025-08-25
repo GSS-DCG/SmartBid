@@ -42,7 +42,7 @@ public class VariableData
       string description = "",
       string prompt = "",
       int deep = 0,
-      List<string> allowableRange = null,
+      List<string>? allowableRange = null,
       string value = "")
   {
     this.ID = ID;
@@ -286,17 +286,17 @@ public class VariablesMap
       if (row.IsNull(0))
         break;
       VariableData data = new VariableData(
-          row[0]?.ToString(), // ID
-          row[1]?.ToString(), // varName
-          row[2]?.ToString(), // area
-          row[3]?.ToString(), // Source 
+          row[0]?.ToString()!, // ID
+          row[1]?.ToString()!, // varName
+          row[2]?.ToString()!, // area
+          row[3]?.ToString()!, // Source 
           Convert.ToBoolean(row[4]?.ToString()), // critic
           Convert.ToBoolean(row[5]?.ToString()), // mandatory
-          row[7]?.ToString(), // type
-          row[8]?.ToString(), // unit
-          row[9]?.ToString(), // defaultValue
-          row[10]?.ToString(), // description
-          row[11]?.ToString()  // prompt
+          row[7]?.ToString()!, // type
+          row[8]?.ToString()!, // unit
+          row[9]?.ToString()!, // defaultValue
+          row[10]?.ToString()!, // description
+          row[11]?.ToString()!  // prompt
       );
       if (!row.IsNull(6))
       {
@@ -322,7 +322,7 @@ public class VariablesMap
     {
       foreach (var variable in nonAllowableTypeVars)
       {
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "VariablesMap.LoadFromXLS",
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "VariablesMap.LoadFromXLS",
         $"Variable type '{variable.Type}' declared for variable {variable.ID} is not valid.");
       }
       throw new ArgumentException("One or more variables have invalid types.");
@@ -338,7 +338,7 @@ public class VariablesMap
     {
       foreach (var id in nonNormalizedIDs)
       {
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "VariablesMap.LoadFromXLS",
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "VariablesMap.LoadFromXLS",
             $"Variable ID '{id}' is not normalized.");
       }
       throw new ArgumentException("One or more variable IDs are not normalized.");

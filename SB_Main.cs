@@ -128,9 +128,9 @@ namespace SmartBid
 
         DBtools.UpdateCallRegistry(callID, "DONE", "OK");
 
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--***************************************--");
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--****||PROJECT: {dm.GetValueString("opportunityFolder")} DONE||****--");
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--***************************************--");
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"--***************************************--");
+        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"--****||PROJECT: {dm.GetValueString("opportunityFolder")} DONE||****--");
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"--***************************************--");
 
         //Auxiliar.DeleteBookmarkText("ES_Informe de corrosión_Rev0.0.docx", "Ruta_05", dm, "OUTPUT");
 
@@ -150,13 +150,13 @@ namespace SmartBid
       }
       catch (Exception ex)
       {
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌--");
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--❌❌ Error al procesar {dm.GetValueString("opportunityFolder")}❌❌");
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"--❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌--");
+        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"--❌❌ Error al procesar {dm.GetValueString("opportunityFolder")}❌❌");
 
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"🧨 Excepción: {ex.GetType().Name}");
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"📄 Mensaje: {ex.Message}");
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"🧭 StackTrace:\n{ex.StackTrace}");
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"--❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌--");
+        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"🧨 Excepción: {ex.GetType().Name}");
+        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"📄 Mensaje: {ex.Message}");
+        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"🧭 StackTrace:\n{ex.StackTrace}");
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"--❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌--");
       }
 
 
@@ -194,7 +194,7 @@ namespace SmartBid
 
         if (!File.Exists(filePath))
         {
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, $"❌❌ Error ❌❌  - ProcessFile", $"⚠️ El archivo '{filePath}' no existe.");
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, $"❌❌ Error ❌❌  - ProcessFile", $"⚠️ El archivo '{filePath}' no existe.");
           continue; // Saltar este documento y seguir con los demás
         }
 
@@ -206,10 +206,10 @@ namespace SmartBid
 
         DBtools.InsertFileHash(filePath, doc.GetAttribute("type"), hash, lastModified); // Store the fileName hash in the database
 
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"Archivo '{filePath}' registered");
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"Archivo '{filePath}' registered");
 
       }
-      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "ProcessFile", $"All input files have been registered'.");
+      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"All input files have been registered'.");
     }
 
     private static string CalcularMD5(string path)
@@ -230,11 +230,11 @@ namespace SmartBid
 
           File.Move(callFile, Path.Combine(targetDir, oppFolder, fileName));
 
-          H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "StoreCallFile", $"Call File '{callFile}' moved to '{targetDir}'.");
+          H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "StoreCallFile", $"Call File '{callFile}' moved to '{targetDir}'.");
         }
         catch (Exception ex)
         {
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, $"❌❌ Error ❌❌  - StoreCallFile", $"❌Error❌ al mover '{callFile}': {ex.Message}");
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, $"❌❌ Error ❌❌  - StoreCallFile", $"❌Error❌ al mover '{callFile}': {ex.Message}");
         }
       }
       else

@@ -8,13 +8,13 @@ namespace SmartBid
   internal class Calculator
   {
     List<string> _targets;
-    List<string> _calcRoute;
-    ToolsMap tm;
+    List<string> _calcRoute = new List<string>();
+    ToolsMap? tm;
     DataMaster dm;
 
     public Calculator(DataMaster dataMaster, XmlDocument call)
     {
-      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "Calculator", $"REQUEST:");
+      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "Calculator", $"REQUEST:");
 
       this.dm = dataMaster;
 
@@ -35,7 +35,7 @@ namespace SmartBid
       //Generate files structure and move input files
       //Call each tool in the list of _targets and update the DataMaster with the results
 
-      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "RunCalculations", $"rute: {string.Join(" > ", _calcRoute)}");
+      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "RunCalculations", $"rute: {string.Join(" > ", _calcRoute)}");
 
 
       //CALCULATE
@@ -46,7 +46,7 @@ namespace SmartBid
           ToolData toolData = tm.Tools.First(tool => tool.ID == target);
           if (toolData.Resource == "TOOL")
           {
-            H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "RunCalculations", $"Calling Tool: {toolData.ID} - {toolData.Description}");
+            H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "RunCalculations", $"Calling Tool: {toolData.ID} - {toolData.Description}");
 
             //Call calculation
             dm.UpdateData(tm.CalculateExcel(target, dm)); //Update the DataMaster with the results from the tool
@@ -55,7 +55,7 @@ namespace SmartBid
         }
         else
         {
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, $"❌❌ Error ❌❌  - RunCalculations", $"Tool {target} not found in ToolsMap.");
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, $"❌❌ Error ❌❌  - RunCalculations", $"Tool {target} not found in ToolsMap.");
         }
       }
 
@@ -67,7 +67,7 @@ namespace SmartBid
           ToolData toolData = tm.Tools.First(tool => tool.ID == target);
           if (toolData.Resource == "TEMPLATE")
           {
-            H.PrintLog(3, ThreadContext.CurrentThreadInfo.Value.User, "RunCalculations", $"Populating Template: {toolData.ID} - {toolData.Description}");
+            H.PrintLog(3, ThreadContext.CurrentThreadInfo.Value!.User, "RunCalculations", $"Populating Template: {toolData.ID} - {toolData.Description}");
 
               tm.GenerateOuput(target, dm);
 
@@ -77,7 +77,7 @@ namespace SmartBid
         }
         else
         {
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, $"❌❌ Error ❌❌  - RunCalculations", $"Template {target} not found in ToolsMap.");
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, $"❌❌ Error ❌❌  - RunCalculations", $"Template {target} not found in ToolsMap.");
         }
       }
 
@@ -90,11 +90,11 @@ namespace SmartBid
       prepCall.LoadXml(xmlVarList); // Load the XML string into the XmlDocument 
       string prepToolPath = Path.GetFullPath(H.GetSProperty("PreparationTool"));
 
-      H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", $"\n");
-      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", $"- CALLING PREPARATION: {prepToolPath} ------------------");
-      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", "- ARGUMENTO PASADO A PREPTOOL:");
+      H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"\n");
+      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"- CALLING PREPARATION: {prepToolPath} ------------------");
+      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", "- ARGUMENTO PASADO A PREPTOOL:");
       H.PrintXML(2, prepCall); // Print the XML for debugging
-      H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", $"\n\n\n\n");
+      H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"\n\n\n\n");
       H.SaveXML(1, prepCall, Path.Combine(H.GetSProperty("processPath"),dm.GetValueString("opportunityFolder"),  "prepCall.xml")); // Save the XML to a file for debugging
 
 
@@ -131,12 +131,12 @@ namespace SmartBid
 
       xmlPrepAnswer.LoadXml(output); // Load the XML content
 
-      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", $"Return from Preparation");
+      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"Return from Preparation");
       H.PrintXML(2, xmlPrepAnswer);
       H.SaveXML(1, xmlPrepAnswer, Path.Combine(H.GetSProperty("processPath"), dm.GetValueString("opportunityFolder"), "PrepAnswer.xml")); // Save the XML to a file for debugging
 
-      if (error != "") H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", $"❌Error❌:\n{error}");
-      H.PrintLog(0, ThreadContext.CurrentThreadInfo.Value.User, "CallPrepTool", "-----------------------------------");
+      if (error != "") H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"❌Error❌:\n{error}");
+      H.PrintLog(0, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", "-----------------------------------");
 
       return xmlPrepAnswer;
     }
@@ -258,9 +258,9 @@ namespace SmartBid
       newSources = newSources.Distinct().ToList(); //removing duplicates
       newSources = newSources.Except(sourcesExcluded).ToList(); //removing especial sources that do not need to be searched
 
-      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "GetRouteMap", $"newSources deep ({deep}): {string.Join(", ", newSources)}");
+      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "GetRouteMap", $"newSources deep ({deep}): {string.Join(", ", newSources)}");
       List<string> varlist = variableList.Select(variable => variable.ID).ToList(); //Getting the list of IDs for the variables found
-      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "GetRouteMap", $"varlist: {string.Join(", ", varlist)}");
+      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "GetRouteMap", $"varlist: {string.Join(", ", varlist)}");
 
 
       variableList.AddRange(Get_PREP_Variables(newSources, sourcesExcluded, deep, calcTools)); //Recursion to process the next target
@@ -276,7 +276,7 @@ namespace SmartBid
 
       if (deliveryDocsNode != null) foreach (XmlNode docNode in deliveryDocsNode.SelectNodes("doc")) deliveryDocs.Add(docNode.InnerText);
 
-      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "GetDeliveryDocs", $"-----------EXECUTING THE FOLLOWING DOCUMENTS:-----------\n{string.Join("\n", deliveryDocs)}\n\n");
+      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "GetDeliveryDocs", $"-----------EXECUTING THE FOLLOWING DOCUMENTS:-----------\n{string.Join("\n", deliveryDocs)}\n\n");
 
       return deliveryDocs;
     }

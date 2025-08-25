@@ -33,16 +33,16 @@ static class DBtools
                 );
                 SELECT LAST_INSERT_ID();";
 
-      XmlNode requestDataNode = doc.SelectSingleNode(@"request/requestInfo");
-      XmlNode projectDataNode = doc.SelectSingleNode(@"request/projectData");
+      XmlNode? requestDataNode = doc.SelectSingleNode(@"request/requestInfo");
+      XmlNode? projectDataNode = doc.SelectSingleNode(@"request/projectData");
 
       _ = cmd.Parameters.AddWithValue("@Date", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-      _ = cmd.Parameters.AddWithValue("@Request", requestDataNode?.Attributes["Type"]?.Value);
+      _ = cmd.Parameters.AddWithValue("@Request", requestDataNode!.Attributes!["Type"]?.Value);
       _ = cmd.Parameters.AddWithValue("@OpportunityFolder", requestDataNode["opportunityFolder"]?.InnerText ?? "");
-      _ = cmd.Parameters.AddWithValue("@OportunityID", projectDataNode["opportunityID"]?.InnerText ?? "");
+      _ = cmd.Parameters.AddWithValue("@OportunityID", projectDataNode!["opportunityID"]?.InnerText ?? "");
       _ = cmd.Parameters.AddWithValue("@Client", projectDataNode?["client"]?.InnerText ?? "");
       _ = cmd.Parameters.AddWithValue("@Country", projectDataNode?["locationCountry"]?.InnerText ?? "");
-      _ = cmd.Parameters.AddWithValue("@Size", projectDataNode["peakPower"]?.InnerText ?? "");
+      _ = cmd.Parameters.AddWithValue("@Size", projectDataNode!["peakPower"]?.InnerText ?? "");
       _ = cmd.Parameters.AddWithValue("@CreatedBy", requestDataNode["createdBy"]?.InnerText ?? "");
       _ = cmd.Parameters.AddWithValue("@Status", "In progress");
 

@@ -74,7 +74,7 @@ namespace SmartBid
       string vmFile = Path.GetFullPath(H.GetSProperty("VarMap"));
       if (!File.Exists(vmFile))
       {
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ToolsMap", $" ****** FILE: {vmFile} NOT FOUND. ******\n Review value 'VarMap' in properties.xml it should point to the location of the Variables Map file.\n\n");
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "ToolsMap", $" ****** FILE: {vmFile} NOT FOUND. ******\n Review value 'VarMap' in properties.xml it should point to the location of the Variables Map file.\n\n");
         _ = new FileNotFoundException("PROPERTIES FILE NOT FOUND", vmFile);
       }
       string directoryPath = Path.GetDirectoryName(vmFile);
@@ -86,7 +86,7 @@ namespace SmartBid
       {
         LoadFromXLS(vmFile);
         SaveToXml(xmlFile);
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "ToolsMap", $"XML file created at: {xmlFile}");
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "ToolsMap", $"XML file created at: {xmlFile}");
       }
       else
       {
@@ -213,7 +213,7 @@ namespace SmartBid
       File.Copy(filePath, newFilePath, true);
 
       // 6. Abrir el archivo en Excel Interop
-      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "CalculateExcel", $"Calculating tool {toolID}");
+      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExcel", $"Calculating tool {toolID}");
 
       SB_Excel? workbook = null;
 
@@ -237,13 +237,13 @@ namespace SmartBid
               if (type == "table")
               {
                 XmlNode tableData = dm.GetValueXmlNode(variableID);
-                if (tableData.SelectSingleNode("t") != null && tableData.SelectSingleNode("t").HasChildNodes)
+                if (tableData.Name == "t" && tableData.HasChildNodes)
                 {
                   workbook.WriteTable(rangeName, tableData);
                 }
                 else
                 {
-                  H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "CalculateExcel", $"No table data found for variable '{variableID}'.");
+                  H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExcel", $"No table data found for variable '{variableID}'.");
                 }
               }
               else
@@ -317,20 +317,20 @@ namespace SmartBid
               if (!setValue)
               {
                 value.InnerText = _variablesMap.GetVariableData(variableID).Default ?? string.Empty;
-                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "CalculateExcel", $"❌ Named range '{rangeName}' is empty or not found in the workbook '{newFilePath}'. Default value used");
+                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExcel", $"❌ Named range '{rangeName}' is empty or not found in the workbook '{newFilePath}'. Default value used");
               }
 
 
             }
             catch (Exception ex)
             {
-              H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "CalculateExcel", $"❌Error❌ reading range '{rangeName}': {ex.Message}");
+              H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExcel", $"❌Error❌ reading range '{rangeName}': {ex.Message}");
             }
 
             _ = varNode.AppendChild(varElement);
           }
         }
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "CalculateExcel", $"Values returned from {toolID} calculation");
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExcel", $"Values returned from {toolID} calculation");
         H.PrintXML(2, results);
         workbook.Close(); // No need to save changes, 
         return results;
@@ -347,109 +347,6 @@ namespace SmartBid
 
     }
 
-    public void _GenerateOuputWord(string templateID, DataMaster dm)
-    {
-      // 1. Retrieve the tool data by ID
-      ToolData tool = ToolsMap.Instance.getToolDataByCode(templateID);
-      if (tool == null)
-        throw new ArgumentException($"ToolID '{templateID}' not found.");
-
-      // 2. Check if the file type is Word
-      if (!tool.FileType.Equals("docx", StringComparison.OrdinalIgnoreCase))
-        throw new InvalidOperationException("The file is not a Word file (.docx)");
-
-      // 3. Create a MirrorXML instance
-      MirrorXML mirror = new MirrorXML(templateID);
-
-      // 4. Get the variables list from the mirror
-      var variableMap = mirror.VarList;
-
-      // 5. Build the full path to the file
-      string templatePath = Path.Combine(tool.Resource == "TEMPLATE" ? H.GetSProperty("TemplatesPath") : H.GetSProperty("ToolsPath"), tool.FileName);
-
-      // 6. Crear copia del archivo para trabajar
-      string filePath = Path.Combine(H.GetSProperty("processPath"), dm.GetValueString("opportunityFolder"), "OUTPUT", tool.FileName);
-
-      // 7. Ensure the output directory exists and copy the template file if it doesn't exist
-      if (!File.Exists(filePath))
-      {
-        if (!Directory.Exists(Path.GetDirectoryName(filePath)))
-          _ = Directory.CreateDirectory(Path.GetDirectoryName(filePath));
-      }
-
-      try
-      {
-        File.Copy(templatePath, filePath, true);
-      }
-      catch (Exception)
-      {
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "** Error - GenerateOutputWord", $"Cannot copy template {filePath}");
-        throw;
-      }
-
-      // Confeccionamos la lista de marcas a reemplazar
-      Dictionary<string, VariableData> varList = new Dictionary<string, VariableData>();
-
-      List<string> varNotFound = new List<string>();
-
-      mirror.VarList.Keys.ToList().ForEach(var =>
-      {
-        try { varList[var] = dm.GetVariableData(var); }
-        catch (KeyNotFoundException) { varNotFound.Add(var); }
-      });
-
-      // If there are variables not found in the DataMaster stop process and print out missing variables
-      if (varNotFound.Count > 0) throw new Exception("keysNotFoundInDataMaster: " + string.Join(", ", varNotFound));
-
-
-      SB_Word? doc = null;
-
-      // 8. Open the Word document using SB_Word class
-      try
-      {
-        H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOutputWord", $"Generating output - Open file: {templateID}");
-        doc = new SB_Word(filePath);
-
-        List<string> removeBkm = mirror.VarList
-            .Where(kvp => kvp.Value.Length > 3 && kvp.Value[3] == "bookmark")
-            .Select(kvp => kvp.Key)
-            .ToList();
-
-        removeBkm.RemoveAll(key => varList.ContainsKey(key) && bool.TryParse(varList[key].Value.Trim(), out var result) && result || varList[key].Value.Trim() == "1");
-
-
-
-        doc.DeleteBookmarks(removeBkm);
-
-        doc.ReplaceFieldMarks(varList);
-
-        doc.Save();
-
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOuputWord", "Reemplazo realizado con éxito.");
-
-        if (H.GetBProperty("generatePDF"))
-        {
-          _ = doc.SaveAsPDF();
-        }
-      }
-      catch (Exception ex)
-      {
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "** Error - GenerateOuputWord", $"❌Error❌ con el documento {Path.GetFileName(filePath)}");
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOuputWord", $"❌❌ Error ❌❌ : " + ex.Message);
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "", "       " + ex.StackTrace);
-      }
-      finally
-      {
-        // 🔒 Ensure Word document and app close cleanly
-        doc.Close(); // Close the document
-        doc.ReleaseComObjectSafely();
-
-        // 🧹 Clean up unmanaged resources
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-      }
-      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOutputWord", $"Generated output: {templateID} finished\n\n");
-    }
     public void GenerateOuput(string templateID, DataMaster dm)
     {
       // 1. Retrieve the tool data by ID
@@ -482,7 +379,7 @@ namespace SmartBid
       }
       catch (Exception)
       {
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "** Error - GenerateOutputWord", $"Cannot copy template {filePath}");
+        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "** Error - GenerateOutputWord", $"Cannot copy template {filePath}");
         throw;
       }
 
@@ -505,10 +402,10 @@ namespace SmartBid
       {
         SB_Word? doc = null;
 
-        // 8. Open the Word document using SB_Word class
+        // 8. Open the document using SB_Word class
         try
         {
-          H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOutputWord", $"Generating output - Open file: {templateID}");
+          H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "GenerateOutputWord", $"Generating output - Open file: {templateID}");
           doc = new SB_Word(filePath);
 
           List<string> removeBkm = mirror.VarList
@@ -524,7 +421,7 @@ namespace SmartBid
 
           doc.Save();
 
-          H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOuputWord", "Reemplazo realizado con éxito.");
+          H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "GenerateOuputWord", "Reemplazo realizado con éxito.");
 
           if (H.GetBProperty("generatePDF"))
           {
@@ -533,9 +430,9 @@ namespace SmartBid
         }
         catch (Exception ex)
         {
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "** Error - GenerateOuputWord", $"❌Error❌ con el documento {Path.GetFileName(filePath)}");
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOuputWord", $"❌❌ Error ❌❌ : " + ex.Message);
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "", "       " + ex.StackTrace);
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "** Error - GenerateOuputWord", $"❌Error❌ con el documento {Path.GetFileName(filePath)}");
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "GenerateOuputWord", $"❌❌ Error ❌❌ : " + ex.Message);
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "", "       " + ex.StackTrace);
         }
         finally
         {
@@ -547,7 +444,7 @@ namespace SmartBid
           GC.Collect();
           GC.WaitForPendingFinalizers();
         }
-        H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOutputWord", $"Generated output: {templateID} finished\n\n");
+        H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "GenerateOutputWord", $"Generated output: {templateID} finished\n\n");
 
       }
       else if (tool.FileType.Equals("xlsx", StringComparison.OrdinalIgnoreCase) ||
@@ -559,7 +456,7 @@ namespace SmartBid
         // 8. Open the Word document using SB_Word class
         try
         {
-          H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOutputWord", $"Generating output - Open file: {templateID}");
+          H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "GenerateOutputWord", $"Generating output - Open file: {templateID}");
           doc = new SB_Excel(filePath);
 
           foreach(VariableData entry in varList.Values)
@@ -571,13 +468,13 @@ namespace SmartBid
               if (type == "table")
               {
                 XmlNode tableData = dm.GetValueXmlNode(variableID);
-                if (tableData.SelectSingleNode("t") != null && tableData.SelectSingleNode("t").HasChildNodes)
+                if (tableData.Name == "t" && tableData.HasChildNodes)
                 {
                 doc.WriteTable(rangeName, tableData);
                 }
                 else
                 {
-                  H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "CalculateExcel", $"No table data found for variable '{variableID}'.");
+                  H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExcel", $"No table data found for variable '{variableID}'.");
                 }
               }
               else
@@ -588,7 +485,7 @@ namespace SmartBid
 
           doc.Save();
 
-          H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOuputWord", "Reemplazo realizado con éxito.");
+          H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "GenerateOuputWord", "Reemplazo realizado con éxito.");
 
           //if (H.GetBProperty("generatePDF"))
           //{
@@ -597,9 +494,9 @@ namespace SmartBid
         }
         catch (Exception ex)
         {
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "** Error - GenerateOuputWord", $"❌Error❌ con el documento {Path.GetFileName(filePath)}");
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOuputWord", $"❌❌ Error ❌❌ : " + ex.Message);
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value.User, "", "       " + ex.StackTrace);
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "** Error - GenerateOuputWord", $"❌Error❌ con el documento {Path.GetFileName(filePath)}");
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "GenerateOuputWord", $"❌❌ Error ❌❌ : " + ex.Message);
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "", "       " + ex.StackTrace);
         }
         finally
         {
@@ -611,7 +508,7 @@ namespace SmartBid
           GC.Collect();
           GC.WaitForPendingFinalizers();
         }
-        H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value.User, "GenerateOutputWord", $"Generated output: {templateID} finished\n\n");
+        H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "GenerateOutputWord", $"Generated output: {templateID} finished\n\n");
 
       }
       else
@@ -619,67 +516,6 @@ namespace SmartBid
         throw new InvalidOperationException($"Unsupported file type: {tool.FileType}");
 
       }
-    }
-
-    public XmlDocument _GenerateOutputExcel(string templateID, DataMaster dm)
-    {
-      ToolData tool = ToolsMap.Instance.getToolDataByCode(templateID);
-      if (tool == null)
-        throw new ArgumentException($"ToolID '{templateID}' not found.");
-
-      if (!tool.FileType.Equals("xlsx", StringComparison.OrdinalIgnoreCase) &&
-          !tool.FileType.Equals("xlsm", StringComparison.OrdinalIgnoreCase))
-        throw new InvalidOperationException("The file is not an Excel file (.xlsx or .xlsm)");
-
-      MirrorXML mirror = new MirrorXML(templateID);
-      var variableMap = mirror.VarList;
-
-      string templatePath = Path.Combine(
-          tool.Resource == "TEMPLATE" ? H.GetSProperty("TemplatesPath") : H.GetSProperty("ToolsPath"),
-          tool.FileName);
-
-      string filePath = Path.Combine(
-          H.GetSProperty("processPath"),
-          dm.GetValueString("opportunityFolder"),
-          "OUTPUT",
-          tool.FileName);
-
-      if (!File.Exists(filePath))
-      {
-        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
-      }
-
-      File.Copy(templatePath, filePath, true);
-
-      SB_Excel workbook = new SB_Excel(filePath);
-      foreach (var entry in variableMap)
-      {
-        if (entry.Value[1] == "in")
-        {
-          string variableID = entry.Key;
-          string rangeName = $"{H.GetSProperty("IN_VarPrefix")}{variableID}";
-          string type = VariablesMap.Instance.GetVariableData(variableID).Type;
-
-          if (type == "table")
-          {
-            XmlNode tableData = dm.GetValueXmlNode(variableID);
-            if (tableData.SelectSingleNode("t") != null && tableData.SelectSingleNode("t").HasChildNodes)
-            {
-              workbook.WriteTable(rangeName, tableData);
-            }
-          }
-          else
-          {
-            workbook.FillUpValue(rangeName, dm.GetValueString(variableID));
-          }
-        }
-      }
-
-      workbook.Calculate();
-      workbook.Close();
-      workbook.ReleaseComObjectSafely();
-
-      return new XmlDocument(); // Opcional: puedes devolver info si lo necesitas
     }
 
 

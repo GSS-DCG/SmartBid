@@ -8,12 +8,12 @@ namespace SmartBid
     private XmlDocument _dm;
     private VariablesMap _vm;
     private Dictionary<string, VariableData> _data;
-    private XmlNode _projectDataNode;
-    private XmlNode _utilsNode;
-    private XmlNode _dataNode;
+    private XmlNode? _projectDataNode;
+    private XmlNode? _utilsNode;
+    private XmlNode? _dataNode;
 
     public string FileName { get; set; }
-    public string User { get; set; } = ThreadContext.CurrentThreadInfo.Value.User;
+    public string User { get; set; } = ThreadContext.CurrentThreadInfo.Value!.User;
     public Dictionary<string, VariableData> Data { get { return _data; } }
     public XmlDocument DM { get { return _dm; } }
     public int BidRevision { get; set; }
@@ -42,7 +42,7 @@ namespace SmartBid
       // register actual revision number in _data (no need to store it in DM)
       StoreValue("revision", new VariableData("revision", "current Revision", "utils", "utils", true, true, "code", "", "", "", "", 0, [], "rev_01"));
 
-      if (((XmlElement)xmlRequest.SelectSingleNode("/request/requestInfo")).GetAttribute("Type") == "create")
+      if (((XmlElement)xmlRequest.SelectSingleNode("/request/requestInfo")!).GetAttribute("Type") == "create")
       {
         XmlDeclaration xmlDeclaration = _dm.CreateXmlDeclaration("1.0", "utf-8", null);
         _ = _dm.AppendChild(xmlDeclaration);
@@ -95,12 +95,12 @@ namespace SmartBid
             // Value node
 
             XmlElement importedElement = GetImportedElement(xmlRequest, @$"//config/{variable.ID}");
-            XmlAttribute unitAttribute = importedElement?.GetAttributeNode("unit");
+            XmlAttribute unitAttribute = importedElement?.GetAttributeNode("unit")!;
 
 
             XmlNode value = newVar.AppendChild(CreateElement(configDataXML, "value", importedElement?.InnerText ?? ""));
             if (unitAttribute != null)
-              ((XmlElement)value).SetAttribute("unit", unitAttribute.Value);
+              ((XmlElement)value!).SetAttribute("unit", unitAttribute.Value);
             _ = newVar.AppendChild(CreateElement(configDataXML, "origin", "INIT from callXML"));
             _ = newVar.AppendChild(CreateElement(configDataXML, "note", "Variable leida de Hermes"));
           }
@@ -108,7 +108,7 @@ namespace SmartBid
         UpdateData(configDataXML);
 
         // Load Utils Data
-        XmlNode utilsData = _utilsNode.AppendChild(DM.CreateElement("utilsData"));
+        XmlNode utilsData = _utilsNode!.AppendChild(DM.CreateElement("utilsData"))!;
 
 
         // Add opportunityFolder to dataMaster and _data dictionary
@@ -166,7 +166,7 @@ namespace SmartBid
           _ = setElment.AppendChild(child.CloneNode(true));
           if (child.Name == "value")
           {
-            StoreValue(variable.Name, child.InnerText);
+            StoreValue(variable.Name, child.InnerXml);
           }
         }
 

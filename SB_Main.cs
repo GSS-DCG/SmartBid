@@ -8,14 +8,24 @@ namespace SmartBid
 {
   class SB_Main
   {
-    private static ConcurrentQueue<string> _fileQueue = new ConcurrentQueue<string>();
-    private static AutoResetEvent _eventSignal = new AutoResetEvent(false);
+    private static ConcurrentQueue<string> _fileQueue = new();
+    private static AutoResetEvent _eventSignal = new(false);
     private static FileSystemWatcher? watcher;
     private static bool _stopRequested = false;
 
     static void Main()
     {
       Console.OutputEncoding = System.Text.Encoding.UTF8;
+      Console.WriteLine(
+        "                                                                             \r\n" +
+        " ██████\\                                     ██\\     ███████\\  ██\\       ██\\ \r\n" +
+        "██  __██\\                                    ██ |    ██  __██\\ \\__|      ██ |\r\n" +
+        "██ /  \\__|██████\\████\\   ██████\\   ██████\\ ██████\\   ██ |  ██ |██\\  ███████ |\r\n" +
+        "\\██████\\  ██  _██  _██\\  \\____██\\ ██  __██\\\\_██  _|  ███████\\ |██ |██  __██ |\r\n" +
+        " \\____██\\ ██ / ██ / ██ | ███████ |██ |  \\__| ██ |    ██  __██\\ ██ |██ /  ██ |\r\n" +
+        "██\\   ██ |██ | ██ | ██ |██  __██ |██ |       ██ |██\\ ██ |  ██ |██ |██ |  ██ |\r\n" +
+        "\\██████  |██ | ██ | ██ |\\███████ |██ |       \\████  |███████  |██ |\\███████ |\r\n" +
+        " \\______/ \\__| \\__| \\__| \\_______|\\__|        \\____/ \\_______/ \\__| \\_______|\r\n\n\n");
 
       string path = H.GetSProperty("callsPath");
       H.PrintLog(5, "Main", "Main", $"Usando Varmap: {H.GetSProperty("VarMap")}");
@@ -38,7 +48,6 @@ namespace SmartBid
         }
       };
 
-      Console.WriteLine("                                                                             \r\n ██████\\                                     ██\\     ███████\\  ██\\       ██\\ \r\n██  __██\\                                    ██ |    ██  __██\\ \\__|      ██ |\r\n██ /  \\__|██████\\████\\   ██████\\   ██████\\ ██████\\   ██ |  ██ |██\\  ███████ |\r\n\\██████\\  ██  _██  _██\\  \\____██\\ ██  __██\\\\_██  _|  ███████\\ |██ |██  __██ |\r\n \\____██\\ ██ / ██ / ██ | ███████ |██ |  \\__| ██ |    ██  __██\\ ██ |██ /  ██ |\r\n██\\   ██ |██ | ██ | ██ |██  __██ |██ |       ██ |██\\ ██ |  ██ |██ |██ |  ██ |\r\n\\██████  |██ | ██ | ██ |\\███████ |██ |       \\████  |███████  |██ |\\███████ |\r\n \\______/ \\__| \\__| \\__| \\_______|\\__|        \\____/ \\_______/ \\__| \\_______|\r\n                                                                             ");
 
       SB_Word.CloseWord(H.GetBProperty("closeWord"));
       SB_Excel.CloseExcel(H.GetBProperty("closeExcel"));
@@ -55,6 +64,9 @@ namespace SmartBid
       Thread.Sleep(400); // Espera para asegurar que el watcher esté listo
       if (!string.IsNullOrEmpty(H.GetSProperty("autorun")))
       {
+        H.PrintLog(5, "Main", "Main", $"Ejecutando Autorun: {H.GetSProperty("autorun")}\n" +
+          $"Para ejectutar normalmente eliminar el valor en la propiedad 'autorun' en properties.xml\n\n");
+
         Process.Start(Path.Combine(H.GetSProperty("callsPath"), H.GetSProperty("autorun")));
       }
 
@@ -80,7 +92,7 @@ namespace SmartBid
       {
         _ = _eventSignal.WaitOne();
 
-        while (_fileQueue.TryDequeue(out string filePath))
+        while (_fileQueue.TryDequeue(result: out string? filePath))
         {
           // Procesamiento paralelo de cada archivo
           _ = Task.Run(() =>
@@ -97,7 +109,7 @@ namespace SmartBid
     static void ProcessFile(string filePath)
     {
 
-      XmlDocument xmlCall = new XmlDocument();
+      XmlDocument xmlCall = new();
       using (var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
       {
         xmlCall.Load(stream);
@@ -111,7 +123,9 @@ namespace SmartBid
 
       int callID = DBtools.InsertCallStart(xmlCall); // Report starting process to DB
 
-      DataMaster dm = CreateDataMaster(xmlCall); //Create New DataMaster
+      List<ToolData> targets = Calculator.GetDeliveryDocs(xmlCall); // Get the delivery docs from the call
+
+      DataMaster dm = CreateDataMaster(xmlCall, targets); //Create New DataMaster
       try
       {
         // checks that all files declare exits and stores the checksum of the fileName for comparison
@@ -120,7 +134,7 @@ namespace SmartBid
         //Stores de call fileName in case configuration says so
         StoreCallFile(H.GetBProperty("storeXmlCall"), filePath, Path.GetDirectoryName(dm.FileName));
 
-        Calculator calculator = new Calculator(dm, xmlCall);
+        Calculator calculator = new(dm, targets);
 
         calculator.RunCalculations();
 
@@ -135,7 +149,7 @@ namespace SmartBid
         //Auxiliar.DeleteBookmarkText("ES_Informe de corrosión_Rev0.0.docx", "Ruta_05", dm, "OUTPUT");
 
 
-        List<string> emailRecipients = new List<string>();
+        List<string> emailRecipients = [];
 
         // Add KAM email if configured to do so
         if (H.GetBProperty("mailKAM"))
@@ -162,12 +176,12 @@ namespace SmartBid
 
     }
 
-    private static DataMaster CreateDataMaster(XmlDocument xmlCall) //Creamos el datamaster
+    private static DataMaster CreateDataMaster(XmlDocument xmlCall, List<ToolData> targets) //Creamos el datamaster
     {
       H.PrintXML(2, xmlCall); //Print the XML call for debugging
 
       //Instantiating the DataMaster class with the XML string 
-      DataMaster dm = new DataMaster(xmlCall);
+      DataMaster dm = new(xmlCall, targets);
 
       //Creating the projectFolder in the storage directory
       string projectFolder = Path.Combine(H.GetSProperty("processPath"), dm.DM.SelectSingleNode(@"dm/utils/utilsData/opportunityFolder")?.InnerText ?? "");
@@ -211,7 +225,6 @@ namespace SmartBid
       }
       H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"All input files have been registered'.");
     }
-
     private static string CalcularMD5(string path)
     {
       using var stream = File.OpenRead(path);
@@ -242,7 +255,7 @@ namespace SmartBid
     }
     private static void ReturnRemoveFiles(DataMaster dm)
     {
-      string revisionDateStamp = dm.GetInnerText(@"dm/utils/rev_01/dateTime").Substring(0, 6);
+      string revisionDateStamp = dm.GetInnerText(@"dm/utils/rev_01/dateTime")[..6];
       string projectFolder = dm.GetInnerText(@"dm/utils/utilsData/opportunityFolder");
 
       string processedToolsPath = Path.Combine(H.GetSProperty("processPath"), projectFolder, "TOOLS");
@@ -288,13 +301,13 @@ namespace SmartBid
       public string User { get; }
       public ThreadInfo(string user)
       {
-        ThreadId = Thread.CurrentThread.ManagedThreadId;
+        ThreadId = Environment.CurrentManagedThreadId;
         User = user;
       }
     }
 
     // ✅ Ahora usamos AsyncLocal en lugar de ThreadLocal
-    public static AsyncLocal<ThreadInfo> CurrentThreadInfo = new AsyncLocal<ThreadInfo>();
+    public static AsyncLocal<ThreadInfo> CurrentThreadInfo = new();
   }
 
 

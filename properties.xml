@@ -21,8 +21,12 @@
 	<VarPrefix>SB_</VarPrefix>  <!-- Prefijo que marca las variables en las plantillas -->
 	<RemoveBkmPrefix>SBxx_</RemoveBkmPrefix>  <!-- Prefijo que marca las variables en las plantillas -->
 	
+	<!-- Configuration-->
 	<tableStyle>MyStyle</tableStyle>  <!-- Nombre del formato que se dará a las tablas insertadas en los Templates -->
-	<allowableVarTypes>num;text;code;bool;date;image;table;route</allowableVarTypes> <!-- Lista de tipos de variable permitidos-->
+	<allowableVarTypes>num;text;code;bool;date;image;table;route</allowableVarTypes>	<!-- Lista de tipos de variable permitidos-->
+	<languages>EN;ES</languages>	<!-- Lista de idiomas en templates-->
+	<defaultLanguage>EN</defaultLanguage>	<!-- Lista de idiomas en templates-->
+
 	<ExcelValidationCheck>true</ExcelValidationCheck>
 	<!-- set whether or not validation rules on excel shoud be enforced or allowed to break the validations rules-->
 

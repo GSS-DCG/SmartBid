@@ -2,27 +2,28 @@
 using MySql.Data.MySqlClient;
 using SmartBid;
 
-
-public static class DBConnectionFactory
+namespace SmartBid
 {
-  private static readonly string ConnectionString = H.GetSProperty("DBConnextion");
 
-  public static MySqlConnection CreateConnection()
+  public static class DBConnectionFactory
   {
-    var conn = new MySqlConnection(ConnectionString);
-    conn.Open();
-    return conn;
-  }
-}
+    private static readonly string ConnectionString = H.GetSProperty("DBConnextion");
 
-
-static class DBtools
-{
-  public static int InsertCallStart(XmlDocument doc)
-  {
-    using (var conn = DBConnectionFactory.CreateConnection())
-    using (var cmd = conn.CreateCommand())
+    public static MySqlConnection CreateConnection()
     {
+      var conn = new MySqlConnection(ConnectionString);
+      conn.Open();
+      return conn;
+    }
+  }
+
+
+  static class DBtools
+  {
+    public static int InsertCallStart(XmlDocument doc)
+    {
+      using var conn = DBConnectionFactory.CreateConnection();
+      using var cmd = conn.CreateCommand();
       cmd.CommandText = @"
                 INSERT INTO callsTracker (
                     CD_Date, CD_Request, CD_opportunityFolder, CD_opportunityID, CD_Client, CD_LocationCountry, 
@@ -56,13 +57,11 @@ static class DBtools
         return -1;
       }
     }
-  }
 
-  public static void UpdateCallRegistry(int callID, string status, string result)
-  {
-    using (var conn = DBConnectionFactory.CreateConnection())
-    using (var cmd = conn.CreateCommand())
+    public static void UpdateCallRegistry(int callID, string status, string result)
     {
+      using var conn = DBConnectionFactory.CreateConnection();
+      using var cmd = conn.CreateCommand();
       cmd.CommandText = @"
                 UPDATE callsTracker SET
                     CD_Status = @Status,
@@ -82,19 +81,17 @@ static class DBtools
         H.PrintLog(5, "DBtools", $"❌❌ Error ❌❌  - UpdateCallRegistry", $"❌❌ Error ❌❌  updating callsTracker registry: " + ex.Message);
       }
     }
-  }
 
-  public static int InsertNewProjectWithBid(DataMaster dm)
-  {
-    XmlDocument dataMaster = dm.DM;
-    using (var conn = DBConnectionFactory.CreateConnection())
-    using (var transaction = conn.BeginTransaction())
+    public static int InsertNewProjectWithBid(DataMaster dm)
     {
+      XmlDocument dataMaster = dm.DM;
+      using var conn = DBConnectionFactory.CreateConnection();
+      using var transaction = conn.BeginTransaction();
       try
       {
         // Extract XML nodes
-        XmlNodeList inputDocs = dataMaster.SelectNodes(@"dm /utils/rev_01/inputDocs/doc");
-        XmlNodeList deliveryDocs = dataMaster.SelectNodes(@"dm/utils/rev_01/deliveryDocs/doc");
+        XmlNodeList inputDocs = dataMaster.SelectNodes(@"dm /utils/rev_01/inputDocs/doc")!;
+        XmlNodeList deliveryDocs = dataMaster.SelectNodes(@"dm/utils/rev_01/deliveryDocs/doc")!;
 
         // Insert project
         var cmdProject = conn.CreateCommand();
@@ -153,13 +150,12 @@ static class DBtools
           cmdInput.Transaction = transaction;
           cmdInput.CommandText = "INSERT INTO inputdocs (ID_FileType, ID_FileName, ID_FileCheckSum, ID_FileLastModified, ID_BV_ID) VALUES (@FileType, @FileName, @ID_FileCheckSum, @ID_FileLastModified, @BV_ID);";
 
-          _ = cmdInput.Parameters.AddWithValue("@FileType", docNode.Attributes["type"]?.Value ?? "");
-          _ = cmdInput.Parameters.AddWithValue("@FileName", docNode?.InnerText ?? "UnnamedInput");
+          _ = cmdInput.Parameters.AddWithValue("@FileType", docNode.Attributes!["type"]?.Value ?? "");
+          _ = cmdInput.Parameters.AddWithValue("@FileName", docNode.InnerText ?? "UnnamedInput");
           _ = cmdInput.Parameters.AddWithValue("@ID_FileCheckSum", docNode.Attributes["hash"]?.Value ?? "");
 
           // Convertir la fecha al formato DateTime de MySQL
-          DateTime parsedDate;
-          if (DateTime.TryParse(docNode.Attributes["lastModified"]?.Value, out parsedDate))
+          if (DateTime.TryParse(docNode.Attributes["lastModified"]?.Value, out DateTime parsedDate))
             _ = cmdInput.Parameters.AddWithValue("@ID_FileLastModified", parsedDate.ToString("yyyy-MM-dd HH:mm:ss"));  // Formato correcto para MySQL DATETIME
           else
             _ = cmdInput.Parameters.AddWithValue("@ID_FileLastModified", DBNull.Value); // Manejo de error si la fecha no es válida
@@ -188,50 +184,50 @@ static class DBtools
         return -1;
       }
     }
-  }
 
-  public static void LogMessage(int level, string user, string eventLog, string message)
-  {
-    try
+    public static void LogMessage(int level, string user, string eventLog, string message)
     {
-      using var conn = DBConnectionFactory.CreateConnection();
-      using var cmd = conn.CreateCommand();
-      cmd.CommandText = "INSERT INTO log (Log_time, Log_level, Log_event, Log_user, Log_message) VALUES (@Timestamp, @Level, @Event, @User, @Message)";
-      _ = cmd.Parameters.AddWithValue("@Timestamp", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-      _ = cmd.Parameters.AddWithValue("@Level", level);
-      _ = cmd.Parameters.AddWithValue("@Event", eventLog);
-      _ = cmd.Parameters.AddWithValue("@User", user);
-      _ = cmd.Parameters.AddWithValue("@Message", message);
-      _ = cmd.ExecuteNonQuery();
+      try
+      {
+        using var conn = DBConnectionFactory.CreateConnection();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "INSERT INTO log (Log_time, Log_level, Log_event, Log_user, Log_message) VALUES (@Timestamp, @Level, @Event, @User, @Message)";
+        _ = cmd.Parameters.AddWithValue("@Timestamp", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+        _ = cmd.Parameters.AddWithValue("@Level", level);
+        _ = cmd.Parameters.AddWithValue("@Event", eventLog);
+        _ = cmd.Parameters.AddWithValue("@User", user);
+        _ = cmd.Parameters.AddWithValue("@Message", message);
+        _ = cmd.ExecuteNonQuery();
+      }
+      catch (Exception ex)
+      {
+        Console.WriteLine($"DBtools ❌❌ Error ❌❌  - LogMessage ❌❌ Error ❌❌  during insert: " + ex.Message);
+      }
     }
-    catch (Exception ex)
-    {
-      Console.WriteLine("DBtools", $"❌❌ Error ❌❌  - LogMessage", $"❌❌ Error ❌❌  during insert: " + ex.Message);
-    }
-  }
 
-  public static void InsertFileHash(string fileName, string type, string hash, string lastModified)
-  {
-    try
+    public static void InsertFileHash(string fileName, string type, string hash, string lastModified)
     {
-      using var conn = DBConnectionFactory.CreateConnection();
-      using var cmd = conn.CreateCommand();
-      cmd.CommandText = "INSERT INTO inputFileHashs " +
-        "       (IFH_time,   IFH_fileName, IFH_type, IFH_Checksum, IFH_lastModify) " +
-        "VALUES (@Timestamp, @fileName,    @type,    @hash,    @lastModify)";
-      _ = cmd.Parameters.AddWithValue("@Timestamp", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-      _ = cmd.Parameters.AddWithValue("@fileName", fileName);
-      _ = cmd.Parameters.AddWithValue("@type", type);
-      _ = cmd.Parameters.AddWithValue("@hash", hash);
-      _ = cmd.Parameters.AddWithValue("@lastModify", lastModified);
-      _ = cmd.ExecuteNonQuery();
+      try
+      {
+        using var conn = DBConnectionFactory.CreateConnection();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "INSERT INTO inputFileHashs " +
+          "       (IFH_time,   IFH_fileName, IFH_type, IFH_Checksum, IFH_lastModify) " +
+          "VALUES (@Timestamp, @fileName,    @type,    @hash,    @lastModify)";
+        _ = cmd.Parameters.AddWithValue("@Timestamp", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+        _ = cmd.Parameters.AddWithValue("@fileName", fileName);
+        _ = cmd.Parameters.AddWithValue("@type", type);
+        _ = cmd.Parameters.AddWithValue("@hash", hash);
+        _ = cmd.Parameters.AddWithValue("@lastModify", lastModified);
+        _ = cmd.ExecuteNonQuery();
+      }
+      catch (Exception ex)
+      {
+        H.PrintLog(5, "DBtools", $"❌❌ Error ❌❌  - InsertFileHash", $"❌❌ Error ❌❌  during insert inputFileHashs: " + ex.Message);
+      }
     }
-    catch (Exception ex)
-    {
-      H.PrintLog(5, "DBtools", $"❌❌ Error ❌❌  - InsertFileHash", $"❌❌ Error ❌❌  during insert inputFileHashs: " + ex.Message);
-    }
-  }
 
+
+  }
 
 }
-

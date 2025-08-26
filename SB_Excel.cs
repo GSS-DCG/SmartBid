@@ -23,7 +23,7 @@ namespace SmartBid
     {
 
       bool validationCheck = H.GetBProperty("ExcelValidationCheck");
-      Excel.Range range = workbook.Names.Item(rangeName).RefersToRange;
+      Excel.Range range = workbook!.Names.Item(rangeName).RefersToRange;
 
       H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Excel.FillUpValue", $"Procesando celda '{rangeName}'...");
 
@@ -58,11 +58,11 @@ namespace SmartBid
         {
           try
           {
-            string rangeRef = formula.Substring(1); // Elimina el '='
+            string rangeRef = formula[1..]; // Elimina el '='
             Excel.Range listRange = workbook.Application.Range[rangeRef];
             allowedValues = listRange.Cells.Cast<Excel.Range>()
-                                .Select(cell => cell.Value?.ToString())
-                                .Where(val => !string.IsNullOrEmpty(val))
+                                .Select(static cell => cell.Value!.ToString())
+                                .Where(static val => !string.IsNullOrEmpty(val))
                                 .ToArray();
           }
           catch (Exception ex)
@@ -73,10 +73,10 @@ namespace SmartBid
         }
         else
         {
-          string listSeparator = workbook.Application.International[Excel.XlApplicationInternational.xlListSeparator].ToString();
+          string listSeparator = workbook.Application.International[Excel.XlApplicationInternational.xlListSeparator].ToString()!;
 
           allowedValues = formula
-            .Split(new[] { listSeparator }, StringSplitOptions.RemoveEmptyEntries)
+            .Split([listSeparator], StringSplitOptions.RemoveEmptyEntries)
             .Select(v => v.Trim().Replace("\"", ""))
             .ToArray();
         }
@@ -111,11 +111,11 @@ namespace SmartBid
       {
         // 📌 Parse XML Input
         var rows = doc.SelectNodes("//t/r");
-        int rowCount = rows.Count;
-        int colCount = rows[0].ChildNodes.Count;
+        int rowCount = rows!.Count;
+        int colCount = rows[0]!.ChildNodes.Count;
 
         // 📌 Write data into range
-        Excel.Name namedRange = workbook.Names.Item(rangeName);
+        Excel.Name namedRange = workbook!.Names.Item(rangeName);
         Excel.Range inputRange = namedRange.RefersToRange;
 
         if (inputRange.Rows.Count != rowCount || inputRange.Columns.Count != colCount)
@@ -126,7 +126,7 @@ namespace SmartBid
 
         for (int i = 0; i < rowCount; i++)
           for (int j = 0; j < colCount; j++)
-            ((Excel.Range)inputRange.Cells[i + 1, j + 1]).Value = rows[i].ChildNodes[j].InnerText;
+            ((Excel.Range)inputRange.Cells[i + 1, j + 1]).Value = rows[i]!.ChildNodes[j]!.InnerText;
 
       }
       catch (Exception ex)
@@ -167,7 +167,7 @@ namespace SmartBid
         int outCols = outputRange.Columns.Count;
 
         // Create a NEW XmlDocument instance to host the XML fragment
-        XmlDocument tempDoc = new XmlDocument();
+        XmlDocument tempDoc = new();
         XmlElement root = tempDoc.CreateElement("t");
 
         for (int i = 1; i <= outRows; i++)
@@ -328,7 +328,7 @@ namespace SmartBid
 
       CerrarProcesos:
         Console.WriteLine("Existen procesos de Excel abiertos. ¿Desea cerrarlos? (s/n): ");
-        string var = Console.ReadLine();
+        string var = Console.ReadLine()!;
 
         if (var == null)
         {
@@ -341,7 +341,7 @@ namespace SmartBid
         else if (var == "n") { }
         else
         {
-          Console.WriteLine("SB_Excel.CloseExcel", $"❌❌ Error ❌❌ : Argumento no válido.");
+          Console.WriteLine($"SB_Excel.CloseExcel  ❌❌ Error ❌❌ : Argumento no válido.");
           goto CerrarProcesos;
         }
       }

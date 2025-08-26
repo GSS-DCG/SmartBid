@@ -10,7 +10,7 @@ namespace SmartBid
   public class SB_Word
   {
 
-    private Microsoft.Office.Interop.Word.Application wordApp;
+    private Microsoft.Office.Interop.Word.Application? wordApp;
     private Document doc;
     private string filePath;
 
@@ -74,7 +74,7 @@ namespace SmartBid
       {
         if (field.Type == WdFieldType.wdFieldRef && field.Code.Text.Trim().StartsWith(prefix)) // when the mark is an insert mark if (a)
         {
-          string variableID = field.Code.Text.Trim().Substring(prefix.Length);
+          string variableID = field.Code.Text.Trim()[prefix.Length..];
 
           Microsoft.Office.Interop.Word.Range fieldRange = field.Result; // place to inserte found
 
@@ -83,7 +83,7 @@ namespace SmartBid
             if (varList[variableID].Type == "table") // If the variable is a table
             {
              
-              XmlDocument xmlDoc = new XmlDocument();
+              XmlDocument xmlDoc = new();
               try { 
                 xmlDoc.LoadXml(varList[variableID].Value);
               }
@@ -102,19 +102,19 @@ namespace SmartBid
               }
 
               // 📌 Count how many rows and columns the table has
-              XmlNodeList rows = tableNode.SelectNodes("r");
+              XmlNodeList rows = tableNode.SelectNodes("r")!;
               int rowCount = rows.Count;
-              int colCount = rows[0].ChildNodes.Count; // Assumes all rows have the same number of columns
+              int colCount = rows[0]!.ChildNodes.Count; // Assumes all rows have the same number of columns
 
               // 📌 Insert a dynamically sized table
               Table table = doc.Tables.Add(fieldRange, rowCount, colCount);
 
               for (int i = 0; i < rowCount; i++)
               {
-                XmlNodeList cells = rows[i].SelectNodes("c");
+                XmlNodeList cells = rows[i]!.SelectNodes("c")!;
                 for (int j = 0; j < colCount; j++)
                 {
-                  table.Cell(i + 1, j + 1).Range.Text = cells[j].InnerText;
+                  table.Cell(i + 1, j + 1).Range.Text = cells[j]!.InnerText;
                 }
               }
 

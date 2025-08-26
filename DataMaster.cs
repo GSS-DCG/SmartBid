@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Xml;
 
@@ -5,29 +6,29 @@ namespace SmartBid
 {
   public class DataMaster
   {
-    private XmlDocument _dm;
-    private VariablesMap _vm;
-    private Dictionary<string, VariableData> _data;
-    private XmlNode? _projectDataNode;
-    private XmlNode? _utilsNode;
-    private XmlNode? _dataNode;
+    private readonly XmlDocument _dm;
+    private readonly VariablesMap _vm;
+    private readonly Dictionary<string, VariableData> _data;
+    private readonly XmlNode _projectDataNode;
+    private readonly XmlNode _utilsNode;
+    private readonly XmlNode _dataNode;
 
     public string FileName { get; set; }
     public string User { get; set; } = ThreadContext.CurrentThreadInfo.Value!.User;
     public Dictionary<string, VariableData> Data { get { return _data; } }
     public XmlDocument DM { get { return _dm; } }
     public int BidRevision { get; set; }
-    public string sBidRevision => BidRevision.ToString("D2");
+    public string SBidRevision => BidRevision.ToString("D2");
 
 
 
     // Constructor público con XmlDocument ==> para crear un nuevo DataMaster
-    public DataMaster(XmlDocument xmlRequest)
+    public DataMaster(XmlDocument xmlRequest, List<ToolData> targets)
     {
       _vm = VariablesMap.Instance;
       BidRevision = 1;
-      _dm = new XmlDocument();
-      _data = new Dictionary<string, VariableData>();
+      _dm = new();
+      _data = [];
 
       // Check if opportunityFolder exists, otherwise throw an exception
       if (GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder") == null)
@@ -37,7 +38,7 @@ namespace SmartBid
       }
 
       string opportunityFolder = GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder").InnerText;
-      FileName = Path.Combine(H.GetSProperty("processPath"), opportunityFolder, $"{opportunityFolder.Substring(0, 7)}_DataMaster.xml");
+      FileName = Path.Combine(H.GetSProperty("processPath"), opportunityFolder, $"{opportunityFolder[..7]}_DataMaster.xml");
 
       // register actual revision number in _data (no need to store it in DM)
       StoreValue("revision", new VariableData("revision", "current Revision", "utils", "utils", true, true, "code", "", "", "", "", 0, [], "rev_01"));
@@ -52,18 +53,18 @@ namespace SmartBid
 
         //Creating DataMaster structure
         XmlElement init = _dm.CreateElement("projectData");
-        _projectDataNode = root.AppendChild(init);
+        _projectDataNode = root.AppendChild(init)!;
 
         XmlElement utils = _dm.CreateElement("utils");
-        _utilsNode = root.AppendChild(utils);
+        _utilsNode = root.AppendChild(utils)!;
 
         XmlElement data = _dm.CreateElement("data");
-        _dataNode = root.AppendChild(data);
+        _dataNode = root.AppendChild(data)!;
 
 
         List<VariableData> varList = VariablesMap.Instance.GetVarListBySource("INIT");
 
-        XmlDocument configDataXML = new XmlDocument();
+        XmlDocument configDataXML = new();
         XmlElement configDataRoot = configDataXML.CreateElement("root");
         _ = configDataXML.AppendChild(configDataRoot);
         XmlElement variables = configDataXML.CreateElement("variables");
@@ -86,7 +87,7 @@ namespace SmartBid
           if (variable.Area == "config")
           {
             //tomamos el nombre de la variable
-            //                        _ = _dataNode.AppendChild(GetImportedElement(xmlRequest, @$"//config/{variable.ID}"));
+            //                        _ = _dataNode.AppendChild(GetImportedElement(xmlRequest, @$"//config/{variable.Code}"));
 
             // Variable 
             XmlElement newVar = configDataXML.CreateElement(variable.ID);
@@ -124,16 +125,29 @@ namespace SmartBid
 
         _ = revision.AppendChild(CreateElement("dateTime", DateTime.Now.ToString("yyMMdd_HHmm")));
 
-        XmlElement importedNode = (XmlElement)xmlRequest.SelectSingleNode("//requestInfo");
-        _ = importedNode != null ? revision.AppendChild(_dm.ImportNode(importedNode, true)) : null;
+        XmlElement newNode;
+        newNode = (XmlElement)xmlRequest.SelectSingleNode("//requestInfo")!;
+        _ = newNode != null ? revision.AppendChild(_dm.ImportNode(newNode, true)) : null;
 
-        importedNode = (XmlElement)xmlRequest.SelectSingleNode("//requestInfo/deliveryDocs");
-        _ = importedNode != null ? revision.AppendChild(_dm.ImportNode(importedNode, true)) : null;
+        newNode = H.CreateElement(_dm, "deliveryDocs", "");
+        //add each one of the fileName in targets as a new element called "doc" to newNode
+        foreach (ToolData target in targets)
+        {
+          XmlElement newChild = CreateElement("doc", target.FileName);
+          newChild.SetAttribute("code", target.Code);
+          newChild.SetAttribute("version", target.Version);
+          newNode.AppendChild(newChild);
+        }
+        _ = newNode != null ? revision.AppendChild(_dm.ImportNode(newNode, true)) : null;
 
-        importedNode = (XmlElement)xmlRequest.SelectSingleNode("//requestInfo/inputDocs");
-        _ = importedNode != null ? revision.AppendChild(_dm.ImportNode(importedNode, true)) : null;
+        newNode = (XmlElement)xmlRequest.SelectSingleNode("//requestInfo/inputDocs")!;
+        _ = newNode != null ? revision.AppendChild(_dm.ImportNode(newNode, true)) : null;
 
-        _ = _utilsNode.AppendChild(revision);
+        _utilsNode.AppendChild(revision);
+      }
+      else if(((XmlElement)xmlRequest.SelectSingleNode("/request/requestInfo")!).GetAttribute("Type") == "newRevision")
+      {
+      
       }
 
     }
@@ -147,7 +161,7 @@ namespace SmartBid
 
     public void UpdateData(XmlDocument newData)
     {
-      XmlNode variablesNode = newData.SelectSingleNode("/root/variables");
+      XmlNode variablesNode = newData.SelectSingleNode("/root/variables")!;
       if (variablesNode == null) return;
 
       foreach (XmlNode variable in variablesNode.ChildNodes)
@@ -155,11 +169,11 @@ namespace SmartBid
         XmlNode importedNode = _dm.ImportNode(variable, true);
 
         XmlElement revisionElement = _dm.CreateElement("revision");
-        XmlElement rev01Element = _dm.CreateElement($"rev{sBidRevision}");
-        rev01Element.InnerText = $"set{sBidRevision}";
+        XmlElement rev01Element = _dm.CreateElement($"rev{SBidRevision}");
+        rev01Element.InnerText = $"set{SBidRevision}";
         _ = revisionElement.AppendChild(rev01Element);
 
-        XmlElement setElment = _dm.CreateElement($"set{sBidRevision}");
+        XmlElement setElment = _dm.CreateElement($"set{SBidRevision}");
 
         foreach (XmlNode child in importedNode.ChildNodes)
         {
@@ -186,9 +200,9 @@ namespace SmartBid
 
     public string GetValueString(string key)
     {
-      if (_data.ContainsKey(key))
+      if (_data.TryGetValue(key, out VariableData? value))
       {
-        return _data[key]?.Value;
+        return value!.Value;
       }
       else
       {
@@ -223,17 +237,16 @@ namespace SmartBid
       }
     }
 
-
     public XmlNode GetValueXmlNode(string key)
     {
-      if (_data.ContainsKey(key))
+      if (_data.TryGetValue(key, out VariableData? value))
       {
-        string xmlString = _data[key]?.Value ?? string.Empty;
+        string xmlString = value?.Value ?? string.Empty;
 
         if (string.IsNullOrWhiteSpace(xmlString))
           return null;
 
-        XmlDocument tempDoc = new XmlDocument();
+        XmlDocument tempDoc = new();
         try
         {
           tempDoc.LoadXml($"<root>{xmlString}</root>");
@@ -253,9 +266,9 @@ namespace SmartBid
 
     public VariableData GetVariableData(string key)
     {
-      if (_data.ContainsKey(key))
+      if (_data.TryGetValue(key, out VariableData? value))
       {
-        return _data[key];
+        return value;
       }
       else
       {
@@ -292,19 +305,16 @@ namespace SmartBid
 
     private XmlElement GetImportedElement(XmlDocument sourceDoc, string elementName)
     {
-      XmlElement sourceElement = (XmlElement)sourceDoc.DocumentElement.SelectSingleNode(elementName);
-      if (sourceElement == null)
-      {
+      XmlElement? 
+        sourceElement = (XmlElement)sourceDoc.DocumentElement!.SelectSingleNode(elementName)! ??
         throw new XmlException($"Element '{elementName}' not found in the source document.");
-      }
-
       XmlElement importedElement = (XmlElement)_dm.ImportNode(sourceElement, true);
       return importedElement;
     }
 
     public void CheckMandatoryValues()
     {
-      List<string> missingValues = new List<string>();
+      List<string> missingValues = [];
 
       foreach (var kvp in _data)
       {

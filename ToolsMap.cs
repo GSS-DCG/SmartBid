@@ -5,19 +5,17 @@ using File = System.IO.File;
 
 namespace SmartBid
 {
-  public record ToolData(string Resource, string ID, int Call, string Name, string FileType, string Version, string Description, string FileName)
+  public record ToolData(string Resource, string Code, int Call, string Name, string FileType, string Version, string Lenguage, string Description, string FileName)
   {
-    public static Dictionary<string, string> OpcionesHerramientas = new Dictionary<string, string>();
-
     // Constructor to initialize all properties
-    public ToolData(string resource, string id, int call, string name, string version, string filetype, string description) : this(resource, id, call, name, filetype, version, description, $"{name}_{version}.{filetype}")
+    public ToolData(string resource, string code, int call, string name, string version, string language, string filetype, string description) : this(resource, code, call, name, filetype, version, language, description, $"{name}.{filetype}")
     {
     }
 
     // Methods
     public XmlDocument ToXMLDocument()
     {
-      XmlDocument doc = new XmlDocument();
+      XmlDocument doc = new();
       _ = doc.AppendChild(ToXML(doc));
       return doc;
     }
@@ -26,11 +24,12 @@ namespace SmartBid
     {
       XmlElement toolElement = mainDoc.CreateElement("tool");
       toolElement.SetAttribute("resource", Resource);
-      toolElement.SetAttribute("code", ID);
+      toolElement.SetAttribute("code", Code);
       toolElement.SetAttribute("call", Call.ToString());
       toolElement.SetAttribute("name", Name);
       toolElement.SetAttribute("fileType", FileType);
       toolElement.SetAttribute("version", Version);
+      toolElement.SetAttribute("language", Lenguage);
       toolElement.SetAttribute("description", Description);
       toolElement.SetAttribute("fileName", FileName);
 
@@ -45,10 +44,12 @@ namespace SmartBid
     private static ToolsMap? _instance;
 
     // Lock object for thread safety
-    private static readonly object _lock = new object();
+    private static readonly object _lock = new();
 
     // Class variables
-    public List<ToolData> Tools { get; private set; } = new List<ToolData>();
+    public List<ToolData> Tools { get; private set; } = new();
+    public List<string> DeliveryDocsPack { get; private set; } = new();
+
     private VariablesMap _variablesMap = VariablesMap.Instance; // Instance of VariablesMap
 
     // Public static property to get the single instance
@@ -77,7 +78,7 @@ namespace SmartBid
         H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "ToolsMap", $" ****** FILE: {vmFile} NOT FOUND. ******\n Review value 'VarMap' in properties.xml it should point to the location of the Variables Map file.\n\n");
         _ = new FileNotFoundException("PROPERTIES FILE NOT FOUND", vmFile);
       }
-      string directoryPath = Path.GetDirectoryName(vmFile);
+      string directoryPath = Path.GetDirectoryName(vmFile)!;
       string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(vmFile);
       string xmlFile = Path.Combine(directoryPath, "ToolsMap" + ".xml");
       DateTime fileModified = File.GetLastWriteTime(vmFile);
@@ -97,22 +98,30 @@ namespace SmartBid
     // Methods
     private void LoadFromXml(string xmlPath)
     {
-      XmlDocument doc = new XmlDocument();
+      XmlDocument doc = new();
       doc.Load(xmlPath);
-      foreach (XmlNode node in doc.SelectNodes("//tool"))
+      foreach (XmlNode node in doc.SelectNodes("//tools/tool")!)
       {
-        ToolData data = new ToolData(
-            node.Attributes["resource"]?.InnerText ?? string.Empty,
-            node.Attributes["code"]?.InnerText ?? string.Empty,
-            int.TryParse(node.Attributes["call"]?.InnerText, out int callValue) ? callValue : 1, // Call
-            node.Attributes["name"]?.InnerText ?? string.Empty,
-            node.Attributes["version"]?.InnerText ?? string.Empty,
-            node.Attributes["fileType"]?.InnerText ?? string.Empty,
-            node.Attributes["description"]?.InnerText ?? string.Empty
+        ToolData data = new(
+            node.Attributes["resource"]!.InnerText ?? string.Empty,
+            node.Attributes["code"]!.InnerText ?? string.Empty,
+            int.TryParse(node.Attributes["call"]!.InnerText, out int callValue) ? callValue : 1, // Call
+            node.Attributes["name"]!.InnerText ?? string.Empty,
+            node.Attributes["version"]!.InnerText ?? string.Empty,
+            node.Attributes["language"]!.InnerText ?? string.Empty,
+            node.Attributes["fileType"]!.InnerText ?? string.Empty,
+            node.Attributes["description"]!.InnerText ?? string.Empty
         );
 
         Tools.Add(data);
       }
+
+      foreach (XmlNode node in doc.SelectNodes("//deliveryDocsPack/deliveryDocs")!)
+      {
+        DeliveryDocsPack.Add(node.InnerText);
+      }
+
+
     }
 
     public void SaveToXml(string xmlPath, List<string>? varList = null)
@@ -123,13 +132,26 @@ namespace SmartBid
 
     public XmlDocument ToXml(List<string>? varList = null)
     {
-      XmlDocument doc = new XmlDocument();
+      XmlDocument doc = new();
       XmlElement root = doc.CreateElement("root");
-      _ = doc.AppendChild(root);
+      doc.AppendChild(root);
+
+
+      XmlElement tools= doc.CreateElement("tools");
+      root.AppendChild(tools);
       foreach (var tool in Tools)
       {
-        _ = root.AppendChild(tool.ToXML(doc));
+        tools.AppendChild(tool.ToXML(doc));
       }
+
+      XmlElement deliveryDocs = doc.CreateElement("deliveryDocsPack");
+      root.AppendChild(deliveryDocs);
+      foreach (string template in DeliveryDocsPack)
+      {
+        deliveryDocs.AppendChild(H.CreateElement(doc, "deliveryDocs", template));
+      }
+
+
       return doc;
     }
 
@@ -150,48 +172,95 @@ namespace SmartBid
         }
       }
 
-      System.Data.DataTable dataTable = dataSet.Tables["ToolMap"];
+      System.Data.DataTable dataTable = dataSet.Tables["ToolMap"]!;
 
       // Iterate over the rows, stopping when column A is empty
-      for (int i = 1; i < dataTable.Rows.Count; i++)
+
+      for (int i = 0; i < dataTable.Rows.Count; i++)
       {
         DataRow row = dataTable.Rows[i];
 
-        if (row.IsNull(0))
+        if (row.IsNull("RESOURCE"))
           break;
 
-        ToolData data = new ToolData(
-            row[0]?.ToString() ?? string.Empty,  // resource 
-            row[1]?.ToString() ?? string.Empty,  // code     
-            int.TryParse(row[2]?.ToString(), out int callValue) ? callValue : 1, //Call
-            row[3]?.ToString() ?? string.Empty,  // name     
-            int.TryParse(row[4]?.ToString(), out int value) ? value.ToString("D3") : "000",  // version  
-            row[5]?.ToString() ?? string.Empty,  // filetype 
-            row[6]?.ToString() ?? string.Empty  // description
+        ToolData data = new(
+            row["RESOURCE"]?.ToString() ?? string.Empty,
+            row["CODE"]?.ToString() ?? string.Empty,
+            int.TryParse(row["CALL"]?.ToString(), out int callValue) ? callValue : 1,
+            row["name"]?.ToString() ?? string.Empty,
+            int.TryParse(row["VERSION"]?.ToString(), out int value) ? value.ToString("D3") : "000",
+            row["LANGUAGE"]?.ToString() ?? string.Empty,
+            row["FILE TYPE"]?.ToString() ?? string.Empty,
+            row["DESCRIPTION"]?.ToString() ?? string.Empty
         );
 
         Tools.Add(data);
       }
+
+      //Delivery Docs Pack
+      dataTable = dataSet.Tables["DeliveryDocsPack"]!;
+
+      for (int i = 0; i < dataTable.Rows.Count; i++)
+      {
+        DataRow row = dataTable.Rows[i];
+
+        if (row.IsNull("Full Pack List"))
+          break;
+
+        DeliveryDocsPack.Add(row["Full Pack List"]?.ToString()!);
+      }
     }
 
-    public ToolData getToolDataByCode(string code)
+    public ToolData getToolDataByCode(string code, string language = "", int version = -1)
     {
-      return Tools.FirstOrDefault(tool => tool.ID == code);
+      // returns the only ToolData that matches the code, language and version, first search all the tools that match code and language and out of all of them selects the one with the version, or with the highest version in case version is == -1.
+
+      if (language == "")
+      {
+        language = H.GetSProperty("defaultLanguage");
+      }
+      var filteredTools = Tools.Where(tool => tool.Code.Equals(code, StringComparison.OrdinalIgnoreCase) && tool.Lenguage.Equals(language, StringComparison.OrdinalIgnoreCase)).ToList();
+
+      if (filteredTools.Count == 0) //try default language
+      {
+        filteredTools = Tools.Where(tool => tool.Code.Equals(code, StringComparison.OrdinalIgnoreCase) && tool.Lenguage.Equals(H.GetSProperty("defaultLanguage"), StringComparison.OrdinalIgnoreCase)).ToList();
+
+        H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, $"❌❌Error❌❌ -- No tool found with code '{code}' and language '{language}, used defaultLanguage ({H.GetSProperty("defaultLanguage")})instead'.");
+      }
+
+      if (filteredTools.Count == 0) //try default language
+      {
+        throw new KeyNotFoundException($"No tool found with code '{code}', language '{language}'.");
+      }
+
+      if (version == -1)
+      {
+        return filteredTools.OrderByDescending(tool => int.TryParse(tool.Version, out int ver) ? ver : 0).First();
+      }
+      else
+      {
+        var tool = filteredTools.FirstOrDefault(tool => int.TryParse(tool.Version, out int ver) && ver == version);
+        if (tool == null)
+        {
+          throw new KeyNotFoundException($"No tool found with code '{code}', language '{language}', and version '{version}'.");
+        }
+        return tool;
+      }
+    }
+    
+    public List<ToolData> getToolsByResource(string resource)
+    {
+      return Tools.Where(tool => tool.Resource.Equals(resource, StringComparison.OrdinalIgnoreCase)).ToList();
     }
 
-    public XmlDocument CalculateExcel(string toolID, DataMaster dm)
+    public XmlDocument CalculateExcel(ToolData tool, DataMaster dm)
     {
-      // 1. Retrieve the tool info
-      ToolData tool = ToolsMap.Instance.getToolDataByCode(toolID);
-      if (tool == null)
-        throw new ArgumentException($"ToolID '{toolID}' not found.");
-
       // 2. Check if the file type is Excel or otherwise
       if (!(tool.FileType.Equals("xlsx", StringComparison.OrdinalIgnoreCase) || tool.FileType.Equals("xlsm", StringComparison.OrdinalIgnoreCase)))
         throw new InvalidOperationException("The file is not an Excel type (.xlsx or .xlsm)");
 
-      // 3. Retrieve theMirrorXML instance of the tool
-      MirrorXML mirror = new MirrorXML(toolID);
+      // 3. Retrieve theMirrorXML instance of the template
+      MirrorXML mirror = new(tool);
       var variableMap = mirror.VarList;
 
       // 4. Find the original file
@@ -213,7 +282,7 @@ namespace SmartBid
       File.Copy(filePath, newFilePath, true);
 
       // 6. Abrir el archivo en Excel Interop
-      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExcel", $"Calculating tool {toolID}");
+      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExcel", $"Calculating tool {tool.Code}");
 
       SB_Excel? workbook = null;
 
@@ -258,7 +327,7 @@ namespace SmartBid
         workbook.Calculate();
 
         // Read output variables
-        XmlDocument results = new XmlDocument();
+        XmlDocument results = new();
         XmlElement root = results.CreateElement("root");
         _ = results.AppendChild(root);
         XmlElement varNode = results.CreateElement("variables");
@@ -290,7 +359,7 @@ namespace SmartBid
               XmlElement note = results.CreateElement("note");
               _ = varElement.AppendChild(note);
 
-              _ = varElement.AppendChild(H.CreateElement(results, "origin", $"{toolID}+{timestamp}"));
+              _ = varElement.AppendChild(H.CreateElement(results, "origin", $"{tool.Code}+{timestamp}"));
 
               if (type != "table")
               {
@@ -330,7 +399,7 @@ namespace SmartBid
             _ = varNode.AppendChild(varElement);
           }
         }
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExcel", $"Values returned from {toolID} calculation");
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExcel", $"Values returned from {tool.Code} calculation");
         H.PrintXML(2, results);
         workbook.Close(); // No need to save changes, 
         return results;
@@ -347,30 +416,26 @@ namespace SmartBid
 
     }
 
-    public void GenerateOuput(string templateID, DataMaster dm)
+    public void GenerateOuput(ToolData template, DataMaster dm)
     {
-      // 1. Retrieve the tool data by ID
-      ToolData tool = ToolsMap.Instance.getToolDataByCode(templateID);
-      if (tool == null)
-        throw new ArgumentException($"ToolID '{templateID}' not found.");
 
       // 3. Retrieves the MirrorXML instance
-      MirrorXML mirror = new MirrorXML(templateID);
+      MirrorXML mirror = new(template);
 
       // 4. Get the variables list from the mirror
       var variableMap = mirror.VarList;
 
       // 5. Build the full path to the file
-      string templatePath = Path.Combine(tool.Resource == "TEMPLATE" ? H.GetSProperty("TemplatesPath") : H.GetSProperty("ToolsPath"), tool.FileName);
+      string templatePath = Path.Combine(template.Resource == "TEMPLATE" ? H.GetSProperty("TemplatesPath") : H.GetSProperty("ToolsPath"), template.FileName);
 
       // 6. Crear copia del archivo para trabajar
-      string filePath = Path.Combine(H.GetSProperty("processPath"), dm.GetValueString("opportunityFolder"), "OUTPUT", tool.FileName);
+      string filePath = Path.Combine(H.GetSProperty("processPath"), dm.GetValueString("opportunityFolder"), "OUTPUT", template.FileName);
 
       // 7. Ensure the output directory exists and copy the template file if it doesn't exist
       if (!File.Exists(filePath))
       {
         if (!Directory.Exists(Path.GetDirectoryName(filePath)))
-          Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+          _ = Directory.CreateDirectory(Path.GetDirectoryName(filePath));
       }
 
       try
@@ -384,9 +449,9 @@ namespace SmartBid
       }
 
       // Confeccionamos la lista de marcas a reemplazar
-      Dictionary<string, VariableData> varList = new Dictionary<string, VariableData>();
+      Dictionary<string, VariableData> varList = [];
 
-      List<string> varNotFound = new List<string>();
+      List<string> varNotFound = [];
 
       mirror.VarList.Keys.ToList().ForEach(var =>
       {
@@ -398,14 +463,14 @@ namespace SmartBid
       if (varNotFound.Count > 0) throw new Exception("keysNotFoundInDataMaster: " + string.Join(", ", varNotFound));
 
 
-      if (tool.FileType.Equals("docx", StringComparison.OrdinalIgnoreCase))
+      if (template.FileType.Equals("docx", StringComparison.OrdinalIgnoreCase))
       {
         SB_Word? doc = null;
 
         // 8. Open the document using SB_Word class
         try
         {
-          H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "GenerateOutputWord", $"Generating output - Open file: {templateID}");
+          H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "GenerateOutputWord", $"Generating output - Open file: {template.Code}");
           doc = new SB_Word(filePath);
 
           List<string> removeBkm = mirror.VarList
@@ -413,7 +478,7 @@ namespace SmartBid
               .Select(kvp => kvp.Key)
               .ToList();
 
-          removeBkm.RemoveAll(key => varList.ContainsKey(key) && bool.TryParse(varList[key].Value.Trim(), out var result) && result || varList[key].Value.Trim() == "1");
+          _ = removeBkm.RemoveAll(key => (varList.ContainsKey(key) && bool.TryParse(varList[key].Value.Trim(), out var result) && result) || varList[key].Value.Trim() == "1");
 
           doc.DeleteBookmarks(removeBkm);
 
@@ -437,18 +502,21 @@ namespace SmartBid
         finally
         {
           // 🔒 Ensure Word document and app close cleanly
-          doc.Close(); // Close the document
-          doc.ReleaseComObjectSafely();
+          if (doc != null)
+          {
+            doc.Close(); // Close the document
+            doc.ReleaseComObjectSafely(); 
+          }
 
           // 🧹 Clean up unmanaged resources
           GC.Collect();
           GC.WaitForPendingFinalizers();
         }
-        H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "GenerateOutputWord", $"Generated output: {templateID} finished\n\n");
+        H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "GenerateOutputWord", $"Generated output: {template.Code} finished\n\n");
 
       }
-      else if (tool.FileType.Equals("xlsx", StringComparison.OrdinalIgnoreCase) ||
-                 tool.FileType.Equals("xlsm", StringComparison.OrdinalIgnoreCase))
+      else if (template.FileType.Equals("xlsx", StringComparison.OrdinalIgnoreCase) ||
+                 template.FileType.Equals("xlsm", StringComparison.OrdinalIgnoreCase))
       {
 
         SB_Excel? doc = null;
@@ -456,32 +524,32 @@ namespace SmartBid
         // 8. Open the Word document using SB_Word class
         try
         {
-          H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "GenerateOutputWord", $"Generating output - Open file: {templateID}");
+          H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "GenerateOutputWord", $"Generating output - Open file: {template.Code}");
           doc = new SB_Excel(filePath);
 
-          foreach(VariableData entry in varList.Values)
-            {
-              string variableID = entry.ID;
-              string rangeName = $"{H.GetSProperty("VarPrefix")}{variableID}";
-              string type = _variablesMap.GetVariableData(variableID).Type;
+          foreach (VariableData entry in varList.Values)
+          {
+            string variableID = entry.ID;
+            string rangeName = $"{H.GetSProperty("VarPrefix")}{variableID}";
+            string type = _variablesMap.GetVariableData(variableID).Type;
 
-              if (type == "table")
+            if (type == "table")
+            {
+              XmlNode tableData = dm.GetValueXmlNode(variableID);
+              if (tableData.Name == "t" && tableData.HasChildNodes)
               {
-                XmlNode tableData = dm.GetValueXmlNode(variableID);
-                if (tableData.Name == "t" && tableData.HasChildNodes)
-                {
                 doc.WriteTable(rangeName, tableData);
-                }
-                else
-                {
-                  H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExcel", $"No table data found for variable '{variableID}'.");
-                }
               }
               else
               {
-                doc.FillUpValue(rangeName, dm.GetValueString(variableID));
+                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExcel", $"No table data found for variable '{variableID}'.");
               }
             }
+            else
+            {
+              _ = doc.FillUpValue(rangeName, dm.GetValueString(variableID));
+            }
+          }
 
           doc.Save();
 
@@ -501,19 +569,22 @@ namespace SmartBid
         finally
         {
           // 🔒 Ensure Word document and app close cleanly
-          doc.Close(); // Close the document
-          doc.ReleaseComObjectSafely();
+          if (doc != null)
+          {
+            doc.Close(); // Close the document
+            doc.ReleaseComObjectSafely();
+          }
 
           // 🧹 Clean up unmanaged resources
           GC.Collect();
           GC.WaitForPendingFinalizers();
         }
-        H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "GenerateOutputWord", $"Generated output: {templateID} finished\n\n");
+        H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "GenerateOutputWord", $"Generated output: {template.Code} finished\n\n");
 
       }
       else
       {
-        throw new InvalidOperationException($"Unsupported file type: {tool.FileType}");
+        throw new InvalidOperationException($"Unsupported file type: {template.FileType}");
 
       }
     }

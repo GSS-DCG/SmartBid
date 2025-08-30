@@ -17,16 +17,19 @@ namespace SmartBid
     {
       Console.OutputEncoding = System.Text.Encoding.UTF8;
       Console.WriteLine(
-        "                                                                             \r\n" +
-        " ██████\\                                     ██\\     ███████\\  ██\\       ██\\ \r\n" +
-        "██  __██\\                                    ██ |    ██  __██\\ \\__|      ██ |\r\n" +
-        "██ /  \\__|██████\\████\\   ██████\\   ██████\\ ██████\\   ██ |  ██ |██\\  ███████ |\r\n" +
-        "\\██████\\  ██  _██  _██\\  \\____██\\ ██  __██\\\\_██  _|  ███████\\ |██ |██  __██ |\r\n" +
-        " \\____██\\ ██ / ██ / ██ | ███████ |██ |  \\__| ██ |    ██  __██\\ ██ |██ /  ██ |\r\n" +
-        "██\\   ██ |██ | ██ | ██ |██  __██ |██ |       ██ |██\\ ██ |  ██ |██ |██ |  ██ |\r\n" +
-        "\\██████  |██ | ██ | ██ |\\███████ |██ |       \\████  |███████  |██ |\\███████ |\r\n" +
-        " \\______/ \\__| \\__| \\__| \\_______|\\__|        \\____/ \\_______/ \\__| \\_______|\r\n\n\n");
+        @"
 
+     ██████\                                     ██\     ███████\  ██\       ██\ 
+    ██  __██\                                    ██ |    ██  __██\ \__|      ██ |
+    ██ /  \__|██████\████\   ██████\   ██████\ ██████\   ██ |  ██ |██\  ███████ |
+    \██████\  ██  _██  _██\  \____██\ ██  __██\\_██  _|  ███████\ |██ |██  __██ |
+     \____██\ ██ / ██ / ██ | ███████ |██ |  \__| ██ |    ██  __██\ ██ |██ /  ██ |
+    ██\   ██ |██ | ██ | ██ |██  __██ |██ |       ██ |██\ ██ |  ██ |██ |██ |  ██ |
+    \██████  |██ | ██ | ██ |\███████ |██ |       \████  |███████  |██ |\███████ |
+     \______/ \__| \__| \__| \_______|\__|        \____/ \_______/ \__| \_______|
+     
+     
+     ");
       string path = H.GetSProperty("callsPath");
       H.PrintLog(5, "Main", "Main", $"Usando Varmap: {H.GetSProperty("VarMap")}");
 
@@ -258,16 +261,16 @@ namespace SmartBid
       string revisionDateStamp = dm.GetInnerText(@"dm/utils/rev_01/dateTime")[..6];
       string projectFolder = dm.GetInnerText(@"dm/utils/utilsData/opportunityFolder");
 
-      string processedToolsPath = Path.Combine(H.GetSProperty("processPath"), projectFolder, "TOOLS");
-      string processedOutputsPath = Path.Combine(H.GetSProperty("processPath"), projectFolder, "OUTPUT");
-      string oppsToolsPath = Path.Combine(H.GetSProperty("oppsPath"), projectFolder, @$"2.ING\{revisionDateStamp}\TOOLS");
-      string oppsDeliveriesPath = Path.Combine(H.GetSProperty("oppsPath"), projectFolder, @$"2.ING\{revisionDateStamp}");
+      string processedToolsPath = Path.Combine(H.GetSProperty("processPath"), projectFolder, $"rev_{dm.SBidRevision}", "TOOLS");
+      string processedOutputsPath = Path.Combine(H.GetSProperty("processPath"), projectFolder, $"rev_{dm.SBidRevision}", "OUTPUT");
+      string oppsToolsPath = Path.Combine(H.GetSProperty("oppsPath"), projectFolder, @$"2.ING", $"rev_{dm.SBidRevision}","TOOLS");
+      string oppsDeliveriesPath = Path.Combine(H.GetSProperty("oppsPath"), projectFolder, @$"2.ING", $"rev_{dm.SBidRevision}", "OUTPUT");
 
 
       if (H.GetBProperty("returnTools"))
         foreach (string file in Directory.GetFiles(processedToolsPath))
         {
-          _ = Directory.CreateDirectory(oppsToolsPath); // Crea si no existe
+          _ = Directory.CreateDirectory(oppsToolsPath); // Create if it doesn't exists
           File.Copy(file, Path.Combine(oppsToolsPath, Path.GetFileName(file)), overwrite: true);
         }
 

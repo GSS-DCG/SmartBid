@@ -16,6 +16,8 @@ namespace SmartBid
   {
     private string _fileName;
     private Dictionary<string, string[]> _varList;
+    // Add the following field and property to the MirrorXML class to fix CS0246
+
     private Dictionary<string, string> _basicData;
 
     public Dictionary<string, string[]> VarList
@@ -24,22 +26,22 @@ namespace SmartBid
       set => _varList = value;
     }
 
-    public Dictionary<string, string> BasicData
-    {
-      get => _basicData;
-      set => _basicData = value;
-    }
-
     public string FileName
     {
       get => _fileName;
       set => _fileName = value;
     }
 
+    public Dictionary<string, string> BasicData
+    {
+      get => _basicData;
+      set => _basicData = value;
+    }
     public MirrorXML(ToolData tool)
     {
       _varList = [];
       _basicData = [];
+
 
       //tool = Regex.Replace(tool, "_Call\\d+", "");
 
@@ -62,32 +64,39 @@ namespace SmartBid
         return;
       }
 
+
       FileName = tool.FileName;
       string toolPath = Path.Combine(directoryPath, FileName);
-
-      if (!File.Exists(toolPath))
-      {
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "LoadData", $"{toolPath} does not exist.");
-        return;
-      }
-
       string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(toolPath);
-      string fileExtension = Path.GetExtension(toolPath);
       string xmlFile = Path.Combine(directoryPath, fileNameWithoutExtension + ".xml");
-      DateTime fileModified = File.GetLastWriteTime(toolPath);
+      DateTime fileModified = new(2000,01,01,00,00,00); //Set default to a old date so for .exe will always use the XML
       DateTime xmlModified = File.Exists(xmlFile) ? File.GetLastWriteTime(xmlFile) : default;
+
+      //if tool.filetype is docx, xlsx or xlsm, check if the file exists
+      if (tool.FileType == "docx" || tool.FileType == "xlsx" || tool.FileType == "xlsm")
+      {
+        if (File.Exists(toolPath))
+        {
+          fileModified = File.GetLastWriteTime(toolPath);
+        }
+        else
+        {
+          H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "LoadData", $"{toolPath} does not exist.");
+          return;
+        }
+      }
 
       if (fileModified > xmlModified)
       {
         VariablesMap varMap = VariablesMap.Instance;
 
-        if (fileExtension.Equals(".docx", StringComparison.CurrentCultureIgnoreCase))
+        if (tool.FileType.Equals("docx", StringComparison.CurrentCultureIgnoreCase))
         {
           BasicData = ExtractGSSDataFromDocx(toolPath);
           VarList = ExtractVariablesFromDocx(toolPath);
         }
 
-        else if (fileExtension.ToLower().StartsWith(".xls"))
+        else if (tool.FileType.ToLower().StartsWith("xls"))
         {
           BasicData = ExtractGSSDataFromXlsx(toolPath);
           VarList = ExtractVariablesFromXlsx(toolPath);
@@ -102,7 +111,7 @@ namespace SmartBid
             if (varMap.GetNewVariableData(id) != null)
             {
               VarList[variable] = [
-                varMap.GetNewVariableData(id).Source, 
+                varMap.GetNewVariableData(id)!.Source, 
                 VarList[variable][1], 
                 VarList[variable][2], 
                 VarList[variable][3]
@@ -117,7 +126,16 @@ namespace SmartBid
       if (File.Exists(xmlFile))
       {
         XElement root = XElement.Load(xmlFile);
+
+        //reading basicData from GSS_DATA attributes
         root.Attributes().ToList().ForEach(attr => _basicData[attr.Name.LocalName] = attr.Value);
+
+        //reading special attribute FileName for .exe Tools
+        //if fileName attribute exists set FileName value 
+        if (root.Attribute("fileName") != null)
+        {
+          FileName = root.Attribute("fileName")!.Value;
+        }
 
         foreach (var variable in root.Elements("variable"))
         {

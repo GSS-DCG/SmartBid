@@ -95,7 +95,6 @@ namespace SmartBid
       return; // Only save if log level is sufficient
     }
 
-
     public static void PrintLog(int level = 2, string user = "", string eventLog = "info", string message = "")
     {
       if (GetNProperty("printLevel") <= level)
@@ -114,6 +113,38 @@ namespace SmartBid
       element.InnerText = value;
       return element;
     }
+
+    public static void MergeXmlNodes(XmlDocument sourceDoc, XmlDocument targetDoc, string sourcePath, string targetPath)
+    {
+      XmlNode sourceParent = sourceDoc.SelectSingleNode(sourcePath);
+      XmlNode targetParent = targetDoc.SelectSingleNode(targetPath);
+
+      if (sourceParent == null || targetParent == null)
+        return;
+
+      foreach (XmlNode sourceChild in sourceParent.ChildNodes)
+      {
+        // Buscar nodo con el mismo nombre en el destino
+        XmlNode targetChild = targetParent.SelectSingleNode(sourceChild.Name);
+
+        if (targetChild == null)
+        {
+          // Si no existe, importar y añadir el nodo completo
+          XmlNode imported = targetDoc.ImportNode(sourceChild, true);
+          targetParent.AppendChild(imported);
+        }
+        else
+        {
+          // Si existe, añadir los hijos del nodo fuente al nodo destino
+          foreach (XmlNode subNode in sourceChild.ChildNodes)
+          {
+            XmlNode importedSubNode = targetDoc.ImportNode(subNode, true);
+            targetChild.AppendChild(importedSubNode);
+          }
+        }
+      }
+    }
+
 
     public static bool MailTo(List<string> email, string subject, string text)
     {

@@ -1,18 +1,39 @@
 ﻿using System.Data;
+using System.Diagnostics;
+using System.Text;
 using System.Xml;
 using ExcelDataReader;
+using Microsoft.Office.Interop.Outlook;
+using Exception = System.Exception;
 using File = System.IO.File;
 
 namespace SmartBid
 {
-  public record ToolData(string Resource, string Code, int Call, string Name, string FileType, string Version, string Lenguage, string Description, string FileName)
+  public class ToolData
   {
-    // Constructor to initialize all properties
-    public ToolData(string resource, string code, int call, string name, string version, string language, string filetype, string description) : this(resource, code, call, name, filetype, version, language, description, $"{name}.{filetype}")
+    public string Resource { get; }
+    public string Code { get; }
+    public int Call { get; }
+    public string Name { get; }
+    public string FileType { get; }
+    public string Version { get; }
+    public string Lenguage { get; }
+    public string Description { get; }
+    public string FileName { get; }
+
+    public ToolData(string resource, string code, int call, string name, string filetype, string version, string language, string description)
     {
+      Resource = resource;
+      Code = code;
+      Call = call;
+      Name = name;
+      FileType = filetype.ToLowerInvariant(); // aquí se normaliza
+      Version = version;
+      Lenguage = language;
+      Description = description;
+      FileName = $"{name}.{FileType}"; // usa el valor ya normalizado
     }
 
-    // Methods
     public XmlDocument ToXMLDocument()
     {
       XmlDocument doc = new();
@@ -23,22 +44,20 @@ namespace SmartBid
     public XmlElement ToXML(XmlDocument mainDoc)
     {
       XmlElement toolElement = mainDoc.CreateElement("tool");
-      toolElement.SetAttribute("resource", Resource);
-      toolElement.SetAttribute("code", Code);
-      toolElement.SetAttribute("call", Call.ToString());
-      toolElement.SetAttribute("name", Name);
-      toolElement.SetAttribute("fileType", FileType);
-      toolElement.SetAttribute("version", Version);
-      toolElement.SetAttribute("language", Lenguage);
-      toolElement.SetAttribute("description", Description);
       toolElement.SetAttribute("fileName", FileName);
+      toolElement.SetAttribute("description", Description);
+      toolElement.SetAttribute("language", Lenguage);
+      toolElement.SetAttribute("version", Version);
+      toolElement.SetAttribute("fileType", FileType);
+      toolElement.SetAttribute("name", Name);
+      toolElement.SetAttribute("call", Call.ToString());
+      toolElement.SetAttribute("code", Code);
+      toolElement.SetAttribute("resource", Resource);
 
       return toolElement;
     }
-
   }
-
-  public class ToolsMap
+    public class ToolsMap
   {
     // Private static instance
     private static ToolsMap? _instance;
@@ -107,9 +126,9 @@ namespace SmartBid
             node.Attributes["code"]!.InnerText ?? string.Empty,
             int.TryParse(node.Attributes["call"]!.InnerText, out int callValue) ? callValue : 1, // Call
             node.Attributes["name"]!.InnerText ?? string.Empty,
+            node.Attributes["fileType"]!.InnerText ?? string.Empty,
             node.Attributes["version"]!.InnerText ?? string.Empty,
             node.Attributes["language"]!.InnerText ?? string.Empty,
-            node.Attributes["fileType"]!.InnerText ?? string.Empty,
             node.Attributes["description"]!.InnerText ?? string.Empty
         );
 
@@ -188,9 +207,9 @@ namespace SmartBid
             row["CODE"]?.ToString() ?? string.Empty,
             int.TryParse(row["CALL"]?.ToString(), out int callValue) ? callValue : 1,
             row["name"]?.ToString() ?? string.Empty,
+            row["FILE TYPE"]?.ToString() ?? string.Empty,
             int.TryParse(row["VERSION"]?.ToString(), out int value) ? value.ToString("D3") : "000",
             row["LANGUAGE"]?.ToString() ?? string.Empty,
-            row["FILE TYPE"]?.ToString() ?? string.Empty,
             row["DESCRIPTION"]?.ToString() ?? string.Empty
         );
 
@@ -240,6 +259,7 @@ namespace SmartBid
       else
       {
         var tool = filteredTools.FirstOrDefault(tool => int.TryParse(tool.Version, out int ver) && ver == version);
+
         if (tool == null)
         {
           throw new KeyNotFoundException($"No tool found with code '{code}', language '{language}', and version '{version}'.");
@@ -253,42 +273,52 @@ namespace SmartBid
       return Tools.Where(tool => tool.Resource.Equals(resource, StringComparison.OrdinalIgnoreCase)).ToList();
     }
 
-    public XmlDocument CalculateExcel(ToolData tool, DataMaster dm)
+    public XmlDocument Calculate(ToolData tool, DataMaster dm)
     {
-      // 2. Check if the file type is Excel or otherwise
-      if (!(tool.FileType.Equals("xlsx", StringComparison.OrdinalIgnoreCase) || tool.FileType.Equals("xlsm", StringComparison.OrdinalIgnoreCase)))
-        throw new InvalidOperationException("The file is not an Excel type (.xlsx or .xlsm)");
+      if (tool.FileType.Equals("xlsx", StringComparison.OrdinalIgnoreCase) ||
+          tool.FileType.Equals("xlsm", StringComparison.OrdinalIgnoreCase))
+      {
+        return CalculateExcel(tool, dm);
+      }
+      else if (tool.FileType.Equals("exe", StringComparison.OrdinalIgnoreCase))
+      {
+        return CalculateExe(tool, dm);
+      }
+      else
+      {
+        throw new InvalidOperationException($"The file: {tool.FileName}.{tool.FileType} is not a supported type (.xlsx, .xlsm, or .exe)");
+      }
+    }
 
-      // 3. Retrieve theMirrorXML instance of the template
+    private XmlDocument CalculateExcel(ToolData tool, DataMaster dm)
+    {
       MirrorXML mirror = new(tool);
       var variableMap = mirror.VarList;
 
-      // 4. Find the original file
-      string filePath = Path.Combine(
+      string originalToolPath = Path.Combine(
           tool.Resource == "TOOL" ? H.GetSProperty("ToolsPath") : H.GetSProperty("TemplatesPath"),
           tool.FileName
       );
 
-      // 5. Create a copy of the file to work with
-      string newFilePath = Path.Combine(
+      string toolPath = Path.Combine(
           H.GetSProperty("processPath"),
-          dm.GetInnerText(@"dm/utils/utilsData/opportunityFolder"),
+          dm.GetInnerText($@"dm/utils/utilsData/opportunityFolder"),
+          $@"rev_{dm.SBidRevision}",
           "TOOLS",
           tool.FileName
       );
 
-      // Make sure the directory exists and copying the file
-      _ = Directory.CreateDirectory(Path.GetDirectoryName(newFilePath)!);
-      File.Copy(filePath, newFilePath, true);
+      _ = Directory.CreateDirectory(Path.GetDirectoryName(toolPath)!);
+      File.Copy(originalToolPath, toolPath, true);
 
-      // 6. Abrir el archivo en Excel Interop
       H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExcel", $"Calculating tool {tool.Code}");
 
       SB_Excel? workbook = null;
+      XmlDocument results = new(); // Declarado fuera del try para asegurar retorno
 
       try
       {
-        workbook = new SB_Excel(newFilePath);
+        workbook = new SB_Excel(toolPath);
 
         // Escribir valores en las celdas
         foreach (var entry in variableMap)
@@ -323,17 +353,13 @@ namespace SmartBid
           }
         }
 
-
         workbook.Calculate();
 
-        // Read output variables
-        XmlDocument results = new();
-        XmlElement root = results.CreateElement("root");
-        _ = results.AppendChild(root);
+        XmlElement answer = results.CreateElement("answer");
+        _ = results.AppendChild(answer);
         XmlElement varNode = results.CreateElement("variables");
-        _ = root.AppendChild(varNode);
+        _ = answer.AppendChild(varNode);
 
-        // Obtener la fecha y hora actual en formato dd-HH:mm
         string timestamp = DateTime.Now.ToString("dd-HH:mm");
 
         foreach (var entry in variableMap)
@@ -341,7 +367,6 @@ namespace SmartBid
           string variableID = entry.Key;
           string direction = entry.Value[1];
 
-          // find all out variables from the actual level
           if (mirror.GetVarCallLevel(variableID) == tool.Call && direction == "out")
           {
             XmlElement varElement = results.CreateElement(variableID);
@@ -379,17 +404,15 @@ namespace SmartBid
                 }
                 else
                 {
-                  //por el momento no tenemos valores por defecto para tabla
                   value.InnerText = "No data found in table.";
                 }
               }
+
               if (!setValue)
               {
                 value.InnerText = _variablesMap.GetVariableData(variableID).Default ?? string.Empty;
-                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExcel", $"❌ Named range '{rangeName}' is empty or not found in the workbook '{newFilePath}'. Default value used");
+                H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExcel", $"❌ Named range '{rangeName}' is empty or not found in the workbook '{toolPath}'. Default value used");
               }
-
-
             }
             catch (Exception ex)
             {
@@ -399,21 +422,177 @@ namespace SmartBid
             _ = varNode.AppendChild(varElement);
           }
         }
+
         H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExcel", $"Values returned from {tool.Code} calculation");
         H.PrintXML(2, results);
-        workbook.Close(); // No need to save changes, 
-        return results;
       }
       finally
       {
-        workbook.Close(); // Close the workbook
-        workbook.ReleaseComObjectSafely();
-
-        // 🧹 Clean up unmanaged resources
+        workbook?.Close();
         GC.Collect();
         GC.WaitForPendingFinalizers();
       }
 
+      // Adding informtion for Utils
+      // Check whether <utils> exists in results and append the <utils> node if it doesn't
+      XmlElement utilsNode = (XmlElement)results.SelectSingleNode("//root/utils");
+      if (utilsNode == null)
+      {
+        utilsNode = results.CreateElement("utils");
+        results.DocumentElement.AppendChild(utilsNode);
+      }
+
+      // Check whether <tools> exists in <utils>  and append the <tools> node if it doesn't
+      XmlElement toolsNode = (XmlElement)utilsNode.SelectSingleNode("tools");
+      if (toolsNode == null)
+      {
+        toolsNode = results.CreateElement("tools");
+        utilsNode.AppendChild(toolsNode);
+      }
+
+      XmlElement toolNode = tool.ToXML(results);
+      string newNodeName = toolNode.GetAttribute("code");
+
+      XmlElement newToolNode = results.CreateElement(newNodeName);
+      foreach (XmlAttribute attr in toolNode.Attributes)
+      {
+        if (attr.Name != "code")
+        {
+          if (attr.Name != "fileName")
+            newToolNode.SetAttribute(attr.Name, attr.Value);
+          else
+            newToolNode.SetAttribute(attr.Name, toolPath);
+        }
+      }
+      toolsNode.AppendChild(newToolNode);
+
+
+
+
+      return results;
+    }
+
+    private XmlDocument CalculateExe(ToolData tool, DataMaster dm)
+    {
+      //Executes a tool of the tipe .Exe, first creates and xml to send as input and then reads the output xml
+      //from the stdout of the process. the exact location of the file is read from the mirrorXML of the tool. 
+      //originalToolPath is coming as an argument from the answer of the tool
+
+      MirrorXML mirror = new(tool);
+      var variableMap = mirror.VarList;
+
+      string? filePath = mirror.FileName; // reading originalToolPath from mirror
+      if (string.IsNullOrEmpty(filePath))
+      {
+        throw new InvalidOperationException($"The tool {tool.Code} does not have a valid file path in the mirror.\n check that Tool mirror xml file has the argument 'fileName' pointing to te executable file of the tool");
+      }
+
+      //Generate the CallXML to send as input to the tool
+      XmlDocument callXml = new();
+      XmlDeclaration xmlDeclaration = callXml.CreateXmlDeclaration("1.0", "UTF-8", null);
+      _ = callXml.AppendChild(xmlDeclaration);
+
+      XmlElement callNode = callXml.CreateElement("call");
+      callXml.AppendChild(callNode);
+
+      XmlElement variablesNode = callXml.CreateElement("variables");
+      callNode.AppendChild(variablesNode);
+
+      foreach (var entry in variableMap)
+      {
+        string variableID = entry.Key;
+        string direction = entry.Value[1];
+
+        if (direction == "in" && mirror.GetVarCallLevel(variableID) == tool.Call)
+        {
+          XmlElement varElement = callXml.CreateElement(variableID);
+          varElement.InnerText = dm.GetValueString(variableID);
+          variablesNode.AppendChild(varElement);
+        }
+      }
+
+
+      string xmlVarList = callXml.OuterXml;
+
+      H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "Calculate", $"\n");
+      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "Calculate", $"- CALLING TOOL: {filePath} ------------------");
+      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "Calculate", "- ARGUMENTO PASADO A TOOL:");
+      H.PrintXML(2, callXml);
+
+      ProcessStartInfo psi = new()
+      {
+        FileName = filePath,
+        RedirectStandardInput = true,
+        RedirectStandardOutput = true,
+        RedirectStandardError = true,
+        UseShellExecute = false,
+        CreateNoWindow = true,
+        StandardInputEncoding = Encoding.UTF8
+      };
+
+      string output;
+      string error;
+
+      using (Process process = new() { StartInfo = psi })
+      {
+        _ = process.Start();
+
+        using (StreamWriter writer = process.StandardInput)
+        {
+          writer.Write(xmlVarList);
+          writer.Flush();
+          writer.Close();
+        }
+
+        output = process.StandardOutput.ReadToEnd();
+        error = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+      }
+
+      XmlDocument results = new();
+      results.LoadXml(output);
+
+      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "Calculate", $"Return from tool");
+      H.PrintXML(2, results);
+
+      if (!string.IsNullOrWhiteSpace(error))
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "Calculate", $"❌Error❌:\n{error}");
+
+      H.PrintLog(0, ThreadContext.CurrentThreadInfo.Value!.User, "Calculate", "-----------------------------------");
+
+      // Adding information for Utils
+      // Check whether <utils> exists in results and append the <utils> node if it doesn't
+      XmlElement utilsNode = (XmlElement)results.SelectSingleNode("//answer/utils");
+      if (utilsNode == null)
+      {
+        utilsNode = results.CreateElement("utils");
+        results.DocumentElement.AppendChild(utilsNode);
+      }
+
+      // Check whether <tools> exists in <utils>  and append the <tools> node if it doesn't
+      XmlElement toolsNode = (XmlElement)utilsNode.SelectSingleNode("tools");
+      if (toolsNode == null)
+      {
+        toolsNode = results.CreateElement("tools");
+        utilsNode.AppendChild(toolsNode);
+      }
+
+      XmlElement toolNode = tool.ToXML(results);
+      string newNodeName = toolNode.GetAttribute("code");
+
+      XmlElement newToolNode = results.CreateElement(newNodeName);
+      foreach (XmlAttribute attr in toolNode.Attributes)
+      {
+        if (attr.Name != "code")
+          if (attr.Name != "fileName")
+            newToolNode.SetAttribute(attr.Name, filePath);
+          else
+            newToolNode.SetAttribute(attr.Name, attr.Value);
+      }
+      toolsNode.AppendChild(newToolNode);
+
+
+      return results;
     }
 
     public void GenerateOuput(ToolData template, DataMaster dm)
@@ -426,10 +605,19 @@ namespace SmartBid
       var variableMap = mirror.VarList;
 
       // 5. Build the full path to the file
-      string templatePath = Path.Combine(template.Resource == "TEMPLATE" ? H.GetSProperty("TemplatesPath") : H.GetSProperty("ToolsPath"), template.FileName);
+      string templatePath = Path.Combine(
+        template.Resource == "TEMPLATE" ? H.GetSProperty("TemplatesPath") : H.GetSProperty("ToolsPath"), 
+        template.FileName
+        );
 
       // 6. Crear copia del archivo para trabajar
-      string filePath = Path.Combine(H.GetSProperty("processPath"), dm.GetValueString("opportunityFolder"), "OUTPUT", template.FileName);
+      string filePath = Path.Combine(
+        H.GetSProperty("processPath"), 
+        dm.GetValueString("opportunityFolder"),
+        $"rev_{dm.SBidRevision}",
+        "OUTPUT", 
+        template.FileName
+        );
 
       // 7. Ensure the output directory exists and copy the template file if it doesn't exist
       if (!File.Exists(filePath))
@@ -505,7 +693,6 @@ namespace SmartBid
           if (doc != null)
           {
             doc.Close(); // Close the document
-            doc.ReleaseComObjectSafely(); 
           }
 
           // 🧹 Clean up unmanaged resources
@@ -572,7 +759,6 @@ namespace SmartBid
           if (doc != null)
           {
             doc.Close(); // Close the document
-            doc.ReleaseComObjectSafely();
           }
 
           // 🧹 Clean up unmanaged resources

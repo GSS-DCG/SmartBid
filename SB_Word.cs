@@ -138,42 +138,6 @@ namespace SmartBid
 
     }
 
-    public void Save()
-    {
-      doc.Save();
-    }
-
-    public void Close(bool saveDoc = true)
-    {
-      if (doc != null)
-      {
-        doc.Close(SaveChanges: saveDoc);
-        _ = Marshal.ReleaseComObject(doc);
-        doc = null;
-      }
-      if (wordApp != null)
-      {
-        wordApp.Quit();
-        _ = Marshal.ReleaseComObject(wordApp);
-        wordApp = null;
-      }
-    }
-
-    public void ReleaseComObjectSafely()
-    {
-      if (wordApp != null && Marshal.IsComObject(wordApp))
-      {
-        try
-        {
-          _ = Marshal.ReleaseComObject(wordApp);
-        }
-        catch (Exception ex)
-        {
-          Console.WriteLine($"❌❌ Error ❌❌  liberando objeto COM: {ex.Message}");
-        }
-      }
-    }
-
     public bool SaveAsPDF(string? filePath = null)
     {
       try
@@ -205,6 +169,26 @@ namespace SmartBid
 
     }
 
+    public void Save()
+    {
+      doc.Save();
+    }
+
+    public void Close(bool saveDoc = true)
+    {
+      if (doc != null)
+      {
+        doc.Close(SaveChanges: saveDoc);
+        _ = Marshal.ReleaseComObject(doc);
+        doc = null;
+      }
+      if (wordApp != null && Marshal.IsComObject(wordApp))
+      {
+        wordApp.Quit();
+        _ = Marshal.ReleaseComObject(wordApp);
+        wordApp = null;
+      }
+    }
 
     #region Gestionar proceso Word
     /// <summary>

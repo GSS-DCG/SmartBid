@@ -37,29 +37,34 @@ namespace SmartBid
       dm.SaveDataMaster(); //Save the DataMaster after preparation
 
       //Generate files structure and move input files
-      //Call each tool in the list of _targets and update the DataMaster with the results
+      //Call each toolD in the list of _targets and update the DataMaster with the results
 
       H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "RunCalculations", $"rute: {string.Join(" > ", _calcRoute)}");
 
 
       //CALCULATE
-      foreach (var target in _calcRoute)
+      foreach (ToolData tool in _calcRoute)
       {
-        if (tm.Tools.Exists(tool => tool.Code == target.Code))
+        if (tm.Tools.Exists(tool => tool.Code == tool.Code))
         {
-          ToolData toolData = tm.Tools.First(tool => tool.Code == target.Code);
-          if (toolData.Resource == "TOOL")
+          if (tool.Resource == "TOOL")
           {
-            H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "RunCalculations", $"Calling Tool: {toolData.Code} - {toolData.Description}");
+            H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "RunCalculations", $"Calling Tool: {tool.Code} - {tool.Description}");
+
 
             //Call calculation
-            dm.UpdateData(tm.CalculateExcel(target, dm)); //Update the DataMaster with the results from the tool
+            XmlDocument CalcResults = tm.Calculate(tool, dm);
+
+            //Update the DataMaster with the results from the toolD
+            dm.UpdateData(CalcResults);
+
+            //Save the DataMaster after each calculation
             dm.SaveDataMaster(); //Save the DataMaster after each calculation
           }
         }
         else
         {
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, $"❌❌ Error ❌❌  - RunCalculations", $"Tool {target} not found in ToolsMap.");
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, $"❌❌ Error ❌❌  - RunCalculations", $"Tool {tool} not found in ToolsMap.");
         }
       }
 
@@ -141,7 +146,7 @@ namespace SmartBid
     {
       List<string> sourcesSearched =
       [
-        .. new[] { "INIT", "AUTO", "PREP" },//Adding souces that does not need to be searched
+        .. new[] { "INIT", "AUTO", "PREP", "UTILS" },//Adding souces that does not need to be searched
       ];
 
       List<VariableData> prepVarList = [];
@@ -243,10 +248,13 @@ namespace SmartBid
             variableData.Deep = deep;
             variableList.Add(variableData);
 
-            // 🔄 Convert Source to ToolData
-            ToolData? sourceTool = tm.getToolDataByCode(variableData.Source);
-            if (sourceTool != null)
+            // 🔄 Convert Source to ToolData when source is not in excluded list
+            if (!sourcesExcluded.Contains(variableData.Source))
+            {
+              ToolData sourceTool = tm.getToolDataByCode(variableData.Source);
               newSources.Add(sourceTool);
+            }
+
           }
         }
       }

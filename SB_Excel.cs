@@ -1,7 +1,9 @@
 ﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Xml;
 using Org.BouncyCastle.Asn1.BC;
+using SmartBid;
 using Excel = Microsoft.Office.Interop.Excel;
 
 namespace SmartBid
@@ -227,21 +229,6 @@ namespace SmartBid
       }
     }
 
-    public void ReleaseComObjectSafely()
-    {
-      if (workbook != null && Marshal.IsComObject(workbook))
-      {
-        try
-        {
-          _ = Marshal.ReleaseComObject(workbook);
-        }
-        catch (Exception ex)
-        {
-          H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Excel.ReleaseComObjectSafely", $"❌❌ Error ❌❌ :  liberando objeto COM: {ex.Message}");
-        }
-      }
-    }
-
     public void Save()
     {
       try
@@ -377,3 +364,6 @@ namespace SmartBid
 
   }
 }
+
+
+

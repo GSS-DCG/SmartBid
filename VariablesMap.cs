@@ -238,7 +238,7 @@ namespace SmartBid
     public XmlDocument ToXml(List<string>? varList = null)
     {
       XmlDocument doc = new();
-      XmlElement root = doc.CreateElement("root");
+      XmlElement root = doc.CreateElement("answer");
       _ = doc.AppendChild(root);
       foreach (var variable in Variables)
       {

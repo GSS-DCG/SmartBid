@@ -584,10 +584,12 @@ namespace SmartBid
       foreach (XmlAttribute attr in toolNode.Attributes)
       {
         if (attr.Name != "code")
-          if (attr.Name != "fileName")
+        {
+          if (attr.Name == "fileName")
             newToolNode.SetAttribute(attr.Name, filePath);
           else
             newToolNode.SetAttribute(attr.Name, attr.Value);
+        }
       }
       toolsNode.AppendChild(newToolNode);
 

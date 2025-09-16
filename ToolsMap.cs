@@ -3,7 +3,10 @@ using System.Diagnostics;
 using System.Text;
 using System.Xml;
 using ExcelDataReader;
+using Microsoft.Office.Interop.Excel;
 using Microsoft.Office.Interop.Outlook;
+using Mysqlx.Prepare;
+using OfficeOpenXml.Utils;
 using Exception = System.Exception;
 using File = System.IO.File;
 
@@ -474,17 +477,29 @@ namespace SmartBid
 
     private XmlDocument CalculateExe(ToolData tool, DataMaster dm)
     {
-      //Executes a tool of the tipe .Exe, first creates and xml to send as input and then reads the output xml
+      //Executes type .exe tools, first creates and xml to send as input call and then reads the output xml
       //from the stdout of the process. the exact location of the file is read from the mirrorXML of the tool. 
       //originalToolPath is coming as an argument from the answer of the tool
 
       MirrorXML mirror = new(tool);
-      var variableMap = mirror.VarList;
+      var variableList = mirror.VarList;
 
-      string? filePath = mirror.FileName; // reading originalToolPath from mirror
-      if (string.IsNullOrEmpty(filePath))
+      string? filePath = mirror.FileName;
+      string? arguments = "";
+
+
+      if (File.Exists(filePath)) { 
+        if (Path.GetExtension(filePath) == ".py")
+        {
+          arguments = $"\"{filePath}\" 00"; // any argument should be sent to the call to indicate that the input is coming from stdin
+          filePath = @"C:\Users\martin.molina\AppData\Local\Programs\Python\Python313\python.exe";
+        }
+      }
+      else
       {
-        throw new InvalidOperationException($"The tool {tool.Code} does not have a valid file path in the mirror.\n check that Tool mirror xml file has the argument 'fileName' pointing to te executable file of the tool");
+        throw new InvalidOperationException($"The tool {tool.Code} does not have a valid file path in the mirror.\n" +
+          $"check that Tool mirror xml file has the argument 'fileName' pointing to the correct executable file of the tool" +
+          $"file {filePath} Not Found");
       }
 
       //Generate the CallXML to send as input to the tool
@@ -495,10 +510,12 @@ namespace SmartBid
       XmlElement callNode = callXml.CreateElement("call");
       callXml.AppendChild(callNode);
 
-      XmlElement variablesNode = callXml.CreateElement("variables");
-      callNode.AppendChild(variablesNode);
+      XmlElement variablesIn = callXml.CreateElement("variables");
+      callNode.AppendChild(variablesIn);
+      XmlElement variablesOut= callXml.CreateElement("out");
+      callNode.AppendChild(variablesOut);
 
-      foreach (var entry in variableMap)
+      foreach (var entry in variableList)
       {
         string variableID = entry.Key;
         string direction = entry.Value[1];
@@ -506,22 +523,29 @@ namespace SmartBid
         if (direction == "in" && mirror.GetVarCallLevel(variableID) == tool.Call)
         {
           XmlElement varElement = callXml.CreateElement(variableID);
+          varElement.SetAttribute("unit", dm.GetValueUnit(variableID));
           varElement.InnerText = dm.GetValueString(variableID);
-          variablesNode.AppendChild(varElement);
+          variablesIn.AppendChild(varElement);
+        }
+        else if (direction == "out" && mirror.GetVarCallLevel(variableID) == tool.Call)
+        {
+          XmlElement varElement = _variablesMap.GetVariableData(variableID).ToXML(callXml);
+          variablesOut.AppendChild(varElement);
         }
       }
 
-
       string xmlVarList = callXml.OuterXml;
 
-      H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "Calculate", $"\n");
-      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "Calculate", $"- CALLING TOOL: {filePath} ------------------");
-      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "Calculate", "- ARGUMENTO PASADO A TOOL:");
+      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExe", $"--- Calling Tool: {Path.GetFileName(filePath)} {arguments}");
+      H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExe", $"--- Calling Tool: {filePath} {arguments}");
+      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExe", "--- call message:");
       H.PrintXML(2, callXml);
+
 
       ProcessStartInfo psi = new()
       {
         FileName = filePath,
+        Arguments = arguments,
         RedirectStandardInput = true,
         RedirectStandardOutput = true,
         RedirectStandardError = true,
@@ -552,7 +576,7 @@ namespace SmartBid
       XmlDocument results = new();
       results.LoadXml(output);
 
-      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "Calculate", $"Return from tool");
+      H.PrintLog(3, ThreadContext.CurrentThreadInfo.Value!.User, "Calculate", $"Return from tool");
       H.PrintXML(2, results);
 
       if (!string.IsNullOrWhiteSpace(error))

@@ -215,7 +215,7 @@ namespace SmartBid
     public void SaveDataMaster()
     {
       _dm.Save(FileName);
-      H.PrintLog(4, User, "DM", $"XML guardado en {FileName}");
+      H.PrintLog(3, User, "DM", $"XML guardado en {FileName}");
     }
     public string GetValueString(string key)
     {
@@ -301,6 +301,17 @@ namespace SmartBid
         throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
       }
     }
+    public string GetValueUnit(string key)
+    {
+      if (_data.TryGetValue(key, out VariableData? value))
+      {
+        return value!.Unit;
+      }else {
+        return string.Empty; // return empty string if the key exists in VariablesMap but has not been set in DataMaster
+      }
+      H.PrintLog(5, User, $"❌❌ Error ❌❌ - DM.GetValueUnit ", $"Key '{key}' not found in DataMaster.");
+      throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
+    }
     public VariableData GetVariableData(string key)
     {
       if (_data.TryGetValue(key, out VariableData? value))
@@ -327,7 +338,7 @@ namespace SmartBid
     }
     private void StoreValue(string id, string value)
     {
-      H.PrintLog(1, User, "StoreValue", $"variable ||{id}|| added to DataMaster data");
+      H.PrintLog(1, User, "StoreValue", $"variable ||{id}: {value}|| added to DataMaster data");
       VariableData varData = _vm.GetVariableData(id);
       varData.Value = value;
       _data.Add(id, varData);

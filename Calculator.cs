@@ -49,7 +49,8 @@ namespace SmartBid
         {
           if (tool.Resource == "TOOL")
           {
-            H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "RunCalculations", $"Calling Tool: {tool.Code} - {tool.Description}");
+            H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "RunCalculations", $"Calling Tool: {tool.Code}");
+            H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "RunCalculations", $"Calling Tool: -- {tool.Description}");
 
 
             //Call calculation
@@ -73,7 +74,7 @@ namespace SmartBid
       {
         if (target.Resource == "TEMPLATE")
         {
-          H.PrintLog(3, ThreadContext.CurrentThreadInfo.Value!.User, "RunCalculations", $"Populating Template: {target.Code} - {target.Description}");
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "RunCalculations", $"Populating Template: {target.Code} - {target.Description}");
 
           tm.GenerateOuput(target, dm);
 
@@ -85,7 +86,7 @@ namespace SmartBid
       _ = DBtools.InsertNewProjectWithBid(dm);
 
     }
-    private XmlDocument CallPrepTool(string xmlVarList)
+    private XmlDocument _CallPrepTool(string xmlVarList)
     {
       XmlDocument prepCall = new();
       prepCall.LoadXml(xmlVarList); // Load the XML string into the XmlDocument 
@@ -96,7 +97,7 @@ namespace SmartBid
       H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", "- ARGUMENTO PASADO A PREPTOOL:");
       H.PrintXML(2, prepCall); // Print the XML for debugging
       H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"\n\n\n\n");
-      H.SaveXML(1, prepCall, Path.Combine(H.GetSProperty("processPath"),dm.GetValueString("opportunityFolder"),  "prepCall.xml")); // Save the XML to a file for debugging
+      H.SaveXML(1, prepCall, Path.Combine(H.GetSProperty("processPath"), dm.GetValueString("opportunityFolder"), "prepCall.xml")); // Save the XML to a file for debugging
 
 
 
@@ -129,15 +130,50 @@ namespace SmartBid
         process.WaitForExit();
       }
 
+      if (error != "") H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"❌Error❌:\n{error}");
+
       XmlDocument xmlPrepAnswer = new();
 
-      xmlPrepAnswer.LoadXml(output); // Load the XML content
 
+      try
+      {
+        xmlPrepAnswer.LoadXml(output); // Load the XML content
+
+      }
+      catch (Exception)
+      {
+        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"❌Error❌ in PrepAnswer:\n");
+        throw new Exception($"Error loading XML from Preparation Tool output: {output}");
+      }
       H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"Return from Preparation");
       H.PrintXML(2, xmlPrepAnswer);
       H.SaveXML(1, xmlPrepAnswer, Path.Combine(H.GetSProperty("processPath"), dm.GetValueString("opportunityFolder"), "PrepAnswer.xml")); // Save the XML to a file for debugging
 
       if (error != "") H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"❌Error❌:\n{error}");
+      H.PrintLog(0, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", "-----------------------------------");
+
+      return xmlPrepAnswer;
+    }
+    private XmlDocument CallPrepTool(string xmlVarList)
+    {
+      XmlDocument prepCall = new();
+      prepCall.LoadXml(xmlVarList); // Load the XML string into the XmlDocument 
+
+      H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"\n");
+      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"- CALLING PREPARATION:  ------------------");
+      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", "- ARGUMENTO PASADO A PREPTOOL:");
+      H.PrintXML(2, prepCall); // Print the XML for debugging
+      H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"\n\n\n\n");
+      H.SaveXML(1, prepCall, Path.Combine(H.GetSProperty("processPath"), dm.GetValueString("opportunityFolder"), "prepCall.xml")); // Save the XML to a file for debugging
+
+
+      XmlDocument xmlPrepAnswer = PREP.Run(prepCall);
+
+
+      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"Return from Preparation");
+      H.PrintXML(2, xmlPrepAnswer);
+      H.SaveXML(1, xmlPrepAnswer, Path.Combine(H.GetSProperty("processPath"), dm.GetValueString("opportunityFolder"), "PrepAnswer.xml")); // Save the XML to a file for debugging
+
       H.PrintLog(0, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", "-----------------------------------");
 
       return xmlPrepAnswer;
@@ -151,7 +187,11 @@ namespace SmartBid
 
       List<VariableData> prepVarList = [];
       List<List<ToolData>> calcTools = []; //List to keep track of the calculation tools used in the recursion
-      XmlDocument prepCallXML;
+      XmlDocument prepCallXML = new();
+      XmlDeclaration xmlDeclaration = prepCallXML.CreateXmlDeclaration("1.0", "UTF-8", null);
+      prepCallXML.AppendChild(xmlDeclaration);
+      XmlElement root = prepCallXML.CreateElement("call");
+      prepCallXML.AppendChild(root);
 
       prepVarList.AddRange(Get_PREP_Variables(targets, sourcesSearched, 0, calcTools));
 
@@ -175,8 +215,8 @@ namespace SmartBid
 
       List<string> prepVarIDList = prepVarList.Select(variable => variable.ID).ToList(); //Getting the list of IDs for the preparation variables  
 
-      prepCallXML = VariablesMap.Instance.ToXml(prepVarIDList);
-
+      XmlElement variablesXml = VariablesMap.Instance.ToXml(prepCallXML, prepVarIDList);
+      _ = root.AppendChild(variablesXml); //Adding the variables element to the XML
 
       XmlNode inputDocsNode = H.CreateElement(prepCallXML, "inputDocs", ""); //Adding the call element to the XML   
       _ = prepCallXML.DocumentElement.AppendChild(inputDocsNode); //Adding the call element to the XML
@@ -206,7 +246,6 @@ namespace SmartBid
       prepCallXML.Save(Path.Combine(Path.GetDirectoryName(H.GetSProperty("ToolsPath")), "preparationCall.xml"));
       return prepCallXML; //Returning all variables to be read at Preparation in XML format
     }
-
     private static List<VariableData> Get_PREP_Variables(List<ToolData> targets, List<string> sourcesExcluded, int deep, List<List<ToolData>> calcTools)
     {
       deep++; // Registering the depth of the recursion
@@ -277,7 +316,6 @@ namespace SmartBid
 
       return variableList;
     }
-
     public static List<ToolData> GetDeliveryDocs(XmlDocument xmlDoc, string language ="")
     {
       //If a list of deliveryDocs comes from Call , we use it. If not, we use all templates from ToolsMap
@@ -317,7 +355,6 @@ namespace SmartBid
       );
       return deliveryDocs!;
     }
-
     public static string ReadFileContent(string filePath)
     {
       if (File.Exists(filePath))
@@ -329,7 +366,6 @@ namespace SmartBid
         throw new FileNotFoundException($"The file: '{filePath}' does not exist.");
       }
     }
-
   }
 
 }

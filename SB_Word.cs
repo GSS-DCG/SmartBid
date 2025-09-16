@@ -31,10 +31,10 @@ namespace SmartBid
       Dictionary<string, string> bookmarkDict = doc.Bookmarks.Cast<Bookmark>()
           .ToDictionary(b => b.Name.ToLower(), b => b.Name);
 
-      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Word.DeleteBookmarks", "Lista de bookmarks:");
+      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Word.DeleteBookmarks", "Lista de bookmarks:");
       foreach (var kvp in bookmarkDict)
       {
-        H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Word.DeleteBookmarks", kvp.Value);
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Word.DeleteBookmarks", kvp.Value);
       }
 
       var orderedBookmarks = bookmarkDict.Keys
@@ -54,7 +54,7 @@ namespace SmartBid
           Bookmark bookmark = doc.Bookmarks[bookmarkDict[bookmarkName]];
           Microsoft.Office.Interop.Word.Range range = bookmark.Range;
 
-          H.PrintLog(3, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Word.DeleteBookmarks", $"removing mark: {bookmarkDict[bookmarkName]}");
+          H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Word.DeleteBookmarks", $"removing mark: {bookmarkDict[bookmarkName]}");
 
           bookmark.Delete();
           range.Text = "";

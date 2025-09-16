@@ -122,6 +122,10 @@ namespace SmartBid
       string userName = xmlCall.SelectSingleNode(@"request/requestInfo/createdBy")?.InnerText ?? "UnknownUser";
       ThreadContext.CurrentThreadInfo.Value = new ThreadContext.ThreadInfo(userName);
 
+      // si autorun esperar 4 segundos a ejecutar
+      if (H.GetBProperty("autorun"))
+        Thread.Sleep(4000);
+
       H.PrintLog(5, userName, "ProcessFile", $"Procesando archivo: {filePath}");
 
       int callID = DBtools.InsertCallStart(xmlCall); // Report starting process to DB
@@ -205,13 +209,13 @@ namespace SmartBid
       foreach (XmlElement doc in dm.DM.SelectNodes(@$"dm/utils/rev_{revision.ToString("D2")}/inputDocs/doc"))
       {
         string fileType = doc.GetAttribute("type");
-        string fileName = doc.InnerText;
-        string inputFilesTimeStamp = dm.DM.SelectSingleNode(@$"dm/utils/rev_{revision.ToString("D2")}/inputDocs")?.Attributes?["timeStamp"]?.Value ?? DateTime.Now.ToString("yyMMdd");
-        string filePath = Path.Combine(inputPath, "1.DOC", inputFilesTimeStamp, fileType, fileName);
+        string filePath = doc.InnerText;
+        //string filePath = Path.Combine(inputPath, "1.DOC", fileName);
+        string fileName= Path.GetFileName(filePath);
 
         if (!File.Exists(filePath))
         {
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, $"❌❌ Error ❌❌  - ProcessFile", $"⚠️ El archivo '{filePath}' no existe.");
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, $"❌❌ Error ❌❌  - ProcessFile", $"⚠️ File: '{filePath}' is not found.");
           continue; // Saltar este documento y seguir con los demás
         }
 

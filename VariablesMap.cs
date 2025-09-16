@@ -1,6 +1,8 @@
 ﻿using System.Data;
 using System.Text;
 using System.Xml;
+using System.Xml.Linq;
+using DocumentFormat.OpenXml.Bibliography;
 using DocumentFormat.OpenXml.Office2010.Excel;
 using ExcelDataReader;
 using Microsoft.Office.Interop.Excel;
@@ -82,19 +84,18 @@ namespace SmartBid
     public XmlElement ToXML(XmlDocument mainDoc)
     {
       XmlElement varElem = mainDoc.CreateElement("variable");
-      varElem.SetAttribute("id", ID);
-      varElem.SetAttribute("varName", VarName);
       varElem.SetAttribute("source", Source);
-      varElem.SetAttribute("critic", Critic.ToString());
-      varElem.SetAttribute("mandatory", Mandatory.ToString());
-      varElem.SetAttribute("deep", Deep.ToString());
-
       if (!string.IsNullOrEmpty(Area))
         varElem.SetAttribute("area", Area);
+      varElem.SetAttribute("id", ID);
       if (!string.IsNullOrEmpty(Type))
         varElem.SetAttribute("type", Type);
       if (!string.IsNullOrEmpty(Unit))
         varElem.SetAttribute("unit", Unit);
+      varElem.SetAttribute("varName", VarName);
+      varElem.SetAttribute("critic", Critic.ToString());
+      varElem.SetAttribute("mandatory", Mandatory.ToString());
+      varElem.SetAttribute("deep", Deep.ToString());
 
       //Add description
       XmlElement descriptionElem = mainDoc.CreateElement("description");
@@ -231,24 +232,25 @@ namespace SmartBid
 
     public void SaveToXml(string xmlPath, List<string>? varList = null)
     {
-      XmlDocument doc = ToXml(varList);
+      XmlDocument doc = new();
+      XmlDeclaration xmlDeclaration = doc.CreateXmlDeclaration("1.0", "UTF-8", null);
+      doc.AppendChild(xmlDeclaration);
+      doc.AppendChild(ToXml(doc, varList));
       doc.Save(xmlPath);
     }
 
-    public XmlDocument ToXml(List<string>? varList = null)
+    public XmlElement ToXml(XmlDocument doc, List<string>? varList = null)
     {
-      XmlDocument doc = new();
-      XmlElement root = doc.CreateElement("answer");
-      _ = doc.AppendChild(root);
+      XmlElement variables = doc.CreateElement("variables");
       foreach (var variable in Variables)
       {
         // If varList is provided, only append variables whose ID is in varList
         if (varList == null || varList.Contains(variable.ID))
         {
-          _ = root.AppendChild(variable.ToXML(doc));
+          _ = variables.AppendChild(variable.ToXML(doc));
         }
       }
-      return doc;
+      return variables;
     }
 
     private void LoadFromXLS(string vmFile)

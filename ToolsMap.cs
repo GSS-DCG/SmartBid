@@ -314,7 +314,7 @@ namespace SmartBid
       _ = Directory.CreateDirectory(Path.GetDirectoryName(toolPath)!);
       File.Copy(originalToolPath, toolPath, true);
 
-      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExcel", $"Calculating tool {tool.Code}");
+      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExcel", $"  Calling tool {tool.Code}");
 
       SB_Excel? workbook = null;
       XmlDocument results = new(); // Declarado fuera del try para asegurar retorno
@@ -536,9 +536,9 @@ namespace SmartBid
 
       string xmlVarList = callXml.OuterXml;
 
-      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExe", $"--- Calling Tool: {Path.GetFileName(filePath)} {arguments}");
-      H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExe", $"--- Calling Tool: {filePath} {arguments}");
-      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExe", "--- call message:");
+      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExe", $"   Calling Tool: {Path.GetFileName(filePath)} {arguments}");
+      H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExe", $"   Calling Tool: {filePath} {arguments}");
+      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExe", "   call message:");
       H.PrintXML(2, callXml);
 
 

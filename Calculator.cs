@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using System.Xml;
 using DocumentFormat.OpenXml.Drawing.Diagrams;
 using Microsoft.Office.Interop.Word;
+using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Cms;
 
 namespace SmartBid
@@ -39,8 +40,8 @@ namespace SmartBid
       //Generate files structure and move input files
       //Call each toolD in the list of _targets and update the DataMaster with the results
 
-      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "RunCalculations", $"rute: {string.Join(" > ", _calcRoute)}");
-
+      H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "RunCalculations", $"***  CALCULATE  ***");
+      H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "RunCalculations", $"Calculate rute: {string.Join(" >> ", _calcRoute.Select(tool => tool.Code))}");
 
       //CALCULATE
       foreach (ToolData tool in _calcRoute)
@@ -68,6 +69,9 @@ namespace SmartBid
           H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, $"❌❌ Error ❌❌  - RunCalculations", $"Tool {tool} not found in ToolsMap.");
         }
       }
+      H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "RunCalculations", $"- Calculate Done -");
+      H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "RunCalculations", $"***   GENERATE DOCUMENTS   ***");
+      H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "RunCalculations", $"Generation rute: {string.Join(" >> ", _targets.Select(tool => tool.Code))}");
 
       //GENERATE DOCUMENTS
       foreach (ToolData target in _targets)
@@ -86,82 +90,14 @@ namespace SmartBid
       _ = DBtools.InsertNewProjectWithBid(dm);
 
     }
-    private XmlDocument _CallPrepTool(string xmlVarList)
-    {
-      XmlDocument prepCall = new();
-      prepCall.LoadXml(xmlVarList); // Load the XML string into the XmlDocument 
-      string prepToolPath = Path.GetFullPath(H.GetSProperty("PreparationTool"));
-
-      H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"\n");
-      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"- CALLING PREPARATION: {prepToolPath} ------------------");
-      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", "- ARGUMENTO PASADO A PREPTOOL:");
-      H.PrintXML(2, prepCall); // Print the XML for debugging
-      H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"\n\n\n\n");
-      H.SaveXML(1, prepCall, Path.Combine(H.GetSProperty("processPath"), dm.GetValueString("opportunityFolder"), "prepCall.xml")); // Save the XML to a file for debugging
-
-
-
-      ProcessStartInfo psi = new()
-      {
-        FileName = prepToolPath,  // Path to the executable
-        RedirectStandardInput = true,  // Send input through StandardInput
-        RedirectStandardOutput = true, // Capture output
-        RedirectStandardError = true,  // Capture errors
-        UseShellExecute = false,
-        CreateNoWindow = true,
-        StandardInputEncoding = Encoding.UTF8  // Ensure proper encoding
-      };
-      string output;
-      string error;
-
-      using (Process process = new()
-      { StartInfo = psi })
-      {
-        _ = process.Start();
-
-        using (StreamWriter writer = process.StandardInput)
-        {
-          writer.Write(xmlVarList);  // Send XML via Standard Input
-          writer.Flush();  // Ensure all data is sent
-          writer.Close();  // Signal EOF
-        }
-        output = process.StandardOutput.ReadToEnd();
-        error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-      }
-
-      if (error != "") H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"❌Error❌:\n{error}");
-
-      XmlDocument xmlPrepAnswer = new();
-
-
-      try
-      {
-        xmlPrepAnswer.LoadXml(output); // Load the XML content
-
-      }
-      catch (Exception)
-      {
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"❌Error❌ in PrepAnswer:\n");
-        throw new Exception($"Error loading XML from Preparation Tool output: {output}");
-      }
-      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"Return from Preparation");
-      H.PrintXML(2, xmlPrepAnswer);
-      H.SaveXML(1, xmlPrepAnswer, Path.Combine(H.GetSProperty("processPath"), dm.GetValueString("opportunityFolder"), "PrepAnswer.xml")); // Save the XML to a file for debugging
-
-      if (error != "") H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"❌Error❌:\n{error}");
-      H.PrintLog(0, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", "-----------------------------------");
-
-      return xmlPrepAnswer;
-    }
     private XmlDocument CallPrepTool(string xmlVarList)
     {
       XmlDocument prepCall = new();
       prepCall.LoadXml(xmlVarList); // Load the XML string into the XmlDocument 
 
       H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"\n");
-      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"- CALLING PREPARATION:  ------------------");
-      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", "- ARGUMENTO PASADO A PREPTOOL:");
+      H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"***   PREPARATION   ***");
+      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", "- Argumento pasado a PREP:");
       H.PrintXML(2, prepCall); // Print the XML for debugging
       H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"\n\n\n\n");
       H.SaveXML(1, prepCall, Path.Combine(H.GetSProperty("processPath"), dm.GetValueString("opportunityFolder"), "prepCall.xml")); // Save the XML to a file for debugging
@@ -170,11 +106,11 @@ namespace SmartBid
       XmlDocument xmlPrepAnswer = PREP.Run(prepCall);
 
 
-      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"Return from Preparation");
+      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"Return from Preparation");
       H.PrintXML(2, xmlPrepAnswer);
       H.SaveXML(1, xmlPrepAnswer, Path.Combine(H.GetSProperty("processPath"), dm.GetValueString("opportunityFolder"), "PrepAnswer.xml")); // Save the XML to a file for debugging
 
-      H.PrintLog(0, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", "-----------------------------------");
+      H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", "- Preparation Done -");
 
       return xmlPrepAnswer;
     }

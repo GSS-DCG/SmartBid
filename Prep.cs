@@ -205,7 +205,6 @@ namespace SmartBid
         return new XmlDocument(); // Retorna vacío si no se encuentra el ejecutable
       }
 
-      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "MakePrepCall", $"");
       H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "MakePrepCall", $"Ejecutando {Path.GetFileName(prepToolPath)} {arguments}");
       H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "MakePrepCall", $"Call sent to {area}\n");
       H.PrintXML(1, areaCall);

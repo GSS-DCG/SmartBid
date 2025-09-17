@@ -4,15 +4,13 @@
 	<DBConnextion>server=localhost;port=3306;database=SmartBid;user=SB_user01;password=_0000_</DBConnextion>
 	<DBConnextion>server=10.25.3.189;port=3306;database=SmartBid;user=SB_user01;password=_0000_</DBConnextion>
 
-
 	<!-- Mapa de directorios -->
 	<callsPath>C:\InSync\SmartBid\files\calls</callsPath>	<!-- Directorio de escucha -->
 	<oppsPath>C:\InSync\SmartBid\files\oportunidades</oppsPath>  <!-- Directorio de entrada -->
 	<processPath>C:\InSync\SmartBid\files\processed</processPath>  <!-- Directorio de salida -->
 
 	<VarMap>C:\InSync\SmartBid\files\tools\VariableMap_REV00.xlsx</VarMap>  <!-- Excel con el mapa de variables y de herramientas -->
-	<prepFolder>C:\InSync\TOOLS\</prepFolder>
-	<!-- PreparationTool>C:\InSync\PrepTOOLS\Prep.exe</PreparationTool-->  <!-- applicacion de preparación .exe  -->
+	<prepFolder>C:\InSync\SmartBid-Tools</prepFolder>  <!-- Carpeta donde encontrar las herramientas PREP y externas -->
 	<ToolsPath>C:\InSync\SmartBid\files\tools\</ToolsPath>  <!-- Carpeta donde encontrar las herramientas -->
 	<TemplatesPath>C:\InSync\SmartBid\files\templates\</TemplatesPath>  <!-- Carpeta donde encontrar las plantillas -->
 

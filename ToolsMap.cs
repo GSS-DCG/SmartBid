@@ -582,7 +582,7 @@ namespace SmartBid
       if (!string.IsNullOrWhiteSpace(error))
         H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "Calculate", $"❌Error❌:\n{error}");
 
-      H.PrintLog(0, ThreadContext.CurrentThreadInfo.Value!.User, "Calculate", "-----------------------------------");
+      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "Calculate", "-----------------------------------");
 
       // Adding information for Utils
       // Check whether <utils> exists in results and append the <utils> node if it doesn't

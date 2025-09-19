@@ -5,7 +5,10 @@
 	<DBConnextion>server=10.25.3.189;port=3306;database=SmartBid;user=SB_user01;password=_0000_</DBConnextion>
 
 	<!-- Mapa de directorios -->
-	<callsPath>C:\InSync\SmartBid\files\calls</callsPath>	<!-- Directorio de escucha -->
+	<callsPath>C:\InSync\SmartBid\files\calls_temp</callsPath>	<!-- Directorio de escucha -->
+	<callsPathDWG>C:\InSync\SmartBid\files\calls_DWG</callsPathDWG> <!-- Directorio de escucha para la devolución del DWG-->
+	<callsPathTemp>C:\InSync\SmartBid\files\calls</callsPathTemp>	<!-- Directorio de escucha provisional que escucha el call original con el DWG actualizado -->
+	<storageTemp>C:\InSync\SmartBid\files\Temp</storageTemp>	<!-- Directorio de escucha provisional que escucha el call original con el DWG actualizado -->
 	<oppsPath>C:\InSync\SmartBid\files\oportunidades</oppsPath>  <!-- Directorio de entrada -->
 	<processPath>C:\InSync\SmartBid\files\processed</processPath>  <!-- Directorio de salida -->
 
@@ -13,6 +16,8 @@
 	<prepFolder>C:\InSync\SmartBid-Tools</prepFolder>  <!-- Carpeta donde encontrar las herramientas PREP y externas -->
 	<ToolsPath>C:\InSync\SmartBid\files\tools\</ToolsPath>  <!-- Carpeta donde encontrar las herramientas -->
 	<TemplatesPath>C:\InSync\SmartBid\files\templates\</TemplatesPath>  <!-- Carpeta donde encontrar las plantillas -->
+
+	<DWG_recipiant>martin.molina@gsolarsteel.com</DWG_recipiant>  <!-- Mail al que enviar el DWG para acondicionarlo -->
 
 	<!-- Prefix -->
 	<IN_VarPrefix>sbIN_</IN_VarPrefix>  <!-- prefijo que indica las variables de entrada en las herramientas excel-->
@@ -46,7 +51,8 @@
 	<logLevel>5</logLevel>  <!-- Nivel de anotaciones en el Log: 0-Todo 5-Mínimo -->
 	<printLevel>4</printLevel>  <!-- Nivel de printouts en consola: 0-Todo 5-Mínimo -->
 
-	<autorun>pasteFiles.bat</autorun>
+	<autorun>C:\InSync\SmartBid\files\calls\pasteFiles.bat</autorun>
+	<processDWG>true</processDWG>
 	<closeWord>true</closeWord>
 	<closeExcel>true</closeExcel>
 

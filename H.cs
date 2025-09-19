@@ -146,40 +146,57 @@ namespace SmartBid
     }
 
 
-    public static bool MailTo(List<string> email, string subject, string text)
+    public static bool MailTo(List<string> email, string subject, string body = "", string? attachmentPath = null)
     {
+      // Asegura logs sin depender de ThreadContext
+      string userForLog = ThreadContext.CurrentThreadInfo?.Value?.User ?? "SYSTEM";
+
       try
       {
-        var outlookApp = new Outlook.Application();
+        if (email == null || email.Count == 0)
+        {
+          PrintLog(5, userForLog, "MailTo", "⚠️ No recipients supplied.");
+          PrintLog(5, userForLog, "Subject", $"{subject}");
+          return false;
+        }
 
+        var outlookApp = new Outlook.Application();
         var mailItem = (Outlook.MailItem)outlookApp.CreateItem(Outlook.OlItemType.olMailItem);
 
-        mailItem.Subject = $"Prueba C#"; //Asunto del correo
+        // Usar los parámetros recibidos (antes estaban hardcodeados)
+        mailItem.Subject = subject ?? string.Empty;
+        mailItem.Body = body ?? string.Empty;
 
-        if (email.Count > 0)
+        foreach (string _email in email)
         {
-          foreach (string _email in email)
-          {
+          if (!string.IsNullOrWhiteSpace(_email))
             _ = mailItem.Recipients.Add(_email);
-          }
-
-          mailItem.Body = $"Correo enviado desde C#"; //Texto dentro del correo
-
-          //mailItem.Attachments.Add(""); //Ruta de archivo adjunto
-
-          mailItem.Send();
-
-          PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "_EnviarMail:", $"Correo enviado a:\n  {string.Join("\n  ", email)}"
-
-          );
         }
+
+        // Adjuntar archivo opcional si existe
+        if (!string.IsNullOrWhiteSpace(attachmentPath) && File.Exists(attachmentPath))
+        {
+          // olByValue es el uso más común para adjuntar
+          mailItem.Attachments.Add(attachmentPath,
+              Outlook.OlAttachmentType.olByValue,
+              Type.Missing, Type.Missing);
+        }
+
+        // Intenta resolver contactos locales de Outlook (opcional)
+        _ = mailItem.Recipients.ResolveAll();
+
+        mailItem.Send();
+
+        PrintLog(5, userForLog, "MailTo",
+            $"Correo enviado a:\n {string.Join("\n ", email)}\n" +
+            (string.IsNullOrWhiteSpace(attachmentPath) ? "" : $"Adjunto: {attachmentPath}"));
+        return true;
       }
       catch (Exception ex)
       {
-        PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "_EnviarMail:", $"❌Error❌ al enviar el correo.");
+        PrintLog(2, userForLog, "MailTo", $"❌ Error al enviar el correo: {ex.Message}");
         return false;
       }
-      return true;
     }
 
     public static string EliminarDiacriticos(string texto)

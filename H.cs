@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using System.Security.Cryptography;
 using System.Text;
 using System.Xml;
 using SmartBid;
@@ -107,10 +108,17 @@ namespace SmartBid
       }
     }
 
-    public static XmlElement CreateElement(XmlDocument doc, string name, string value)
+    public static XmlElement CreateElement(XmlDocument doc, string name, string value, Dictionary<string, string> attributes = null)
     {
       XmlElement element = doc.CreateElement(name);
       element.InnerText = value;
+      if (attributes != null)
+      {
+        foreach (var attr in attributes)
+        {
+          element.SetAttribute(attr.Key, attr.Value);
+        }
+      }
       return element;
     }
 
@@ -197,6 +205,14 @@ namespace SmartBid
         PrintLog(2, userForLog, "MailTo", $"❌ Error al enviar el correo: {ex.Message}");
         return false;
       }
+    }
+
+    public static string GetFileMD5(string path)
+    {
+      using var stream = File.OpenRead(path);
+      using var md5 = MD5.Create();
+      byte[] hash = md5.ComputeHash(stream);
+      return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
     }
 
     public static string EliminarDiacriticos(string texto)

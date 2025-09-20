@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Xml;
+using Mysqlx.Crud;
 
 namespace SmartBid
 {
@@ -78,8 +79,8 @@ namespace SmartBid
           name: "Listener2"
       );
 
-      H.PrintLog(5, "SYSTEM", "Main", $"Listening directory 1: {dir1}");
-      H.PrintLog(5, "SYSTEM", "Main", $"Listening directory 2: {dir2}");
+      H.PrintLog(5, "SYSTEM", "Main", $"Listening: {dir1}");
+      H.PrintLog(5, "SYSTEM", "Main", $"Listening: {dir2}");
 
       H.PrintLog(5, "Main", "Main", "Presiona 'Q' para salir...");
 
@@ -165,8 +166,7 @@ namespace SmartBid
 
       try
       {
-        // checks that all files declare exits and stores the checksum of the fileName for comparison
-        ProcessInputFiles(dm, 1);
+
 
         //Stores de call fileName in case configuration says so
         StoreCallFile(H.GetBProperty("storeXmlCall"), filePath, Path.GetDirectoryName(dm.FileName));
@@ -177,10 +177,12 @@ namespace SmartBid
         ReturnRemoveFiles(dm); // Returns or removes files depending on configuration
         DBtools.UpdateCallRegistry(callID, "DONE", "OK");
 
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"--******************************--");
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile",
-            $"--****\n\nPROJECT: {dm.GetValueString("opportunityFolder")} DONE\n\n****--");
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"--******************************--");
+        string project = dm.GetValueString("opportunityFolder");
+
+
+        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"-- ****{new string('*', project.Length+17)}**** --");
+        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"-- **** PROJECT: {project} DONE  **** --");
+        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"-- ****{new string('*', project.Length+17)}**** --");
 
         //Auxiliar.DeleteBookmarkText("ES_Informe de corrosión_Rev0.0.docx", "Ruta_05", dm, "OUTPUT");
 
@@ -217,44 +219,6 @@ namespace SmartBid
 
       dm.SaveDataMaster();
       return dm;
-    }
-
-    private static void ProcessInputFiles(DataMaster dm, int revision)
-    {
-      string inputPath = Path.Combine(H.GetSProperty("oppsPath"), dm.DM.SelectSingleNode(@"dm/utils/utilsData/opportunityFolder")?.InnerText ?? "");
-      foreach (XmlElement doc in dm.DM.SelectNodes(@$"dm/utils/rev_{revision.ToString("D2")}/inputDocs/doc")!)
-      {
-        string fileType = doc.GetAttribute("type");
-        string filePath = doc.InnerText;
-        //string filePath = Path.Combine(inputPath, "1.DOC", fileName);
-        string fileName = Path.GetFileName(filePath);
-
-        if (!File.Exists(filePath))
-        {
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, $"❌❌ Error ❌❌ - ProcessFile", $"⚠️ File: '{filePath}' is not found.");
-          continue; // Saltar este documento y seguir con los demás
-        }
-
-        string hash = CalcularMD5(filePath); // Calculate MD5 hash for the fileName
-        string lastModified = File.GetLastWriteTime(filePath).ToString("yyyy-MM-dd HH:mm:ss");
-
-        doc.SetAttribute("hash", hash); // Set the hash attribute in the XML
-        doc.SetAttribute("lastModified", lastModified); // Set the hash attribute in the XML
-
-        DBtools.InsertFileHash(filePath, doc.GetAttribute("type"), hash, lastModified); // Store the fileName hash in the database
-
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"Archivo '{filePath}' registered");
-      }
-
-      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"All input files have been registered'.");
-    }
-
-    private static string CalcularMD5(string path)
-    {
-      using var stream = File.OpenRead(path);
-      using var md5 = MD5.Create();
-      byte[] hash = md5.ComputeHash(stream);
-      return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
     }
 
     private static void StoreCallFile(bool store, string callFile, string oppFolder)
@@ -415,23 +379,6 @@ namespace SmartBid
 
     private static void DoStuff1(string filePath)
     {
-      // Utilidad local para evitar sobreescrituras en destino
-      static string EnsureUniqueFileName(string targetFullPath)
-      {
-        if (!File.Exists(targetFullPath)) return targetFullPath;
-        string dir = Path.GetDirectoryName(targetFullPath)!;
-        string name = Path.GetFileNameWithoutExtension(targetFullPath);
-        string ext = Path.GetExtension(targetFullPath);
-        string candidate;
-        int i = 1;
-        do
-        {
-          candidate = Path.Combine(dir, $"{name}_{DateTime.Now:yyyyMMdd_HHmmss}_{i}{ext}");
-          i++;
-        } while (File.Exists(candidate));
-        return candidate;
-      }
-
       // Mover directo a callsPath sin procesar DWG
       void MoveDirectToCallsPath()
       {
@@ -443,7 +390,7 @@ namespace SmartBid
         }
         Directory.CreateDirectory(callsPath);
 
-        string dest = EnsureUniqueFileName(Path.Combine(callsPath, Path.GetFileName(filePath)));
+        string dest = Path.Combine(callsPath, Path.GetFileName(filePath));
         try
         {
           File.Move(filePath, dest);
@@ -454,9 +401,17 @@ namespace SmartBid
           File.Copy(filePath, dest, overwrite: false);
           File.Delete(filePath);
         }
-        H.PrintLog(4, "SYSTEM", "DoStuff1", $"Archivo movido a calls: {dest}");
+        H.PrintLog(4, "SYSTEM", "DoStuff1", $"Archivo {Path.GetFileName(filePath)} movido a calls: {dest}");
       }
 
+      // Si no se desea procesar DWG => directo a callsPath
+      if (!H.GetBProperty("processDWG"))
+      {
+        MoveDirectToCallsPath();
+        return;
+      }
+
+      // ===== Procesamiento DWG =====
       try
       {
         // 0) Leer PRIMERO el XML en su ubicación original para detectar LYOT
@@ -479,12 +434,6 @@ namespace SmartBid
           return;
         }
 
-        // Si no se desea procesar DWG => directo a callsPath
-        if (!H.GetBProperty("processDWG"))
-        {
-          MoveDirectToCallsPath();
-          return;
-        }
 
         // Si no hay LYOT o el DWG no existe => directo a callsPath
         if (string.IsNullOrWhiteSpace(lyotPath) || !File.Exists(lyotPath))
@@ -505,7 +454,7 @@ namespace SmartBid
           return;
         }
         Directory.CreateDirectory(tempDir);
-        string movedPath = EnsureUniqueFileName(Path.Combine(tempDir, Path.GetFileName(filePath)));
+        string movedPath = Path.Combine(tempDir, Path.GetFileName(filePath));
 
         try { File.Move(filePath, movedPath); }
         catch (IOException) { File.Copy(filePath, movedPath, overwrite: false); File.Delete(filePath); }
@@ -525,7 +474,6 @@ namespace SmartBid
               Path.GetDirectoryName(movedPath)!,
               $"{currentXmlNameNoExt}_{dwgBaseName}.xml"
           );
-          renamedXml = EnsureUniqueFileName(renamedXml);
           File.Move(movedPath, renamedXml);
           movedPath = renamedXml;
           H.PrintLog(4, "SYSTEM", "DoStuff1", $"XML renombrado a: {movedPath}");

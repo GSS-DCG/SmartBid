@@ -143,17 +143,25 @@ namespace SmartBid
       }
       _ = root.AppendChild(variables);
 
-      XmlElement inputDocs = areaCall.CreateElement("inputDocs");
-      foreach (XmlElement node in inputXML.SelectNodes("//inputDocs/*"))
-      {
+      //XmlElement inputDocs = areaCall.CreateElement("inputDocs");
+      //foreach (XmlElement node in inputXML.SelectNodes("//inputDocs/*"))
+      //{
+      //  if (node is XmlElement doc)
+      //  {
+      //    string docType = doc.GetAttribute("type");
+      //    if (docType == area)
+      //      _ = inputDocs.AppendChild(areaCall.ImportNode(doc, true));
+      //  }
+      //}
+      // areaType viene de c.GetAttribute("type")
 
-        if (node is XmlElement doc)
-        {
-          string docType = doc.GetAttribute("type");
-          if (docType == area)
-            _ = inputDocs.AppendChild(areaCall.ImportNode(doc, true));
-        }
+      XmlElement inputDocs = areaCall.CreateElement("inputDocs");
+
+      foreach (XmlElement node in inputXML.SelectNodes($"//inputDocs/{area}")!)
+      {
+        _ = inputDocs.AppendChild(areaCall.ImportNode(node, deep: true));
       }
+
       _ = root.AppendChild(inputDocs);
 
       return areaCall;

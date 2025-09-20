@@ -113,7 +113,6 @@ namespace SmartBid
         // Load Utils Data
         XmlNode utilsData = _utilsNode!.AppendChild(DM.CreateElement("utilsData"))!;
 
-
         // Add opportunityFolder to dataMaster and _data dictionary
         _ = utilsData.AppendChild(CreateElement("dataMasterFileName", FileName));
         _ = utilsData.AppendChild(GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder"));
@@ -121,40 +120,11 @@ namespace SmartBid
         StoreValue("createdBy", GetImportedElement(xmlRequest, "//requestInfo/createdBy").InnerText);
         StoreValue("requestTimestap", GetImportedElement(xmlRequest, "//requestInfo/requestTimestap").InnerText);
 
-        //Add first revision element
-        _ = _utilsNode.AppendChild(_dm.CreateComment("First Revision"));
-        XmlElement revision = _dm.CreateElement("rev_01");
-
-        _ = revision.AppendChild(CreateElement("dateTime", DateTime.Now.ToString("yyMMdd_HHmm")));
-
-        //Adding Request Info from Call
-        XmlElement newNode;
-        newNode = (XmlElement)xmlRequest.SelectSingleNode("//requestInfo")!;
-        _ = newNode != null ? revision.AppendChild(_dm.ImportNode(newNode, true)) : null;
-
-        //Adding deliveryDocs from either Call or Default Delivery Docs
-        newNode = H.CreateElement(_dm, "deliveryDocs", "");
-        //add each one of the fileName in targets as a new element called "doc" to newNode
-        foreach (ToolData target in targets)
-        {
-          XmlElement newChild = CreateElement("doc", target.FileName);
-          newChild.SetAttribute("code", target.Code);
-          newChild.SetAttribute("version", target.Version);
-          newNode.AppendChild(newChild);
-        }
-        _ = newNode != null ? revision.AppendChild(_dm.ImportNode(newNode, true)) : null;
-        //Adding InputDocs from Call
-        newNode = (XmlElement)xmlRequest.SelectSingleNode("//requestInfo/inputDocs")!;
-        _ = newNode != null ? revision.AppendChild(_dm.ImportNode(newNode, true)) : null;
-
-        //Adding node to store tools used in this revision
-        newNode = H.CreateElement(_dm, "tools", "");
-        newNode.SetAttribute("processedFolder", Path.Combine(H.GetSProperty("processPath"), $@"{opportunityFolder}\TOOLS\rev_{SBidRevision}"));
-        _ = newNode != null ? revision.AppendChild(_dm.ImportNode(newNode, true)) : null;
+        XmlElement revision = CreateRevisionElement(1, xmlRequest, targets, opportunityFolder);
 
         _utilsNode.AppendChild(revision);
       }
-      else if(((XmlElement)xmlRequest.SelectSingleNode("/request/requestInfo")!).GetAttribute("Type") == "newRevision")
+      else if(((XmlElement)xmlRequest.SelectSingleNode("/request/requestInfo")!).GetAttribute("Type") == "modify")
       {
       // Pending implementation for new revision
       }
@@ -166,12 +136,85 @@ namespace SmartBid
 
     }
 
+    private XmlElement CreateRevisionElement(int revisionNo, XmlDocument xmlRequest, List<ToolData> targets, string opportunityFolder)
+    {
+      //Add first revision element
+      _ = _utilsNode.AppendChild(_dm.CreateComment("First Revision"));
+      XmlElement revision = _dm.CreateElement($"rev_{revisionNo!:D2}");
+
+      _ = revision.AppendChild(CreateElement("dateTime", DateTime.Now.ToString("yyMMdd_HHmm")));
+
+      //Adding Request Info from Call
+      XmlElement newNode;
+      newNode = (XmlElement)xmlRequest.SelectSingleNode("//requestInfo")!;
+      _ = newNode != null ? revision.AppendChild(_dm.ImportNode(newNode, true)) : null;
+
+      // Adding Processed InputDocs
+      // checks that all files exits and stores the checksum of the fileName for comparison
+      revision.AppendChild(ProcessInputFiles((XmlElement)xmlRequest.SelectSingleNode("//requestInfo/inputDocs")!));
+
+      //Adding deliveryDocs from either Call or Default Delivery Docs
+      newNode = H.CreateElement(_dm, "deliveryDocs", "");
+      //add each one of the fileName in targets as a new element called "doc" to newNode
+      foreach (ToolData target in targets)
+      {
+        XmlElement newChild = CreateElement("doc", target.FileName);
+        newChild.SetAttribute("code", target.Code);
+        newChild.SetAttribute("version", target.Version);
+        newNode.AppendChild(newChild);
+      }
+      _ = newNode != null ? revision.AppendChild(_dm.ImportNode(newNode, true)) : null;
+
+
+
+      //Adding node to store tools used in this revision
+      newNode = H.CreateElement(_dm, "tools", "");
+      newNode.SetAttribute("processedFolder", Path.Combine(H.GetSProperty("processPath"), $@"{opportunityFolder}\TOOLS\rev_{SBidRevision}"));
+      _ = newNode != null ? revision.AppendChild(_dm.ImportNode(newNode, true)) : null;
+      return revision;
+    }
+
     // Constructor público con nombre de archivo ==> para cargar un DataMaster existente
     public DataMaster(string dmFileName)
     {
       _vm = VariablesMap.Instance;
       // Implementación pendiente
     }
+
+    private XmlElement ProcessInputFiles(XmlElement inputDocs)
+    {
+      XmlElement newInputDocs = H.CreateElement(_dm, "inputDocs", "");
+      foreach (XmlElement doc in inputDocs)
+      {
+        string fileType = doc.GetAttribute("type");
+        string filePath = doc.InnerText;
+        string fileName = Path.GetFileName(filePath);
+
+        if (!File.Exists(filePath))
+        {
+          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, $"❌❌ Error ❌❌ - ProcessFile", $"⚠️ File: '{filePath}' is not found.");
+          continue; // Saltar este documento y seguir con los demás
+        }
+
+        string hash = H.GetFileMD5(filePath); // Calculate MD5 hash for the fileName
+        string lastModified = File.GetLastWriteTime(filePath).ToString("yyyy-MM-dd HH:mm:ss");
+
+        newInputDocs.AppendChild(H.CreateElement(_dm, fileType, filePath, new Dictionary<string, string>
+        {
+          { "hash", hash },
+          { "lastModified", lastModified }
+        }));
+
+        DBtools.InsertFileHash(filePath, fileType, hash, lastModified); // Store the fileName hash in the database 
+
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"Archivo '{filePath}' registered");
+      }
+
+      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"All input files have been registered'.");
+
+      return newInputDocs;
+    }
+
 
     public void UpdateData(XmlDocument newData)
     {

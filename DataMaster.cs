@@ -1,8 +1,10 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Xml;
+using DocumentFormat.OpenXml.Drawing;
 using DocumentFormat.OpenXml.EMMA;
 using Microsoft.Office.Interop.Word;
+using Path = System.IO.Path;
 
 namespace SmartBid
 {
@@ -275,7 +277,7 @@ namespace SmartBid
 
           if (dashIndex == -1)
           {
-            return _dm.SelectSingleNode($"/dm/utils/utilsData/rev_{SBidRevision}/{key}")?.InnerText ?? string.Empty;
+            return _dm.SelectSingleNode($"/dm/utils/rev_{SBidRevision}/{key}")?.InnerText ?? string.Empty;
           }
           else
           {

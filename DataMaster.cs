@@ -148,6 +148,10 @@ namespace SmartBid
       XmlElement revision = _dm.CreateElement($"rev_{revisionNo!:D2}");
 
       _ = revision.AppendChild(CreateElement("dateTime", DateTime.Now.ToString("yyMMdd_HHmm")));
+      _ = revision.AppendChild(CreateElement("outputFolder", Path.Combine(  H.GetSProperty("processPath"),
+                                                                            GetValueString("opportunityFolder"),
+                                                                            $"rev_{SBidRevision}",
+                                                                            "OUTPUT")));
 
       //Adding Request Info from Call
       XmlElement newNode;

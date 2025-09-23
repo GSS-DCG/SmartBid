@@ -97,17 +97,15 @@ namespace SmartBid
 
       H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"\n");
       H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"***   PREPARATION   ***");
-      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", "- Argumento pasado a PREP:");
-      H.PrintXML(2, prepCall); // Print the XML for debugging
-      H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"\n\n\n\n");
-      H.SaveXML(1, prepCall, Path.Combine(H.GetSProperty("processPath"), dm.GetValueString("opportunityFolder"), "prepCall.xml")); // Save the XML to a file for debugging
+      H.PrintLog(0, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", "- Argumento pasado a PREP:", prepCall);
+      H.PrintLog(3, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"\n\n");
+      H.SaveXML(3, prepCall, Path.Combine(H.GetSProperty("processPath"), dm.GetValueString("opportunityFolder"), "prepCall.xml")); // Save the XML to a file for debugging
 
 
       XmlDocument xmlPrepAnswer = PREP.Run(prepCall);
 
 
-      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"Return from Preparation");
-      H.PrintXML(2, xmlPrepAnswer);
+      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", $"Return from Preparation", xmlPrepAnswer);
       H.SaveXML(1, xmlPrepAnswer, Path.Combine(H.GetSProperty("processPath"), dm.GetValueString("opportunityFolder"), "PrepAnswer.xml")); // Save the XML to a file for debugging
 
       H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "CallPrepTool", "- Preparation Done -");

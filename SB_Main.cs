@@ -47,7 +47,7 @@ namespace SmartBid
       watcher.Created += (sender, e) =>
       {
         H.PrintLog(5, "Main", "Main", $"Evento detectado: {e.FullPath}");
-        if (Regex.IsMatch(Path.GetFileName(e.FullPath), @"^call_\d+\.xml$", RegexOptions.IgnoreCase))
+        if (Regex.IsMatch(Path.GetFileName(e.FullPath), @"^call_.*\.xml$", RegexOptions.IgnoreCase))
         {
           _fileQueue.Enqueue(e.FullPath);
           _ = _eventSignal.Set();
@@ -66,18 +66,33 @@ namespace SmartBid
       string dir2 = H.GetSProperty("callsPathDWG");   // Directorio de escucha de la devolución del DWG
 
       _listener1Task = StartDirectoryListener(
-          path: dir1,
-          onNewFile: DoStuff1,
-          token: _cts.Token,
-          name: "Listener1"
+        path: dir1,
+        onNewFile: file =>
+        {
+          if (Regex.IsMatch(Path.GetFileName(file), @"^call_.*\.xml$", RegexOptions.IgnoreCase))
+            DoStuff1(file);
+          else
+            H.PrintLog(5, "SYSTEM", "Listener1", $"⚠️ Archivo ignorado (no call_*.xml): {file}");
+        },
+        token: _cts.Token,
+        name: "Listener1"
       );
 
       _listener2Task = StartDirectoryListener(
-          path: dir2,
-          onNewFile: DoStuff2,
-          token: _cts.Token,
-          name: "Listener2"
+        path: dir2,
+        onNewFile: file =>
+        {
+          string ext = Path.GetExtension(file);
+          if (ext.Equals(".dwg", StringComparison.OrdinalIgnoreCase) ||
+              ext.Equals(".dxf", StringComparison.OrdinalIgnoreCase))
+            DoStuff2(file);
+          else
+            H.PrintLog(5, "SYSTEM", "Listener1", $"⚠️ Archivo ignorado (no call_*.xml): {file}");
+        },
+        token: _cts.Token,
+        name: "Listener2"
       );
+
 
       H.PrintLog(5, "SYSTEM", "Main", $"Listening: {dir1}");
       H.PrintLog(5, "SYSTEM", "Main", $"Listening: {dir2}");
@@ -209,8 +224,7 @@ namespace SmartBid
 
     private static DataMaster CreateDataMaster(XmlDocument xmlCall, List<ToolData> targets) //Creamos el datamaster
     {
-      H.PrintXML(2, xmlCall); //Print the XML call for debugging
-                              //Instantiating the DataMaster class with the XML string
+      //Instantiating the DataMaster class with the XML string
       DataMaster dm = new(xmlCall, targets);
       //Creating the projectFolder in the storage directory
       string projectFolder = Path.Combine(H.GetSProperty("processPath"), dm.DM.SelectSingleNode(@"dm/utils/utilsData/opportunityFolder")?.InnerText ?? "");

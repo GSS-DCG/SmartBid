@@ -426,8 +426,7 @@ namespace SmartBid
           }
         }
 
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExcel", $"Values returned from {tool.Code} calculation");
-        H.PrintXML(2, results);
+        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExcel", $"Values returned from {tool.Code} calculation", results);
       }
       finally
       {
@@ -488,11 +487,11 @@ namespace SmartBid
       string? arguments = "";
 
 
-      if (File.Exists(filePath)) { 
-        if (Path.GetExtension(filePath) == ".py")
+      if (File.Exists(filePath)) {
+        if (Path.GetExtension(filePath).Equals(".py", StringComparison.OrdinalIgnoreCase))
         {
           arguments = $"\"{filePath}\" 00"; // any argument should be sent to the call to indicate that the input is coming from stdin
-          filePath = @"C:\Users\martin.molina\AppData\Local\Programs\Python\Python313\python.exe";
+          filePath = @"python.exe";
         }
       }
       else
@@ -538,8 +537,7 @@ namespace SmartBid
 
       H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExe", $"   Calling Tool: {Path.GetFileName(filePath)} {arguments}");
       H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExe", $"   Calling Tool: {filePath} {arguments}");
-      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExe", "   call message:");
-      H.PrintXML(2, callXml);
+      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExe", "   call message:", callXml);
 
 
       ProcessStartInfo psi = new()
@@ -576,8 +574,7 @@ namespace SmartBid
       XmlDocument results = new();
       results.LoadXml(output);
 
-      H.PrintLog(3, ThreadContext.CurrentThreadInfo.Value!.User, "Calculate", $"Return from tool");
-      H.PrintXML(2, results);
+      H.PrintLog(3, ThreadContext.CurrentThreadInfo.Value!.User, "Calculate", $"Return from tool", results);
 
       if (!string.IsNullOrWhiteSpace(error))
         H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "Calculate", $"❌Error❌:\n{error}");

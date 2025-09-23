@@ -83,9 +83,10 @@ namespace SmartBid
       return File.ReadAllText(inputFile);
     }
 
+    // Replace the comment in DoStuff() from Spanish to English to fix spelling diagnostics
     private static void DoStuff()
     {
-      // 1. Detectar todas las áreas únicas en inputXML
+      // 1. Detect all unique areas in inputXML
       var variableNodes = inputXML.SelectNodes("//call/variables/variable");
       var areas = new HashSet<string>();
 
@@ -99,7 +100,7 @@ namespace SmartBid
       // List to hold all tasks, each returning an XmlDocument
       List<Task<XmlDocument>> prepCallTasks = new();
 
-      // 2. Procesar cada área en paralelo
+      // 2. Process each area in parallel
       foreach (string area in areas)
       {
         // Capture the current 'area' for the lambda expression
@@ -109,12 +110,13 @@ namespace SmartBid
           XmlDocument areaCall = CreateAreaCall(currentArea);
           return MakePrepCall(currentArea, areaCall);
         }));
+        Thread.Sleep(100);
       }
 
       // Wait for all tasks to complete
       Task.WhenAll(prepCallTasks).Wait();
 
-      // 3. Fusionar todos los resultados después de que todas las llamadas hayan terminado
+      // 3. Merge all results after all calls have finished
       foreach (var task in prepCallTasks)
       {
         // Retrieve the result from each completed task
@@ -142,18 +144,6 @@ namespace SmartBid
           _ = variables.AppendChild(areaCall.ImportNode(var, true));
       }
       _ = root.AppendChild(variables);
-
-      //XmlElement inputDocs = areaCall.CreateElement("inputDocs");
-      //foreach (XmlElement node in inputXML.SelectNodes("//inputDocs/*"))
-      //{
-      //  if (node is XmlElement doc)
-      //  {
-      //    string docType = doc.GetAttribute("type");
-      //    if (docType == area)
-      //      _ = inputDocs.AppendChild(areaCall.ImportNode(doc, true));
-      //  }
-      //}
-      // areaType viene de c.GetAttribute("type")
 
       XmlElement inputDocs = areaCall.CreateElement("inputDocs");
 
@@ -204,7 +194,7 @@ namespace SmartBid
       }
       else if (File.Exists(Path.Combine(prepFolder, prepPy)))
       {
-        prepToolPath = @"C:\Users\martin.molina\AppData\Local\Programs\Python\Python313\python.exe";
+        prepToolPath = @"python.exe";
         arguments = $"\"{Path.Combine(prepFolder, prepPy)}\" 00";
       }
       else
@@ -214,8 +204,7 @@ namespace SmartBid
       }
 
       H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "MakePrepCall", $"Ejecutando {Path.GetFileName(prepToolPath)} {arguments}");
-      H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "MakePrepCall", $"Call sent to {area}\n");
-      H.PrintXML(1, areaCall);
+      H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "MakePrepCall", $"Call sent to {area}\n", areaCall);
 
       ProcessStartInfo psi = new()
       {

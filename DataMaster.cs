@@ -34,6 +34,9 @@ namespace SmartBid
       _dm = new();
       _data = [];
 
+      H.PrintLog(5, User, "DataMaster constructor", "Create DataMaster using call:", xmlRequest);
+
+
       // Check if opportunityFolder exists, otherwise throw an exception
       if (GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder") == null)
       {
@@ -47,7 +50,7 @@ namespace SmartBid
       // register actual revision number in _data (no need to store it in DM)
       StoreValue("revision", new VariableData("revision", "current Revision", "utils", "utils", true, true, "code", "", "", "", "", 0, [], "rev_01"));
 
-      if (((XmlElement)xmlRequest.SelectSingleNode("/request/requestInfo")!).GetAttribute("Type") == "create")
+      if (((XmlElement)xmlRequest.SelectSingleNode("/request/requestInfo")!).GetAttribute("type") == "create")
       {
         XmlDeclaration xmlDeclaration = _dm.CreateXmlDeclaration("1.0", "utf-8", null);
         _ = _dm.AppendChild(xmlDeclaration);
@@ -120,7 +123,7 @@ namespace SmartBid
         _ = utilsData.AppendChild(GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder"));
         StoreValue("opportunityFolder", GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder").InnerText);
         StoreValue("createdBy", GetImportedElement(xmlRequest, "//requestInfo/createdBy").InnerText);
-        StoreValue("requestTimestap", GetImportedElement(xmlRequest, "//requestInfo/requestTimestap").InnerText);
+        StoreValue("requestTimestamp", GetImportedElement(xmlRequest, "//requestInfo/requestTimestamp").InnerText);
 
         XmlElement revision = CreateRevisionElement(1, xmlRequest, targets, opportunityFolder);
 

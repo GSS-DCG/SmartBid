@@ -73,18 +73,6 @@ namespace SmartBid
       return false;
     }
 
-    public static void PrintXML(int level, XmlDocument xmlDoc)
-    {
-
-      if (GetNProperty("printLevel") <= level)
-      {
-        StringWriter sw = new();
-        XmlTextWriter writer = new(sw) { Formatting = Formatting.Indented };
-        xmlDoc.WriteTo(writer);
-        Console.WriteLine(sw.ToString()); // Print formatted XML
-      }
-      return; // Only print if log level is sufficient
-    }
     public static void SaveXML(int level, XmlDocument xmlDoc, string fileName)
     {
       if (GetNProperty("printLevel") <= level)
@@ -96,11 +84,18 @@ namespace SmartBid
       return; // Only save if log level is sufficient
     }
 
-    public static void PrintLog(int level = 2, string user = "", string eventLog = "info", string message = "")
+    public static void PrintLog(int level = 2, string user = "", string eventLog = "info", string message = "", XmlDocument xmlDoc = null)
     {
       if (GetNProperty("printLevel") <= level)
       {
         Console.WriteLine($"{level} - user: {user} >> {eventLog}: {message}");
+        if (xmlDoc != null)
+        {
+          StringWriter sw = new();
+          XmlTextWriter writer = new(sw) { Formatting = Formatting.Indented };
+          xmlDoc.WriteTo(writer);
+          Console.WriteLine(sw.ToString()); // Print formatted XML
+        }
       }
       if (GetNProperty("logLevel") <= level)
       {

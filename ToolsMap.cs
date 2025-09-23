@@ -306,7 +306,7 @@ namespace SmartBid
       string toolPath = Path.Combine(
           H.GetSProperty("processPath"),
           dm.GetInnerText($@"dm/utils/utilsData/opportunityFolder"),
-          $@"rev_{dm.SBidRevision}",
+          dm.SBidRevision,
           "TOOLS",
           tool.FileName
       );
@@ -637,7 +637,7 @@ namespace SmartBid
       string filePath = Path.Combine(
         H.GetSProperty("processPath"), 
         dm.GetValueString("opportunityFolder"),
-        $"rev_{dm.SBidRevision}",
+        dm.SBidRevision,
         "OUTPUT", 
         template.FileName
         );

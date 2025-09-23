@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Xml;
 using Mysqlx.Crud;
+using Org.BouncyCastle.Asn1.Ocsp;
 
 namespace SmartBid
 {
@@ -189,7 +190,13 @@ namespace SmartBid
         Calculator calculator = new(dm, targets);
         calculator.RunCalculations();
 
+        
+
+        if (xmlCall.SelectSingleNode("/request/requestInfo")!.Attributes!["type"]?.Value == "create" && H.GetBProperty("createOppsFoldersStructure"))
+          createOppsFoldersStructure(dm.GetInnerText("dm/projectData/opportunityID"), dm.GetInnerText("dm/utils/utilsData/opportunityFolder"));
+
         ReturnRemoveFiles(dm); // Returns or removes files depending on configuration
+
         DBtools.UpdateCallRegistry(callID, "DONE", "OK");
 
         string project = dm.GetValueString("opportunityFolder");
@@ -209,7 +216,7 @@ namespace SmartBid
         if (H.GetBProperty("mailCreatedBy"))
           emailRecipients.Add(dm.GetValueString("createdBy"));
 
-        _ = H.MailTo(emailRecipients, $@"SmartBid: Opportunity:{dm.GetValueString("opportunityFolder")} revision: rev_{dm.SBidRevision} DONE", "Enviado desde SmartBid");
+        _ = H.MailTo(emailRecipients, $@"SmartBid: Opportunity:{dm.GetValueString("opportunityFolder")} revision: {dm.SBidRevision} DONE", "Enviado desde SmartBid");
       }
       catch (Exception ex)
       {
@@ -257,14 +264,14 @@ namespace SmartBid
 
     private static void ReturnRemoveFiles(DataMaster dm)
     {
-      string revisionDateStamp = dm.GetInnerText(@"dm/utils/rev_01/dateTime")[..6];
+      //string revisionDateStamp = dm.GetInnerText(@"dm/utils/rev_01/dateTime")[..6];
       string projectFolder = dm.GetInnerText(@"dm/utils/utilsData/opportunityFolder");
 
-      string processedToolsPath = Path.Combine(H.GetSProperty("processPath"), projectFolder, $"rev_{dm.SBidRevision}", "TOOLS");
-      string processedOutputsPath = Path.Combine(H.GetSProperty("processPath"), projectFolder, $"rev_{dm.SBidRevision}", "OUTPUT");
+      string processedToolsPath = Path.Combine(H.GetSProperty("processPath"), projectFolder, dm.SBidRevision, "TOOLS");
+      string processedOutputsPath = Path.Combine(H.GetSProperty("processPath"), projectFolder, dm.SBidRevision, "OUTPUT");
 
-      string oppsToolsPath = Path.Combine(H.GetSProperty("oppsPath"), projectFolder, @$"2.ING", $"rev_{dm.SBidRevision}", "TOOLS");
-      string oppsDeliveriesPath = Path.Combine(H.GetSProperty("oppsPath"), projectFolder, @$"2.ING", $"rev_{dm.SBidRevision}", "OUTPUT");
+      string oppsToolsPath = Path.Combine(H.GetSProperty("oppsPath"), projectFolder, @$"2.ING", dm.SBidRevision, "TOOLS");
+      string oppsDeliveriesPath = Path.Combine(H.GetSProperty("oppsPath"), projectFolder, @$"2.ING", dm.SBidRevision, "OUTPUT");
 
       if (H.GetBProperty("returnTools"))
         foreach (string file in Directory.GetFiles(processedToolsPath))
@@ -291,6 +298,43 @@ namespace SmartBid
       if (H.GetBProperty("returnDataMaster"))
         File.Copy(dm.FileName, Path.Combine(H.GetSProperty("oppsPath"), projectFolder, Path.GetFileName(dm.FileName)), overwrite: true);
     }
+
+    private static void createOppsFoldersStructure(string opportunityID, string oppFolder)
+    {
+      string templatePath = H.GetSProperty("oppsFoldersTemplate");
+      string baseDestinationPath = H.GetSProperty("oppsPath");
+      string destinationPath = Path.Combine(baseDestinationPath, $"OFERTAS 20{opportunityID.Substring(0,2)}",oppFolder);
+
+      if (!Directory.Exists(templatePath))
+      {
+        Console.WriteLine($"Template path does not exist: {templatePath}");
+        return;
+      }
+
+      // Create the destination folder
+      Directory.CreateDirectory(destinationPath);
+
+      // Copy all subfolders and files
+      CopyDirectory(templatePath, destinationPath);
+    }
+
+    private static void CopyDirectory(string sourceDir, string destinationDir)
+    {
+      // Create all subdirectories
+      foreach (string dirPath in Directory.GetDirectories(sourceDir, "*", SearchOption.AllDirectories))
+      {
+        string newDirPath = dirPath.Replace(sourceDir, destinationDir);
+        Directory.CreateDirectory(newDirPath);
+      }
+
+      // Copy all files
+      foreach (string filePath in Directory.GetFiles(sourceDir, "*.*", SearchOption.AllDirectories))
+      {
+        string newFilePath = filePath.Replace(sourceDir, destinationDir);
+        File.Copy(filePath, newFilePath, overwrite: true);
+      }
+    }
+
 
     // ============================
     // >>> NEW HELPERS & STUBS

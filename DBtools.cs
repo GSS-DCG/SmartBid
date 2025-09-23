@@ -90,8 +90,8 @@ namespace SmartBid
       try
       {
         // Extract XML nodes
-        XmlNodeList inputDocs = dataMaster.SelectNodes(@"dm /utils/rev_01/inputDocs/doc")!;
-        XmlNodeList deliveryDocs = dataMaster.SelectNodes(@"dm/utils/rev_01/deliveryDocs/doc")!;
+        XmlNodeList inputDocs = dataMaster.SelectNodes(@$"dm/utils/{dm.SBidRevision}/inputDocs/doc")!;
+        XmlNodeList deliveryDocs = dataMaster.SelectNodes(@$"dm/utils/{dm.SBidRevision}/deliveryDocs/doc")!;
 
         // Insert project
         var cmdProject = conn.CreateCommand();

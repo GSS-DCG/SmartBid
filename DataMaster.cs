@@ -22,7 +22,7 @@ namespace SmartBid
     public Dictionary<string, VariableData> Data { get { return _data; } }
     public XmlDocument DM { get { return _dm; } }
     public int BidRevision { get; set; }
-    public string SBidRevision => BidRevision.ToString("D2");
+    public string SBidRevision => $"rev_{BidRevision.ToString("D2")}";
 
 
 
@@ -48,7 +48,7 @@ namespace SmartBid
       FileName = Path.Combine(H.GetSProperty("processPath"), opportunityFolder, $"{opportunityFolder[..7]}_DataMaster.xml");
 
       // register actual revision number in _data (no need to store it in DM)
-      StoreValue("revision", new VariableData("revision", "current Revision", "utils", "utils", true, true, "code", "", "", "", "", 0, [], "rev_01"));
+      StoreValue("revision", new VariableData("revision", "current Revision", "utils", "utils", true, true, "code", "", "", "", "", 0, [], SBidRevision));
 
       if (((XmlElement)xmlRequest.SelectSingleNode("/request/requestInfo")!).GetAttribute("type") == "create")
       {
@@ -110,7 +110,7 @@ namespace SmartBid
             if (unitAttribute != null)
               ((XmlElement)value!).SetAttribute("unit", unitAttribute.Value);
             _ = newVar.AppendChild(CreateElement(configDataXML, "origin", "INIT from callXML"));
-            _ = newVar.AppendChild(CreateElement(configDataXML, "note", "Variable leida de Hermes"));
+            _ = newVar.AppendChild(CreateElement(configDataXML, "note", "Variable leída de Hermes"));
           }
         }
         UpdateData(configDataXML);
@@ -145,12 +145,12 @@ namespace SmartBid
     {
       //Add first revision element
       _ = _utilsNode.AppendChild(_dm.CreateComment("First Revision"));
-      XmlElement revision = _dm.CreateElement($"rev_{revisionNo!:D2}");
+      XmlElement revision = _dm.CreateElement(SBidRevision);
 
       _ = revision.AppendChild(CreateElement("dateTime", DateTime.Now.ToString("yyMMdd_HHmm")));
       _ = revision.AppendChild(CreateElement("outputFolder", Path.Combine(  H.GetSProperty("processPath"),
                                                                             GetValueString("opportunityFolder"),
-                                                                            $"rev_{SBidRevision}",
+                                                                            SBidRevision,
                                                                             "OUTPUT")));
 
       //Adding Request Info from Call
@@ -178,7 +178,7 @@ namespace SmartBid
 
       //Adding node to store tools used in this revision
       newNode = H.CreateElement(_dm, "tools", "");
-      newNode.SetAttribute("processedFolder", Path.Combine(H.GetSProperty("processPath"), $@"{opportunityFolder}\TOOLS\rev_{SBidRevision}"));
+      newNode.SetAttribute("processedFolder", Path.Combine(H.GetSProperty("processPath"), $@"{opportunityFolder}\{SBidRevision}\TOOLS"));
       _ = newNode != null ? revision.AppendChild(_dm.ImportNode(newNode, true)) : null;
       return revision;
     }
@@ -227,12 +227,12 @@ namespace SmartBid
 
     public void UpdateData(XmlDocument newData)
     {
-      //storing the tool node from /root/utils in newData to the node dm/utils/rev_01/tool in _dm
+      //storing the tool node from /root/utils in newData to the node dm/utils/rev_XX/tool in _dm
       //where the number of the revision can be found at  _dm.BidRevision, the name of the revision node 
       //should be created as rev_XX where XX is the number with two digits
 
 
-      H.MergeXmlNodes(newData, _dm, "/*/utils", $"/dm/utils/rev_{SBidRevision}");
+      H.MergeXmlNodes(newData, _dm, "/*/utils", $"/dm/utils/{SBidRevision}");
 
       XmlNode variablesNode = newData.SelectSingleNode("//*/variables")!;
       if (variablesNode == null) return;
@@ -242,11 +242,11 @@ namespace SmartBid
         XmlNode importedNode = _dm.ImportNode(variable, true);
 
         XmlElement revisionElement = _dm.CreateElement("revision");
-        XmlElement rev01Element = _dm.CreateElement($"rev{SBidRevision}");
-        rev01Element.InnerText = $"set{SBidRevision}";
+        XmlElement rev01Element = _dm.CreateElement(SBidRevision);
+        rev01Element.InnerText = $"set{BidRevision.ToString("D2")}";
         _ = revisionElement.AppendChild(rev01Element);
 
-        XmlElement setElment = _dm.CreateElement($"set{SBidRevision}");
+        XmlElement setElment = _dm.CreateElement($"set{BidRevision.ToString("D2")}");
 
         foreach (XmlNode child in importedNode.ChildNodes)
         {
@@ -284,13 +284,13 @@ namespace SmartBid
 
           if (dashIndex == -1)
           {
-            return _dm.SelectSingleNode($"/dm/utils/rev_{SBidRevision}/{key}")?.InnerText ?? string.Empty;
+            return _dm.SelectSingleNode($"/dm/utils/{SBidRevision}/{key}")?.InnerText ?? string.Empty;
           }
           else
           {
             string attribute = key[(dashIndex + 1)..];
             key = key[..dashIndex];
-            string node = $"/dm/utils/rev_{SBidRevision}/{key}";
+            string node = $"/dm/utils/{SBidRevision}/{key}";
 
             return _dm.SelectSingleNode(node)?.Attributes?[attribute]?.Value ?? string.Empty;
           }

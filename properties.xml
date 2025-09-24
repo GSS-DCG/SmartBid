@@ -5,12 +5,12 @@
 	<DBConnextion>server=10.25.3.189;port=3306;database=SmartBid;user=SB_user01;password=_0000_</DBConnextion>
 
 	<!-- Mapa de directorios -->
-	<callsPath>C:\InSync\SmartBid\files\calls_temp</callsPath>	<!-- Directorio de escucha -->
+	<callsPath>C:\InSync\SmartBid\files\calls_temp</callsPath>	<!-- Directorio de escucha para el proceso principal-->
 	<callsPathDWG>C:\InSync\SmartBid\files\calls_DWG</callsPathDWG> <!-- Directorio de escucha para la devolución del DWG-->
-	<callsPathTemp>C:\InSync\SmartBid\files\calls</callsPathTemp>	<!-- Directorio de escucha provisional que escucha el call original con el DWG actualizado -->
-	<storageTemp>C:\InSync\SmartBid\files\Temp</storageTemp>	<!-- Directorio de escucha provisional que escucha el call original con el DWG actualizado -->
-	<oppsPath>C:\Users\martin.molina\OneDrive - Gonvarri\SOLAR STEEL Opps - Documents\PruebasSmartBid</oppsPath>  <!-- Directorio de salida -->
-	<processPath>C:\InSync\SmartBid\files\processed</processPath>  <!-- Directorio de salida -->
+	<callsPathTemp>C:\InSync\SmartBid\files\calls</callsPathTemp>	<!-- Directorio de escucha para el call del directo de Hermes -->
+	<storageTemp>C:\InSync\SmartBid\files\Temp</storageTemp>	<!-- Directorio de almacenamiento temporal mientras se procesa el DWG-->
+	<oppsPath>C:\Users\martin.molina\OneDrive - Gonvarri\SOLAR STEEL Opps - Documents\PruebasSmartBid</oppsPath>  <!-- Directorio de salida en sharePoint -->
+	<processPath>C:\InSync\SmartBid\files\processed</processPath>  <!-- Directorio de almacenamiento local del DataMaster Tools y output -->
 
 	<VarMap>C:\InSync\SmartBid\files\tools\VariableMap_REV00.xlsx</VarMap>  <!-- Excel con el mapa de variables y de herramientas -->
 	<prepFolder>C:\InSync\SmartBid-Tools</prepFolder>  <!-- Carpeta donde encontrar las herramientas PREP y externas -->
@@ -28,35 +28,35 @@
 	<tableStyle>MyStyle</tableStyle>  <!-- Nombre del formato que se dará a las tablas insertadas en los Templates -->
 	<allowableVarTypes>num;text;code;bool;date;image;table;route;path</allowableVarTypes>	<!-- Lista de tipos de variable permitidos-->
 	<languages>EN;ES</languages>	<!-- Lista de idiomas en templates-->
-	<defaultLanguage>EN</defaultLanguage>	<!-- Lista de idiomas en templates-->
+	<defaultLanguage>EN</defaultLanguage>	<!-- Idioma por defecto-->
 
 	<ExcelValidationCheck>true</ExcelValidationCheck>
 	<!-- set whether or not validation rules on excel shoud be enforced or allowed to break the validations rules-->
 
 	<!-- Log/Storage -->
 	<generatePDF>false</generatePDF>	<!-- Generar PDFs de los Deliveries -->
-	
 	<storeXmlCall>true</storeXmlCall>	<!-- Archivar el fichero Call.xml-->
-	<storeTools>true</storeTools>
-	<storeDeliveries>true</storeDeliveries>
+	<storeTools>true</storeTools> <!-- false: borra las herramientas despues de extraer los datos; true: las mantiene en processPath-->
+	<storeDeliveries>true</storeDeliveries><!-- false: borra las memorias y documentos generados de processPath; true: las mantiene en processPath-->
 	
-	<returnTools>true</returnTools>	<!-- Copiar las herramientas al directorio Opps -->
-	<returnDeliveries>true</returnDeliveries>
-	<returnDataMaster>true</returnDataMaster>
-	<createOppsFoldersStructure>true</createOppsFoldersStructure>
-	<oppsFoldersTemplate>\\ASTURNAS\comun\SmartBid\PlantillaOpps\25-YYYY-CLIENTE-Proyecto</oppsFoldersTemplate>
+	<createOppsFoldersStructure>true</createOppsFoldersStructure> <!-- Copia la estructura de carpetas estandar al directorio opps con el nombre de la oportunidad -->
+	<oppsFoldersTemplate>\\ASTURNAS\comun\SmartBid\PlantillaOpps\25-YYYY-CLIENTE-Proyecto</oppsFoldersTemplate> <!-- Localización de la plantilla del directorio de herramientas -->
 
-	<mailKAM>false</mailKAM>
-	<mailCreatedBy>false</mailCreatedBy>
+	<returnTools>true</returnTools>	<!-- Copiar las herramientas al directorio Opps rev_xx/TOOLS -->
+	<returnDeliveries>true</returnDeliveries><!-- Copiar las memorias y documentos generados al directorio Opps rev_xx/OUTPUT -->
+	<returnDataMaster>true</returnDataMaster><!-- Copia el DataMaster Opps -->
+	
+	<mailKAM>false</mailKAM> <!-- Envía mail al kam al terminar la generación -->
+	<mailCreatedBy>false</mailCreatedBy><!-- Envía mail al kam al usuario que inció la generación -->
 	
 	<logLevel>5</logLevel>  <!-- Nivel de anotaciones en el Log: 0-Todo 5-Mínimo -->
 	<printLevel>0</printLevel>  <!-- Nivel de printouts en consola: 0-Todo 5-Mínimo -->
 
-	<autorun>C:\InSync\SmartBid\files\calls\pasteFiles.bat</autorun>
-	<processDWG>false</processDWG>
+	<autorun>C:\InSync\SmartBid\files\calls\pasteFiles.bat</autorun> <!-- Script que se ejecuta al iniciar el programa para desarrollo-->
+	<processDWG>false</processDWG><!-- Activar/desactivar el procesamiento de DWG -->
 	<DWG_recipiant>martin.molina@gsolarsteel.com</DWG_recipiant>	<!-- Mail al que enviar el DWG para acondicionarlo -->
-	<closeWord>true</closeWord>
-	<closeExcel>true</closeExcel>
+	<closeWord>true</closeWord><!-- Cierra todas las instancias de Word al iniciar el proceso -->
+	<closeExcel>true</closeExcel><!-- Cierra todas las instancias de Excel al iniciar el proceso -->
 
 </root>
 

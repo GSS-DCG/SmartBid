@@ -153,38 +153,6 @@ namespace SmartBid
       _ = root.AppendChild(variablesXml); //Adding the variables element to the XML
 
 
-
-
-      //XmlNode inputDocsNode = H.CreateElement(prepCallXML, "inputDocs", ""); //Adding the call element to the XML   
-      //_ = prepCallXML.DocumentElement.AppendChild(inputDocsNode); //Adding the call element to the XML
-
-
-      //string inputFilesTimeStamp = dm.DM.SelectSingleNode(@$"dm/utils/rev_{dm.BidRevision:D2}/inputDocs")?.Attributes?["timeStamp"]?.Value ?? DateTime.Now.ToString("yyMMdd");
-
-
-      //foreach (XmlElement doc in dm.DM.SelectNodes(@$"dm/utils/rev_{dm.BidRevision.ToString("D2")}/inputDocs"))
-      //{
-      //  string fileType = doc.GetAttribute("type");
-      //  string fileName = doc.InnerText;
-      //  string filePath = Path.Combine(Path.Combine
-      //    (H.GetSProperty("oppsPath"),
-      //    dm.GetInnerText(@"dm/utils/utilsData/opportunityFolder")),
-      //    "1.DOC",
-      //    inputFilesTimeStamp,
-      //    fileType,
-      //    fileName);
-
-      //  XmlElement docElement = H.CreateElement(prepCallXML, "doc", filePath);
-      //  docElement.SetAttribute("type", fileType);
-      //  _ = inputDocsNode.AppendChild(docElement); //Adding the input documents to the XML
-      //}
-
-      //find node "dm/utils/rev_{dm.SBidRevision}/inputDocs" from dm.DM and add to prepCAllXML
-      // Replace this line:
-      // prepCallXML.AppendChild(dm.DM.GetElementById(@$"dm/utils/rev_{dm.SBidRevision}/inputDocs\"));
-      // With a null check to avoid CS8604:
-
-
       XmlNode? dmInputDocs = dm.DM.SelectSingleNode(@$"dm/utils/rev_{dm.BidRevision.ToString("D2")}/inputDocs");
       if (dmInputDocs != null)
         prepCallXML.DocumentElement.AppendChild(prepCallXML.ImportNode(dmInputDocs, true));

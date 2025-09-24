@@ -40,11 +40,11 @@
 	<storeTools>true</storeTools>
 	<storeDeliveries>true</storeDeliveries>
 	
-	<returnTools>false</returnTools>	<!-- Copiar las herramientas al directorio Opps -->
-	<returnDeliveries>false</returnDeliveries>
-	<returnDataMaster>false</returnDataMaster>
+	<returnTools>true</returnTools>	<!-- Copiar las herramientas al directorio Opps -->
+	<returnDeliveries>true</returnDeliveries>
+	<returnDataMaster>true</returnDataMaster>
 	<createOppsFoldersStructure>true</createOppsFoldersStructure>
-	<oppsFoldersTemplate>\\ASTURNAS\comun\SmartBid\PlantillaOpps\XX-XXXX</oppsFoldersTemplate>
+	<oppsFoldersTemplate>\\ASTURNAS\comun\SmartBid\PlantillaOpps\25-YYYY-CLIENTE-Proyecto</oppsFoldersTemplate>
 
 	<mailKAM>false</mailKAM>
 	<mailCreatedBy>false</mailCreatedBy>

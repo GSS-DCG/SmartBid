@@ -233,7 +233,7 @@ namespace SmartBid
     {
       //Instantiating the DataMaster class with the XML string
       DataMaster dm = new(xmlCall, targets);
-      //Creating the projectFolder in the storage directory
+      //Creating the oppFolder in the storage directory
       string projectFolder = Path.Combine(H.GetSProperty("processPath"), dm.DM.SelectSingleNode(@"dm/utils/utilsData/opportunityFolder")?.InnerText ?? "");
       if (!Directory.Exists(projectFolder))
         _ = Directory.CreateDirectory(projectFolder);
@@ -265,13 +265,22 @@ namespace SmartBid
     private static void ReturnRemoveFiles(DataMaster dm)
     {
       //string revisionDateStamp = dm.GetInnerText(@"dm/utils/rev_01/dateTime")[..6];
-      string projectFolder = dm.GetInnerText(@"dm/utils/utilsData/opportunityFolder");
+      string oppFolder = dm.GetInnerText(@"dm/utils/utilsData/opportunityFolder");
 
-      string processedToolsPath = Path.Combine(H.GetSProperty("processPath"), projectFolder, dm.SBidRevision, "TOOLS");
-      string processedOutputsPath = Path.Combine(H.GetSProperty("processPath"), projectFolder, dm.SBidRevision, "OUTPUT");
+      string processedToolsPath = Path.Combine(H.GetSProperty("processPath"), oppFolder, dm.SBidRevision, "TOOLS");
+      string processedOutputsPath = Path.Combine(H.GetSProperty("processPath"), oppFolder, dm.SBidRevision, "OUTPUT");
 
-      string oppsToolsPath = Path.Combine(H.GetSProperty("oppsPath"), projectFolder, @$"2.ING", dm.SBidRevision, "TOOLS");
-      string oppsDeliveriesPath = Path.Combine(H.GetSProperty("oppsPath"), projectFolder, @$"2.ING", dm.SBidRevision, "OUTPUT");
+      string destinationPath = Path.Combine(H.GetSProperty("oppsPath"),
+                                            $"OFERTAS {dm.GetInnerText("dm/projectData/opportunityID").Substring(0, 4)}",
+                                            oppFolder, 
+                                            @$"2.ING");
+
+      string oppsToolsPath = Path.Combine(destinationPath,
+                                          dm.SBidRevision,
+                                          "TOOLS");
+      string oppsDeliveriesPath = Path.Combine(destinationPath,
+                                          dm.SBidRevision,
+                                          "OUTPUT");
 
       if (H.GetBProperty("returnTools"))
         foreach (string file in Directory.GetFiles(processedToolsPath))
@@ -296,14 +305,16 @@ namespace SmartBid
           File.Delete(file);
 
       if (H.GetBProperty("returnDataMaster"))
-        File.Copy(dm.FileName, Path.Combine(H.GetSProperty("oppsPath"), projectFolder, Path.GetFileName(dm.FileName)), overwrite: true);
+        File.Copy(dm.FileName, Path.Combine(destinationPath, Path.GetFileName(dm.FileName)), overwrite: true);
     }
 
     private static void createOppsFoldersStructure(string opportunityID, string oppFolder)
     {
       string templatePath = H.GetSProperty("oppsFoldersTemplate");
       string baseDestinationPath = H.GetSProperty("oppsPath");
-      string destinationPath = Path.Combine(baseDestinationPath, $"OFERTAS 20{opportunityID.Substring(0,2)}",oppFolder);
+      string destinationPath = Path.Combine(baseDestinationPath, 
+                                            $"OFERTAS {opportunityID.Substring(0,4)}",
+                                            oppFolder);
 
       if (!Directory.Exists(templatePath))
       {

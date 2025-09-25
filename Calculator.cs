@@ -157,7 +157,7 @@ namespace SmartBid
       if (dmInputDocs != null)
         prepCallXML.DocumentElement.AppendChild(prepCallXML.ImportNode(dmInputDocs, true));
 
-
+      H.PrintLog(5,ThreadContext.CurrentThreadInfo.Value!.User, "GetRouteMap", $"- Calculated Route Map: \n {string.Join(" >> ", _calcRoute.Select(tool => tool.Code))}");
 
       // Guardamos el XML por si fuese necesario
       prepCallXML.Save(Path.Combine(Path.GetDirectoryName(H.GetSProperty("ToolsPath")), "preparationCall.xml"));

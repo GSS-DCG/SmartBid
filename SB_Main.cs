@@ -225,6 +225,16 @@ namespace SmartBid
         H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"\uD83E\uDDE8 Excepción: {ex.GetType().Name}");
         H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"\uD83D\uDCC4 Mensaje: {ex.Message}");
         H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"\uD83E\uDDED StackTrace:\n{ex.StackTrace}");
+        H.MailTo(H.GetSProperty("EngineeringEmail").Split(';').ToList(),
+            subject: $"SmartBid Error processing {dm.GetValueString("opportunityFolder")}",
+            body: $"Error details:\n\n" +
+                  $"Type: {ex.GetType().Name}\n" +
+                  $"Message: {ex.Message}\n\n" +
+                  $"StackTrace:\n{ex.StackTrace}\n\n" +
+                  $"User: {ThreadContext.CurrentThreadInfo.Value!.User}\n" +
+                  $"Call: {Path.GetFileName(filePath)}\n" +
+                  $"DataMaster: {dm.FileName}\n"
+        );
         H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"--❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌--");
       }
     }

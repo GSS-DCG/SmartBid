@@ -55,6 +55,7 @@
 	<autorun>C:\InSync\SmartBid\files\calls\pasteFiles.bat</autorun> <!-- Script que se ejecuta al iniciar el programa para desarrollo-->
 	<processDWG>false</processDWG><!-- Activar/desactivar el procesamiento de DWG -->
 	<DWG_recipiant>martin.molina@gsolarsteel.com</DWG_recipiant>	<!-- Mail al que enviar el DWG para acondicionarlo -->
+	<EngineeringEmail>martin.molina@gsolarsteel.com</EngineeringEmail>
 	<closeWord>true</closeWord><!-- Cierra todas las instancias de Word al iniciar el proceso -->
 	<closeExcel>true</closeExcel><!-- Cierra todas las instancias de Excel al iniciar el proceso -->
 

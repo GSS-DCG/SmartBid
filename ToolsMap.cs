@@ -615,8 +615,57 @@ namespace SmartBid
       toolsNode.AppendChild(newToolNode);
 
 
+      // add default value to every expected 'out' variable that is not coming in the results by reading all expected out variables
+      // from variableList direction = "out" and checking if they are in the results xml
+      // add all missing out variables using the default value from VariablesMap
+      // first get the variables node from results
+      XmlElement answerNode = (XmlElement)results.SelectSingleNode("//answer");
+      XmlElement resultsVariablesNode = (XmlElement)answerNode.SelectSingleNode("variables");
+      List<string> resultVarIDs = new();
+      foreach (XmlElement varNode in resultsVariablesNode.ChildNodes)
+      {
+        resultVarIDs.Add(varNode.Name);
+      }
+      foreach (var entry in variableList)
+      {
+        string variableID = entry.Key;
+        string direction = entry.Value[1];
+        if (direction == "out" && mirror.GetVarCallLevel(variableID) == tool.Call && !resultVarIDs.Contains(variableID))
+        {
+          XmlElement varElement = CreateXmlVariable(results, variableID, _variablesMap.GetVariableData(variableID).Type, _variablesMap.GetVariableData(variableID).Default ?? string.Empty, $"{tool.Code}+{DateTime.Now:dd-HH:mm}");
+          resultsVariablesNode.AppendChild(varElement);
+          H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "CalculateExe", $"❌ Missing output variable '{variableID}' added with default value.");
+        }
+      }
+
+
+
       return results;
     }
+
+    private static XmlElement CreateXmlVariable(XmlDocument outputXML, string ID, string type, string value, string origin)
+    {
+      XmlElement xmlVar = outputXML.CreateElement(ID);
+      outputXML.SelectSingleNode("//answer/variables")?.AppendChild(xmlVar);
+
+      xmlVar.AppendChild(CreateElementWithText(outputXML, "value", value, ("type", type)));
+      xmlVar.AppendChild(CreateElementWithText(outputXML, "origin", $"{origin}-{DateTime.Now:yyMMdd-HHmm}"));
+      xmlVar.AppendChild(CreateElementWithText(outputXML, "note", "Calculated Value"));
+
+      return xmlVar;
+    }
+    private static XmlElement CreateElementWithText(XmlDocument doc, string elementName, string textContent, params (string, string)[] attributes)
+    {
+      XmlElement element = doc.CreateElement(elementName);
+      element.InnerText = textContent;
+      foreach (var (attrName, attrValue) in attributes)
+      {
+        element.SetAttribute(attrName, attrValue);
+      }
+      return element;
+    }
+
+
 
     public void GenerateOuput(ToolData template, DataMaster dm)
     {

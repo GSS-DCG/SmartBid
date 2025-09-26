@@ -172,10 +172,10 @@ namespace SmartBid
       string vmFile = Path.GetFullPath(H.GetSProperty("VarMap"));
       if (!File.Exists(vmFile))
       {
-        H.PrintLog(2, "VarMap", "VariablesMap", $" ****** FILE: {vmFile} NOT FOUND. ******\n Review value 'VarMap' in properties.xml it should point to the location of the Variables Map file.\n\n");
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "VariablesMap", $" ****** FILE: {vmFile} NOT FOUND. ******\n Review value 'VarMap' in properties.xml it should point to the location of the Variables Map file.\n\n");
         _ = new FileNotFoundException("PROPERTIES FILE NOT FOUND", vmFile);
       }
-      H.PrintLog(2, "VarMap", "VariablesMap", $" Utilizando el mapa de Variables:{vmFile} \n");
+      H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "VariablesMap", $" Utilizando el mapa de Variables:{vmFile} \n");
 
       string directoryPath = Path.GetDirectoryName(vmFile);
       string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(vmFile);
@@ -186,7 +186,7 @@ namespace SmartBid
       {
         LoadFromXLS(vmFile);
         SaveToXml(xmlFile);
-        H.PrintLog(2, "VarMap", "VariablesMap", $"XML file created at: {xmlFile}");
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "VariablesMap", $"XML file created at: {xmlFile}");
       }
       else
       {
@@ -307,7 +307,7 @@ namespace SmartBid
         }
         catch (Exception ex)
         {
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "VariablesMap.LoadFromXLS",
+          H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "VariablesMap.LoadFromXLS",
 $"❌❌ Error ❌❌ -- Unexpected title in VariableMap/VarMap table \n{ex}");
           throw;
         }
@@ -326,7 +326,7 @@ $"❌❌ Error ❌❌ -- Unexpected title in VariableMap/VarMap table \n{ex}");
       {
         foreach (var variable in nonAllowableTypeVars)
         {
-          H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "VariablesMap.LoadFromXLS",
+          H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "VariablesMap.LoadFromXLS",
           $"Variable type '{variable.Type}' declared for variable {variable.ID} is not valid.");
         }
         throw new ArgumentException("One or more variables have invalid types.");
@@ -342,7 +342,7 @@ $"❌❌ Error ❌❌ -- Unexpected title in VariableMap/VarMap table \n{ex}");
       {
         foreach (var id in nonNormalizedIDs)
         {
-          H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "VariablesMap.LoadFromXLS",
+          H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "VariablesMap.LoadFromXLS",
               $"Variable ID '{id}' is not normalized.");
         }
         throw new ArgumentException("One or more variable IDs are not normalized.");

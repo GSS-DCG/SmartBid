@@ -2,7 +2,9 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Xml;
+using Microsoft.VisualBasic.ApplicationServices;
 using SmartBid;
+using static SmartBid.TC;
 using Outlook = Microsoft.Office.Interop.Outlook;
 
 namespace SmartBid
@@ -26,8 +28,8 @@ namespace SmartBid
       {
         PROPERTIES_FILEPATH = Path.Combine(baseDirectory, "properties.xml");
       }
-      H.PrintLog(2, "Helper", "Helper", $"base directory: {baseDirectory}");
-      H.PrintLog(2, "Helper", "Helper", $"PROPERTIES_FILEPATH: {PROPERTIES_FILEPATH}");
+      H.PrintLog(2, "00:00.000", "SYSTEM", "Helper", $"base directory: {baseDirectory}");
+      H.PrintLog(2, "00:00.000", "SYSTEM", "Helper", $"PROPERTIES_FILEPATH: {PROPERTIES_FILEPATH}");
     }
 
     public static string GetSProperty(string name)
@@ -39,7 +41,7 @@ namespace SmartBid
 
       if (!File.Exists(Path.GetFullPath(PROPERTIES_FILEPATH)))
       {
-        PrintLog(2, "Helper", "GetSProperty", $" ****** FILE: {PROPERTIES_FILEPATH} NOT FOUND. ******\n Review properties.xml file location or update PROPERTIES_FILEPATH in H.cs Class file\n\n");
+        PrintLog(2, "", "SYSTEM", "GetSProperty", $" ****** FILE: {PROPERTIES_FILEPATH} NOT FOUND. ******\n Review properties.xml file location or update PROPERTIES_FILEPATH in H.cs Class file\n\n");
         _ = new FileNotFoundException("PROPERTIES FILE NOT FOUND", PROPERTIES_FILEPATH);
       }
 
@@ -84,19 +86,37 @@ namespace SmartBid
       return; // Only save if log level is sufficient
     }
 
-    public static void PrintLog(int level = 2, string user = "", string eventLog = "info", string message = "", XmlDocument xmlDoc = null)
+
+
+    public static void PrintLog(
+        int level,
+        string timer,
+        string user,
+        string eventLog,
+        string message,
+        XmlDocument xmlDoc = null)
     {
+
+      // Trim user to text before '@' (email local-part). If no '@', keep as-is.
+      string displayUser = user ?? string.Empty;
+      int atIdx = displayUser.IndexOf('@');
+      if (atIdx > 0) displayUser = displayUser.Substring(0, atIdx);
+
+      user.Substring(user.IndexOf('@') > 0 ? user.IndexOf('@') : user.Length);
+
       if (GetNProperty("printLevel") <= level)
       {
-        Console.WriteLine($"{level} - user: {user} >> {eventLog}: {message}");
+        Console.WriteLine($"{level} {timer} = {user.Substring(0, user.IndexOf('@') > 0 ? user.IndexOf('@') : user.Length)} >> {eventLog}: {message}");
+
         if (xmlDoc != null)
         {
-          StringWriter sw = new();
-          XmlTextWriter writer = new(sw) { Formatting = Formatting.Indented };
+          using StringWriter sw = new();
+          using XmlTextWriter writer = new(sw) { Formatting = Formatting.Indented };
           xmlDoc.WriteTo(writer);
           Console.WriteLine(sw.ToString()); // Print formatted XML
         }
       }
+
       if (GetNProperty("logLevel") <= level)
       {
         DBtools.LogMessage(level, user, eventLog, message);
@@ -151,15 +171,15 @@ namespace SmartBid
 
     public static bool MailTo(List<string> email, string subject, string body = "", string? attachmentPath = null)
     {
-      // Asegura logs sin depender de ThreadContext
-      string userForLog = ThreadContext.CurrentThreadInfo?.Value?.User ?? "SYSTEM";
+      // Asegura logs sin depender de TC
+      string userForLog = TC.ID?.Value?.User ?? "SYSTEM";
 
       try
       {
         if (email == null || email.Count == 0)
         {
-          PrintLog(5, userForLog, "MailTo", "⚠️ No recipients supplied.");
-          PrintLog(5, userForLog, "Subject", $"{subject}");
+          PrintLog(5, "00:00.000", userForLog, "MailTo", "⚠️ No recipients supplied.");
+          PrintLog(5, "00:00.000", userForLog, "Subject", $"{subject}");
           return false;
         }
 
@@ -190,14 +210,14 @@ namespace SmartBid
 
         mailItem.Send();
 
-        PrintLog(5, userForLog, "MailTo",
+        PrintLog(5, "00:00.000", userForLog, "MailTo",
             $"Correo enviado a:\n {string.Join("\n ", email)}\n" +
             (string.IsNullOrWhiteSpace(attachmentPath) ? "" : $"Adjunto: {attachmentPath}"));
         return true;
       }
       catch (Exception ex)
       {
-        PrintLog(2, userForLog, "MailTo", $"❌ Error al enviar el correo: {ex.Message}");
+        PrintLog(2, "00:00.000", userForLog, "MailTo", $"❌ Error al enviar el correo: {ex.Message}");
         return false;
       }
     }

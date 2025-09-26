@@ -3,8 +3,10 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Xml;
+using DocumentFormat.OpenXml.InkML;
 using Mysqlx.Crud;
 using Org.BouncyCastle.Asn1.Ocsp;
+using Org.BouncyCastle.Crypto.Digests;
 
 namespace SmartBid
 {
@@ -37,7 +39,7 @@ namespace SmartBid
 
 ");
       string path = H.GetSProperty("callsPath");
-      H.PrintLog(5, "Main", "Main", $"Usando Varmap: {H.GetSProperty("VarMap")}");
+      H.PrintLog(5, "00:00.000", "Main", "Main", $"Usando Varmap: {H.GetSProperty("VarMap")}");
 
       watcher = new FileSystemWatcher
       {
@@ -47,7 +49,8 @@ namespace SmartBid
       };
       watcher.Created += (sender, e) =>
       {
-        H.PrintLog(5, "Main", "Main", $"Evento detectado: {e.FullPath}");
+        H.PrintLog(5, "00:00.000", "Main", "Main", $"   ***    \nEvento detectado: {DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}");
+        H.PrintLog(5, "00:00.000", "Main", "Main", $"{e.FullPath}");
         if (Regex.IsMatch(Path.GetFileName(e.FullPath), @"^call_.*\.xml$", RegexOptions.IgnoreCase))
         {
           _fileQueue.Enqueue(e.FullPath);
@@ -60,7 +63,7 @@ namespace SmartBid
 
       watcher.EnableRaisingEvents = true;
 
-      H.PrintLog(5, "Main", "Main", $"Observando el directorio: {path}");
+      H.PrintLog(5, "00:00.000", "Main", "Main", $"Observando el directorio: {path}");
 
       // >>> NEW: Start two independent directory listeners
       string dir1 = H.GetSProperty("callsPathTemp");   // Directorio de entrada del Hermes
@@ -73,7 +76,7 @@ namespace SmartBid
           if (Regex.IsMatch(Path.GetFileName(file), @"^call_.*\.xml$", RegexOptions.IgnoreCase))
             DoStuff1(file);
           else
-            H.PrintLog(5, "SYSTEM", "Listener1", $"⚠️ Archivo ignorado (no call_*.xml): {file}");
+            H.PrintLog(5, "00:00.000", "SYSTEM", "Listener1", $"⚠️ Archivo ignorado (no call_*.xml): {file}");
         },
         token: _cts.Token,
         name: "Listener1"
@@ -88,17 +91,17 @@ namespace SmartBid
               ext.Equals(".dxf", StringComparison.OrdinalIgnoreCase))
             DoStuff2(file);
           else
-            H.PrintLog(5, "SYSTEM", "Listener1", $"⚠️ Archivo ignorado (no call_*.xml): {file}");
+            H.PrintLog(5, "00:00.000", "SYSTEM", "Listener1", $"⚠️ Archivo ignorado (no call_*.xml): {file}");
         },
         token: _cts.Token,
         name: "Listener2"
       );
 
 
-      H.PrintLog(5, "SYSTEM", "Main", $"Listening: {dir1}");
-      H.PrintLog(5, "SYSTEM", "Main", $"Listening: {dir2}");
+      H.PrintLog(5, "00:00.000", "SYSTEM", "Main", $"Listening: {dir1}");
+      H.PrintLog(5, "00:00.000", "SYSTEM", "Main", $"Listening: {dir2}");
 
-      H.PrintLog(5, "Main", "Main", "Presiona 'Q' para salir...");
+      H.PrintLog(5, "00:00.000", "Main", "Main", "Presiona 'Q' para salir...");
 
       // Procesamiento en un hilo separado
       _ = Task.Run(ProcessFiles);
@@ -107,7 +110,7 @@ namespace SmartBid
       Thread.Sleep(400); // Espera para asegurar que el watcher esté listo
       if (!string.IsNullOrEmpty(H.GetSProperty("autorun")))
       {
-        H.PrintLog(5, "Main", "Main", $"Ejecutando Autorun: {H.GetSProperty("autorun")}\n" +
+        H.PrintLog(5, "00:00.000", "Main", "Main", $"Ejecutando Autorun: {H.GetSProperty("autorun")}\n" +
             $"Para ejectutar normalmente eliminar el valor en la propiedad 'autorun' en properties.xml\n\n");
         Process.Start(H.GetSProperty("autorun"));
       }
@@ -117,7 +120,7 @@ namespace SmartBid
       {
         if (Console.KeyAvailable && Console.ReadKey(true).Key == ConsoleKey.Q)
         {
-          H.PrintLog(5, "Main", "Main", "Salida solicitada... deteniendo el watcher.");
+          H.PrintLog(5, "00:00.000", "Main", "Main", "Salida solicitada... deteniendo el watcher.");
           watcher.EnableRaisingEvents = false; // Detiene la detección de archivos nuevos
           _stopRequested = true;
 
@@ -137,7 +140,7 @@ namespace SmartBid
         Thread.Sleep(1000); // Reduce la carga de la CPU
       }
 
-      H.PrintLog(5, "Main", "Main", "Todos los archivos han sido procesados. Programa terminado.");
+      H.PrintLog(5, "00:00.000", "Main", "Main", "Todos los archivos han sido procesados. Programa terminado.");
     }
 
     static void ProcessFiles()
@@ -150,7 +153,7 @@ namespace SmartBid
           // Procesamiento paralelo de cada archivo
           _ = Task.Run(() =>
           {
-            ThreadContext.CurrentThreadInfo.Value = null;
+            TC.ID.Value = null;
             ProcessFile(filePath);
           });
         }
@@ -168,13 +171,13 @@ namespace SmartBid
 
       // ✅ Inicializar el contexto lógico (seguro para ejecución en paralelo)
       string userName = xmlCall.SelectSingleNode(@"request/requestInfo/createdBy")?.InnerText ?? "UnknownUser";
-      ThreadContext.CurrentThreadInfo.Value = new ThreadContext.ThreadInfo(userName);
+      TC.ID.Value = new TC.ThreadInfo(userName);
 
       // si autorun esperar 4 segundos a ejecutar
       if (H.GetBProperty("autorun"))
         Thread.Sleep(4000);
 
-      H.PrintLog(5, userName, "ProcessFile", $"Procesando archivo: {filePath}");
+      H.PrintLog(5, "00:00.000", userName, "ProcessFile", $"Procesando archivo: {filePath}");
 
       int callID = DBtools.InsertCallStart(xmlCall); // Report starting process to DB
       List<ToolData> targets = Calculator.GetDeliveryDocs(xmlCall); // Get the delivery docs from the call
@@ -189,9 +192,7 @@ namespace SmartBid
 
         Calculator calculator = new(dm, targets);
         calculator.RunCalculations();
-
-        
-
+      
         if (xmlCall.SelectSingleNode("/request/requestInfo")!.Attributes!["type"]?.Value == "create" && H.GetBProperty("createOppsFoldersStructure"))
           createOppsFoldersStructure(dm.GetInnerText("dm/projectData/opportunityID"), dm.GetInnerText("dm/utils/utilsData/opportunityFolder"));
 
@@ -201,12 +202,9 @@ namespace SmartBid
 
         string project = dm.GetValueString("opportunityFolder");
 
-
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"-- ****{new string('*', project.Length+17)}**** --");
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"-- **** PROJECT: {project} DONE  **** --");
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"-- ****{new string('*', project.Length+17)}**** --");
-
-        //Auxiliar.DeleteBookmarkText("ES_Informe de corrosión_Rev0.0.docx", "Ruta_05", dm, "OUTPUT");
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"-- ****{new string('*', project.Length+17)}**** --");
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User,  "ProcessFile", $"-- **** PROJECT: {project} DONE  **** --");
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"-- ****{new string('*', project.Length+17)}**** --");
 
         List<string> emailRecipients = [];
         // Add KAM email if configured to do so
@@ -220,22 +218,22 @@ namespace SmartBid
       }
       catch (Exception ex)
       {
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"--❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌--");
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"--❌❌ Error al procesar {dm.GetValueString("opportunityFolder")}❌❌");
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"\uD83E\uDDE8 Excepción: {ex.GetType().Name}");
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"\uD83D\uDCC4 Mensaje: {ex.Message}");
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"\uD83E\uDDED StackTrace:\n{ex.StackTrace}");
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"--❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌--");
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"--❌❌ Error al procesar {dm.GetValueString("opportunityFolder")}❌❌");
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"\uD83E\uDDE8 Excepción: {ex.GetType().Name}");
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"\uD83D\uDCC4 Mensaje: {ex.Message}");
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"\uD83E\uDDED StackTrace:\n{ex.StackTrace}");
         H.MailTo(H.GetSProperty("EngineeringEmail").Split(';').ToList(),
             subject: $"SmartBid Error processing {dm.GetValueString("opportunityFolder")}",
             body: $"Error details:\n\n" +
                   $"Type: {ex.GetType().Name}\n" +
                   $"Message: {ex.Message}\n\n" +
                   $"StackTrace:\n{ex.StackTrace}\n\n" +
-                  $"User: {ThreadContext.CurrentThreadInfo.Value!.User}\n" +
+                  $"User: {TC.ID.Value!.User}\n" +
                   $"Call: {Path.GetFileName(filePath)}\n" +
                   $"DataMaster: {dm.FileName}\n"
         );
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"--❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌--");
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"--❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌--");
       }
     }
 
@@ -261,11 +259,11 @@ namespace SmartBid
           string fileName = $"{DateTime.Now:yyMMdd-HHmmss}_{Path.GetFileName(callFile)}";
           string targetDir = Path.Combine(H.GetSProperty("processPath"), "", "calls");
           File.Move(callFile, Path.Combine(targetDir, oppFolder, fileName));
-          H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "StoreCallFile", $"Call File '{callFile}' moved to '{targetDir}'.");
+          H.PrintLog(4, TC.ID.Value!.Time(), TC.ID.Value!.User, "StoreCallFile", $"Call File '{callFile}' moved to '{targetDir}'.");
         }
         catch (Exception ex)
         {
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, $"❌❌ Error ❌❌ - StoreCallFile", $"❌Error❌ al mover '{callFile}': {ex.Message}");
+          H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌ - StoreCallFile", $"❌Error❌ al mover '{callFile}': {ex.Message}");
         }
       }
       else
@@ -371,7 +369,7 @@ namespace SmartBid
       {
         if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
         {
-          H.PrintLog(5, "SYSTEM", name, $"⚠️ Path does not exist or is empty: '{path}'. Listener not started.");
+          H.PrintLog(5, "00:00.000", "SYSTEM", name, $"⚠️ Path does not exist or is empty: '{path}'. Listener not started.");
           return;
         }
 
@@ -391,31 +389,31 @@ namespace SmartBid
           {
             try
             {
-              H.PrintLog(5, "SYSTEM", name, $"Evento detectado: {e.FullPath}");
+              H.PrintLog(5, "00:00.000", "SYSTEM", name, $"Evento detectado: {e.FullPath}");
               if (WaitForFileReady(e.FullPath, attempts: 15, delay: TimeSpan.FromMilliseconds(300)))
               {
                 onNewFile(e.FullPath); // trigger the specific handler
               }
               else
               {
-                H.PrintLog(5, "SYSTEM", name, $"⚠️ File never stabilized: {e.FullPath}");
+                H.PrintLog(5, "00:00.000", "SYSTEM", name, $"⚠️ File never stabilized: {e.FullPath}");
               }
             }
             catch (Exception ex)
             {
-              H.PrintLog(5, "SYSTEM", name, $"❌ Error handling '{e.FullPath}': {ex.Message}");
+              H.PrintLog(5, "00:00.000", "SYSTEM", name, $"❌ Error handling '{e.FullPath}': {ex.Message}");
             }
           }, token);
         };
 
-        H.PrintLog(4, "SYSTEM", name, $"Started watching: {path}");
+        H.PrintLog(4, "00:00.000", "SYSTEM", name, $"Started watching: {path}");
 
         // Keep this task alive until cancellation
         using var done = new ManualResetEventSlim(false);
         using var reg = token.Register(() => done.Set());
         done.Wait();
 
-        H.PrintLog(4, "SYSTEM", name, "Stopping...");
+        H.PrintLog(4, "00:00.000", "SYSTEM", name, "Stopping...");
       }, token);
     }
 
@@ -464,7 +462,7 @@ namespace SmartBid
         string callsPath = H.GetSProperty("callsPath");
         if (string.IsNullOrWhiteSpace(callsPath))
         {
-          H.PrintLog(5, "SYSTEM", "DoStuff1", "⚠️ 'callsPath' vacío en properties.xml");
+          H.PrintLog(5, "00:00.000", "SYSTEM", "DoStuff1", "⚠️ 'callsPath' vacío en properties.xml");
           return;
         }
         Directory.CreateDirectory(callsPath);
@@ -480,7 +478,7 @@ namespace SmartBid
           File.Copy(filePath, dest, overwrite: false);
           File.Delete(filePath);
         }
-        H.PrintLog(4, "SYSTEM", "DoStuff1", $"Archivo {Path.GetFileName(filePath)} movido a calls: {dest}");
+        H.PrintLog(4, "00:00.000", "SYSTEM", "DoStuff1", $"Archivo {Path.GetFileName(filePath)} movido a calls: {dest}");
       }
 
       // Si no se desea procesar DWG => directo a callsPath
@@ -507,7 +505,7 @@ namespace SmartBid
         }
         catch (Exception ex)
         {
-          H.PrintLog(5, "SYSTEM", "DoStuff1", $"⚠️ No se pudo leer el XML antes de mover: {ex.Message}");
+          H.PrintLog(5, "00:00.000", "SYSTEM", "DoStuff1", $"⚠️ No se pudo leer el XML antes de mover: {ex.Message}");
           // Si ni siquiera podemos leer, comportarse como "no LYOT": mover directo a callsPath
           MoveDirectToCallsPath();
           return;
@@ -517,7 +515,7 @@ namespace SmartBid
         // Si no hay LYOT o el DWG no existe => directo a callsPath
         if (string.IsNullOrWhiteSpace(lyotPath) || !File.Exists(lyotPath))
         {
-          H.PrintLog(5, "SYSTEM", "DoStuff1",
+          H.PrintLog(5, "00:00.000", "SYSTEM", "DoStuff1",
               $"⚠️ LYOT ausente o DWG inexistente. XML: {filePath} | LYOT: '{lyotPath}'. Se mueve directo a callsPath.");
           MoveDirectToCallsPath();
           return;
@@ -529,7 +527,7 @@ namespace SmartBid
         string tempDir = H.GetSProperty("storageTemp");
         if (string.IsNullOrWhiteSpace(tempDir))
         {
-          H.PrintLog(5, "SYSTEM", "DoStuff1", "⚠️ 'storageTemp' vacío en properties.xml");
+          H.PrintLog(5, "00:00.000", "SYSTEM", "DoStuff1", "⚠️ 'storageTemp' vacío en properties.xml");
           return;
         }
         Directory.CreateDirectory(tempDir);
@@ -538,7 +536,7 @@ namespace SmartBid
         try { File.Move(filePath, movedPath); }
         catch (IOException) { File.Copy(filePath, movedPath, overwrite: false); File.Delete(filePath); }
 
-        H.PrintLog(4, "SYSTEM", "DoStuff1", $"Archivo movido a temp: {movedPath}");
+        H.PrintLog(4, "00:00.000", "SYSTEM", "DoStuff1", $"Archivo movido a temp: {movedPath}");
 
         // 2) (Opcional) reabrir desde temp para cualquier otro uso del XML.
         //    Ya tenemos lyotPath de la lectura previa.
@@ -555,14 +553,14 @@ namespace SmartBid
           );
           File.Move(movedPath, renamedXml);
           movedPath = renamedXml;
-          H.PrintLog(4, "SYSTEM", "DoStuff1", $"XML renombrado a: {movedPath}");
+          H.PrintLog(4, "00:00.000", "SYSTEM", "DoStuff1", $"XML renombrado a: {movedPath}");
         }
 
         // 3) Enviar el DWG por correo (H.MailTo ya soporta adjunto)
         string recipient = H.GetSProperty("DWG_recipiant");
         if (string.IsNullOrWhiteSpace(recipient))
         {
-          H.PrintLog(5, "SYSTEM", "DoStuff1",
+          H.PrintLog(5, "00:00.000", "SYSTEM", "DoStuff1",
               "⚠️ 'DWG_recipiant' vacío en properties.xml; no se puede enviar correo.");
           return;
         }
@@ -575,13 +573,13 @@ namespace SmartBid
         bool sent = H.MailTo(recipients, subject, body, lyotPath);
 
         if (sent)
-          H.PrintLog(4, "SYSTEM", "DoStuff1", $"DWG enviado a {recipient}: {dwgFileName}");
+          H.PrintLog(4, "00:00.000", "SYSTEM", "DoStuff1", $"DWG enviado a {recipient}: {dwgFileName}");
         else
-          H.PrintLog(5, "SYSTEM", "DoStuff1", $"❌ Error al enviar DWG a {recipient}: {dwgFileName}");
+          H.PrintLog(5, "00:00.000", "SYSTEM", "DoStuff1", $"❌ Error al enviar DWG a {recipient}: {dwgFileName}");
       }
       catch (Exception ex)
       {
-        H.PrintLog(5, "SYSTEM", "DoStuff1", $"❌ Excepción: {ex.GetType().Name} - {ex.Message}");
+        H.PrintLog(5, "00:00.000", "SYSTEM", "DoStuff1", $"❌ Excepción: {ex.GetType().Name} - {ex.Message}");
         // Como fallback último, intenta no bloquear el flujo
         try { MoveDirectToCallsPath(); } catch { /* ignorar */ }
       }
@@ -623,7 +621,7 @@ namespace SmartBid
       {
         if (string.IsNullOrWhiteSpace(returnedDwgPath) || !File.Exists(returnedDwgPath))
         {
-          H.PrintLog(5, "SYSTEM", "DoStuff2", $"⚠️ DWG no existe: {returnedDwgPath}");
+          H.PrintLog(5, "00:00.000", "SYSTEM", "DoStuff2", $"⚠️ DWG no existe: {returnedDwgPath}");
           return;
         }
 
@@ -633,7 +631,7 @@ namespace SmartBid
 
         if (string.IsNullOrWhiteSpace(tempDir) || string.IsNullOrWhiteSpace(callsDir))
         {
-          H.PrintLog(5, "SYSTEM", "DoStuff2", "⚠️ 'storageTemp' o 'callsPath' vacíos en properties.xml");
+          H.PrintLog(5, "00:00.000", "SYSTEM", "DoStuff2", "⚠️ 'storageTemp' o 'callsPath' vacíos en properties.xml");
           return;
         }
 
@@ -642,7 +640,7 @@ namespace SmartBid
 
         if (candidates.Length == 0)
         {
-          H.PrintLog(5, "SYSTEM", "DoStuff2",
+          H.PrintLog(5, "00:00.000", "SYSTEM", "DoStuff2",
               $"⚠️ No se encontró XML en TEMP que termine en _{dwgBaseName}.xml");
           return;
         }
@@ -679,7 +677,7 @@ namespace SmartBid
 
         if (matchedXml is null || string.IsNullOrWhiteSpace(originalDwgPath))
         {
-          H.PrintLog(5, "SYSTEM", "DoStuff2",
+          H.PrintLog(5, "00:00.000", "SYSTEM", "DoStuff2",
               $"⚠️ No se encontró XML cuyo LYOT coincida con '{dwgBaseName}'.");
           //Enviar un correo electrónico al dwg_recipiant indicando el error y poniendo en el texto que revise el nombre del fichero para que 
           // coincida con el nombre del fichero original (enviar el nombre como recordatorio)
@@ -700,11 +698,12 @@ namespace SmartBid
           backup = EnsureUniqueFileName(backup);
 
           MoveFileCrossVolume(originalDwgPath, backup, overwrite: false);
-          H.PrintLog(4, "SYSTEM", "DoStuff2", $"Original respaldado como: {backup}");
+          H.PrintLog(4, "00:00.000", "SYSTEM", "DoStuff2", $"Original respaldado como: {backup}");
+          Thread.Sleep(1000); // Pequeña espera para asegurar que el archivo se libera
         }
         else
         {
-          H.PrintLog(5, "SYSTEM", "DoStuff2",
+          H.PrintLog(5, "00:00.000", "SYSTEM", "DoStuff2",
               $"⚠️ El DWG original indicado en LYOT no existe: {originalDwgPath}");
         }
 
@@ -714,7 +713,7 @@ namespace SmartBid
         string destinationDwg = Path.Combine(originalDir, originalName);
 
         MoveFileCrossVolume(returnedDwgPath, destinationDwg, overwrite: true);
-        H.PrintLog(4, "SYSTEM", "DoStuff2", $"DWG actualizado: {destinationDwg}");
+        H.PrintLog(4, "00:00.000", "SYSTEM", "DoStuff2", $"DWG actualizado: {destinationDwg}");
 
         // 5) Mover el XML a callsPath con su nombre original "call_xxx.xml"
         // matchedXml se renombró en DoStuff1 a "call_xxx_<dwgBaseName>.xml"
@@ -735,36 +734,54 @@ namespace SmartBid
               callsDir,
               $"{Path.GetFileNameWithoutExtension(finalCallName)}_{DateTime.Now:yyyyMMdd_HHmmss}{Path.GetExtension(finalCallName)}"
           );
-          H.PrintLog(5, "SYSTEM", "DoStuff2",
+          H.PrintLog(5, "00:00.000", "SYSTEM", "DoStuff2",
               $"⚠️ Ya existe {finalCallName} en callsPath. Usando: {Path.GetFileName(unique)}");
           finalCallPath = unique;
         }
 
         MoveFileCrossVolume(matchedXml, finalCallPath, overwrite: false);
 
-        H.PrintLog(4, "SYSTEM", "DoStuff2",
+        H.PrintLog(4, "00:00.000", "SYSTEM", "DoStuff2",
             $"XML movido a callsPath para disparar SmartBid: {finalCallPath}");
       }
       catch (Exception ex)
       {
-        H.PrintLog(5, "SYSTEM", "DoStuff2", $"❌ Excepción: {ex.GetType().Name} - {ex.Message}");
+        H.PrintLog(5, "00:00.000", "SYSTEM", "DoStuff2", $"❌ Excepción: {ex.GetType().Name} - {ex.Message}");
       }
     }
   }
 
-  static class ThreadContext
+  static class TC // Thread Context
   {
     public class ThreadInfo
     {
+      public Stopwatch chrono;
+
       public int ThreadId { get; }
       public string User { get; }
+
+      
       public ThreadInfo(string user)
       {
         ThreadId = Environment.CurrentManagedThreadId;
         User = user;
+        chrono = new Stopwatch();
+
+        chrono.Start();
       }
+
+      public string Time()
+      {
+        TimeSpan elapsed = chrono.Elapsed;
+        return $"{(int)elapsed.TotalMinutes:D2}:{elapsed.Seconds:D2}.{elapsed.Milliseconds:D3}";
+      }
+
     }
     // ✅ Ahora usamos AsyncLocal en lugar de ThreadLocal
-    public static AsyncLocal<ThreadInfo> CurrentThreadInfo = new();
+    public static AsyncLocal<ThreadInfo> ID = new();
   }
 }
+
+
+
+

@@ -18,7 +18,7 @@ namespace SmartBid
     private readonly XmlNode _dataNode;
 
     public string FileName { get; set; }
-    public string User { get; set; } = ThreadContext.CurrentThreadInfo.Value!.User;
+    public string User { get; set; } = TC.ID.Value!.User;
     public Dictionary<string, VariableData> Data { get { return _data; } }
     public XmlDocument DM { get { return _dm; } }
     public int BidRevision { get; set; }
@@ -34,13 +34,13 @@ namespace SmartBid
       _dm = new();
       _data = [];
 
-      H.PrintLog(5, User, "DataMaster constructor", "Create DataMaster using call:", xmlRequest);
+      H.PrintLog(5, TC.ID.Value!.Time(), User, "DataMaster constructor", "Create DataMaster using call:", xmlRequest);
 
 
       // Check if opportunityFolder exists, otherwise throw an exception
       if (GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder") == null)
       {
-        H.PrintLog(5, User, "CargaXML", "⚠️ Nodo 'opportunityFolder' no encontrado.");
+        H.PrintLog(5, TC.ID.Value!.Time(), User, "CargaXML", "⚠️ Nodo 'opportunityFolder' no encontrado.");
         throw new InvalidOperationException("El XML está incompleto: falta '//requestInfo/opportunityFolder'.");
       }
 
@@ -135,7 +135,7 @@ namespace SmartBid
       }
       else
       {
-        H.PrintLog(5, User, "CargaXML", "⚠️ Atributo 'Type' en '//request/requestInfo' non valid or not found.");
+        H.PrintLog(5, TC.ID.Value!.Time(), User, "CargaXML", "⚠️ Atributo 'Type' en '//request/requestInfo' non valid or not found.");
         throw new InvalidOperationException("The XML is incomplete: missing or invalid 'Type' attribute in '//request/requestInfo'.");
       }
 
@@ -201,7 +201,7 @@ namespace SmartBid
 
         if (!File.Exists(filePath))
         {
-          H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, $"❌❌ Error ❌❌ - ProcessFile", $"⚠️ File: '{filePath}' is not found.");
+          H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌ - ProcessFile", $"⚠️ File: '{filePath}' is not found.");
           continue; // Saltar este documento y seguir con los demás
         }
 
@@ -216,10 +216,10 @@ namespace SmartBid
 
         DBtools.InsertFileHash(filePath, fileType, hash, lastModified); // Store the fileName hash in the database 
 
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"Archivo '{filePath}' registered");
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"Archivo '{filePath}' registered");
       }
 
-      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "ProcessFile", $"All input files have been registered'.");
+      H.PrintLog(4, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"All input files have been registered'.");
 
       return newInputDocs;
     }
@@ -267,7 +267,7 @@ namespace SmartBid
     public void SaveDataMaster()
     {
       _dm.Save(FileName);
-      H.PrintLog(3, User, "DM", $"XML guardado en {FileName}");
+      H.PrintLog(3, TC.ID.Value!.Time(), User, "DM", $"XML guardado en {FileName}");
     }
     public string GetValueString(string key)
     {
@@ -299,7 +299,7 @@ namespace SmartBid
         {
           return string.Empty; // return empty string if the key exists in VariablesMap but has not been set in DataMaster
         }
-        H.PrintLog(5, User, $"❌❌ Error ❌❌ - DM.GetValueString ", $"Key '{key}' not found in DataMaster.");
+        H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌ - DM.GetValueString ", $"Key '{key}' not found in DataMaster.");
         throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
       }
     }
@@ -311,7 +311,7 @@ namespace SmartBid
       }
       else
       {
-        H.PrintLog(5, User, $"❌❌ Error ❌❌  - DM.GetValueNumber", $"Key '{key}' not found in DataMaster.");
+        H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM.GetValueNumber", $"Key '{key}' not found in DataMaster.");
         throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
       }
     }
@@ -323,7 +323,7 @@ namespace SmartBid
       }
       else
       {
-        H.PrintLog(5, User, $"❌❌ Error ❌❌  - DM.GetValueBoolean", $"Key '{key}' not found in DataMaster.");
+        H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM.GetValueBoolean", $"Key '{key}' not found in DataMaster.");
         throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
       }
     }
@@ -349,7 +349,7 @@ namespace SmartBid
       }
       else
       {
-        H.PrintLog(5, User, $"❌❌ Error ❌❌  - DM", $"Key '{key}' not found in DataMaster.");
+        H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM", $"Key '{key}' not found in DataMaster.");
         throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
       }
     }
@@ -361,7 +361,7 @@ namespace SmartBid
       }else {
         return string.Empty; // return empty string if the key exists in VariablesMap but has not been set in DataMaster
       }
-      H.PrintLog(5, User, $"❌❌ Error ❌❌ - DM.GetValueUnit ", $"Key '{key}' not found in DataMaster.");
+      H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌ - DM.GetValueUnit ", $"Key '{key}' not found in DataMaster.");
       throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
     }
     public VariableData GetVariableData(string key)
@@ -372,7 +372,7 @@ namespace SmartBid
       }
       else
       {
-        H.PrintLog(5, User, $"❌❌ Error ❌❌  - DM.GetVariableData", $"Key '{key}' not found in DataMaster.");
+        H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM.GetVariableData", $"Key '{key}' not found in DataMaster.");
         throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
       }
     }
@@ -390,14 +390,14 @@ namespace SmartBid
     }
     private void StoreValue(string id, string value)
     {
-      H.PrintLog(1, User, "StoreValue", $"variable ||{id}: {value}|| added to DataMaster data");
+      H.PrintLog(1, TC.ID.Value!.Time(), User, "StoreValue", $"variable ||{id}: {value}|| added to DataMaster data");
       VariableData varData = _vm.GetVariableData(id);
       varData.Value = value;
       _data.Add(id, varData);
     }
     private void StoreValue(string id, VariableData varData)
     {
-      H.PrintLog(1, User, "StoreValue", $"variable ||{id}|| added to DataMaster data");
+      H.PrintLog(1, TC.ID.Value!.Time(), User, "StoreValue", $"variable ||{id}|| added to DataMaster data");
       _data.Add(id, varData);
     }
     private XmlElement GetImportedElement(XmlDocument sourceDoc, string elementName)
@@ -426,7 +426,7 @@ namespace SmartBid
 
       if (missingValues.Count > 0) 
       {
-        H.PrintLog(5, User, "CheckMandatoryValues", $"❌Error❌: Mandatory values not found in DataMaster. Cannot continue with calculations. Faltan: {string.Join(", ", missingValues)}");
+        H.PrintLog(5, TC.ID.Value!.Time(), User, "CheckMandatoryValues", $"❌Error❌: Mandatory values not found in DataMaster. Cannot continue with calculations. Faltan: {string.Join(", ", missingValues)}");
         throw new InvalidOperationException("MandatoryValues missing");
       }
     }

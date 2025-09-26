@@ -31,10 +31,10 @@ namespace SmartBid
       Dictionary<string, string> bookmarkDict = doc.Bookmarks.Cast<Bookmark>()
           .ToDictionary(b => b.Name.ToLower(), b => b.Name);
 
-      H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Word.DeleteBookmarks", "Lista de bookmarks:");
+      H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Word.DeleteBookmarks", "Lista de bookmarks:");
       foreach (var kvp in bookmarkDict)
       {
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Word.DeleteBookmarks", kvp.Value);
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Word.DeleteBookmarks", kvp.Value);
       }
 
       var orderedBookmarks = bookmarkDict.Keys
@@ -54,7 +54,7 @@ namespace SmartBid
           Bookmark bookmark = doc.Bookmarks[bookmarkDict[bookmarkName]];
           Microsoft.Office.Interop.Word.Range range = bookmark.Range;
 
-          H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Word.DeleteBookmarks", $"removing mark: {bookmarkDict[bookmarkName]}");
+          H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Word.DeleteBookmarks", $"removing mark: {bookmarkDict[bookmarkName]}");
 
           bookmark.Delete();
           range.Text = "";
@@ -89,7 +89,7 @@ namespace SmartBid
               }
               catch (XmlException ex)
               {
-                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, $"❌❌Error❌❌ - GenerateOuputWord", $"Invalid XML format for (table) variable {variableID}:found text: {varList[variableID].Value}\n   {ex.Message}");
+                H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌Error❌❌ - GenerateOuputWord", $"Invalid XML format for (table) variable {variableID}:found text: {varList[variableID].Value}\n   {ex.Message}");
                 return;
               }
               xmlDoc.LoadXml(varList[variableID].Value);
@@ -97,7 +97,7 @@ namespace SmartBid
               XmlNode tableNode = xmlDoc.DocumentElement;
               if (tableNode == null)
               {
-                H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, $"❌❌ Error ❌❌  - GenerateOuputWord", $"No valid XML data found for variable {variableID}.");
+                H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - GenerateOuputWord", $"No valid XML data found for variable {variableID}.");
                 return;
               }
 
@@ -124,7 +124,7 @@ namespace SmartBid
               // 📌 Remove the reference mark after insertion
               field.Delete();
 
-              H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "GenerateOuputWord", $"Tabla insertada y referencia '{variableID}' eliminada correctamente.");
+              H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "GenerateOuputWord", $"Tabla insertada y referencia '{variableID}' eliminada correctamente.");
             }
             //NO ES TABLA
             else
@@ -158,12 +158,12 @@ namespace SmartBid
             BitmapMissingFonts: true,
             UseISO19005_1: false
         );
-        H.PrintLog(2, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Word.SaveAsPDF", "Archivo docx exportado a pdf con éxito.");
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Word.SaveAsPDF", "Archivo docx exportado a pdf con éxito.");
         return true;
       }
       catch
       {
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "SB_Word.SaveAsPDF", @$"❌Error❌ al Convertir el archivo {doc.Name} a PDF.");
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Word.SaveAsPDF", @$"❌Error❌ al Convertir el archivo {doc.Name} a PDF.");
         return false;
       }
 
@@ -244,13 +244,13 @@ namespace SmartBid
       {
         try
         {
-          H.PrintLog(2, "Main", "WordProcess:", @$"⚠️Cerrando proceso Excel (ID: {proc.Id})...");
+          H.PrintLog(2, "00:00.000", "Main", "WordProcess:", @$"⚠️Cerrando proceso Excel (ID: {proc.Id})...");
           proc.Kill();
           proc.WaitForExit();
         }
         catch (Exception ex)
         {
-          H.PrintLog(2, "Main", "WordProcess:", @$"❌Error❌ al cerrar Excel: {ex.Message}");
+          H.PrintLog(2, "00:00.000", "Main", "WordProcess:", @$"❌Error❌ al cerrar Excel: {ex.Message}");
         }
       }
     }

@@ -203,8 +203,8 @@ namespace SmartBid
         return new XmlDocument(); // Retorna vacío si no se encuentra el ejecutable
       }
 
-      H.PrintLog(4, ThreadContext.CurrentThreadInfo.Value!.User, "MakePrepCall", $"Ejecutando {Path.GetFileName(prepToolPath)} {arguments}");
-      H.PrintLog(1, ThreadContext.CurrentThreadInfo.Value!.User, "MakePrepCall", $"Call sent to {area}\n", areaCall);
+      H.PrintLog(4, TC.ID.Value!.Time(), TC.ID.Value!.User, "MakePrepCall", $"Ejecutando {Path.GetFileName(prepToolPath)} {arguments}");
+      H.PrintLog(1, TC.ID.Value!.Time(), TC.ID.Value!.User, "MakePrepCall", $"Call sent to {area}\n", areaCall);
 
       ProcessStartInfo psi = new()
       {
@@ -259,7 +259,7 @@ namespace SmartBid
       catch (Exception ex)
       {
         ShowError($"Error al parsear la respuesta XML de {area}Prep.exe: {ex.Message}");
-        H.PrintLog(5, ThreadContext.CurrentThreadInfo.Value!.User, "MakePrepCall", $"Output recibido:\n{output}");
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "MakePrepCall", $"Output recibido:\n{output}");
 
         return new XmlDocument(); // Retorna vacío si falla el parseo
       }

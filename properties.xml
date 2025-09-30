@@ -4,14 +4,15 @@
 	<DBConnextion>server=localhost;port=3306;database=SmartBid;user=SB_user01;password=_0000_</DBConnextion>
 	<DBConnextion>server=10.25.3.189;port=3306;database=SmartBid;user=SB_user01;password=_0000_</DBConnextion>
 
-	<!-- Mapa de directorios -->
-	<callsPath>C:\InSync\SmartBid\files\calls_temp</callsPath>	<!-- Directorio de escucha para el proceso principal-->
+		<!-- Mapa de directorios -->
+	<callsPath>C:\InSync\SmartBid\files\calls_temp</callsPath>	<!-- Directorio de escucha para generación de oferta-->
 	<callsPathDWG>C:\InSync\SmartBid\files\calls_DWG</callsPathDWG> <!-- Directorio de escucha para la devolución del DWG-->
 	<callsPathTemp>C:\InSync\SmartBid\files\calls</callsPathTemp>	<!-- Directorio de escucha para el call del directo de Hermes -->
+	<callsPathTemp>\\ASTURNAS\comun\SmartBid\Calls</callsPathTemp>
 	<storageTemp>C:\InSync\SmartBid\files\Temp</storageTemp>	<!-- Directorio de almacenamiento temporal mientras se procesa el DWG-->
 	<oppsPath>C:\Users\martin.molina\OneDrive - Gonvarri\SOLAR STEEL Opps - Documents\PruebasSmartBid</oppsPath>  <!-- Directorio de salida en sharePoint -->
 	<processPath>C:\InSync\SmartBid\files\processed</processPath>  <!-- Directorio de almacenamiento local del DataMaster Tools y output -->
-
+	
 	<VarMap>C:\InSync\SmartBid\files\tools\VariableMap_REV00.xlsx</VarMap>  <!-- Excel con el mapa de variables y de herramientas -->
 	<prepFolder>C:\InSync\SmartBid-Tools</prepFolder>  <!-- Carpeta donde encontrar las herramientas PREP y externas -->
 	<ToolsPath>C:\InSync\SmartBid\files\tools\</ToolsPath>  <!-- Carpeta donde encontrar las herramientas -->
@@ -45,7 +46,11 @@
 	<returnTools>true</returnTools>	<!-- Copiar las herramientas al directorio Opps rev_xx/TOOLS -->
 	<returnDeliveries>true</returnDeliveries><!-- Copiar las memorias y documentos generados al directorio Opps rev_xx/OUTPUT -->
 	<returnDataMaster>true</returnDataMaster><!-- Copia el DataMaster Opps -->
-	
+	<createInputDocsShortcut>true</createInputDocsShortcut><!-- crea un acceso directo a los documentos de entrada InputDocs en la correspondiente revisión-->
+	<returnDocsShortcuts>true</returnDocsShortcuts><!----> crea copia de los accesos directos a los documentos de entrada InputDocs en el directorio Opps rev_xx/DOCS-->
+
+
+
 	<mailKAM>false</mailKAM> <!-- Envía mail al kam al terminar la generación -->
 	<mailCreatedBy>false</mailCreatedBy><!-- Envía mail al kam al usuario que inció la generación -->
 	

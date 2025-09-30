@@ -296,9 +296,7 @@ namespace SmartBid
           }
         }
 
-        {
-          return string.Empty; // return empty string if the key exists in VariablesMap but has not been set in DataMaster
-        }
+        return string.Empty; // return empty string if the key exists in VariablesMap but has not been set in DataMaster
         H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌ - DM.GetValueString ", $"Key '{key}' not found in DataMaster.");
         throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
       }
@@ -347,11 +345,16 @@ namespace SmartBid
           return null; // returns NULL when the Value has not XML format
         }
       }
-      else
+      else 
       {
-        H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM", $"Key '{key}' not found in DataMaster.");
-        throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
+        if (_vm.GetVariableData(key).Source == "UTILS") 
+        {
+          key = key.Replace('.', '/');
+          return _dm.SelectSingleNode($"/dm/utils/{SBidRevision}/{key}");
+         }
       }
+      H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM", $"Key '{key}' not found in DataMaster.");
+      throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
     }
     public string GetValueUnit(string key)
     {

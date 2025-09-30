@@ -106,17 +106,61 @@ namespace SmartBid
 
       if (GetNProperty("printLevel") <= level)
       {
+        // Seleccionar color según nivel
+        switch (level)
+        {
+          case 0:
+          case 1:
+            Console.ForegroundColor = ConsoleColor.Gray;
+            break;
+          case 2:
+          case 3:
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            break;
+          case 4:
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            break;
+          default:
+            Console.ForegroundColor = ConsoleColor.White;
+            break;
+        }
+
         Console.WriteLine($"{level} {timer} = {user.Substring(0, user.IndexOf('@') > 0 ? user.IndexOf('@') : user.Length)} >> {eventLog}: {message}");
+        Console.ResetColor();
 
         if (xmlDoc != null)
         {
+          // Convertir el XmlDocument a texto plano
+          string rawXml = xmlDoc.OuterXml;
+
+          // Leer el XML como texto
+          using StringReader stringReader = new(rawXml);
+          using XmlReader xmlReader = XmlReader.Create(stringReader);
+
           using StringWriter sw = new();
-          using XmlTextWriter writer = new(sw) { Formatting = Formatting.Indented };
-          xmlDoc.WriteTo(writer);
-          Console.WriteLine(sw.ToString()); // Print formatted XML
+          XmlWriterSettings settings = new()
+          {
+            Indent = true,
+            IndentChars = "  ", // indentación por nivel
+            NewLineHandling = NewLineHandling.Replace,
+            NewLineChars = Environment.NewLine
+          };
+
+          using XmlWriter writer = XmlWriter.Create(sw, settings);
+          writer.WriteNode(xmlReader, true);
+          writer.Flush();
+
+          // Añadir indentación global de 4 espacios
+          string indentedXml = string.Join(Environment.NewLine,
+              sw.ToString()
+                .Split(new[] { Environment.NewLine }, StringSplitOptions.None)
+                .Select(line => "    " + line));
+
+          Console.ForegroundColor = ConsoleColor.Magenta;
+          Console.WriteLine(indentedXml);
+          Console.ResetColor();
         }
       }
-
       if (GetNProperty("logLevel") <= level)
       {
         DBtools.LogMessage(level, user, eventLog, message);

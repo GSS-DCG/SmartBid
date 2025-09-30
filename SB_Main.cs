@@ -1,12 +1,17 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.IO;
+using System.Xml;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
-using System.Xml;
+using System.Windows.Forms;
 using DocumentFormat.OpenXml.InkML;
+using DocumentFormat.OpenXml.Math;
 using Mysqlx.Crud;
+using MySqlX.XDevAPI;
 using Org.BouncyCastle.Asn1.Ocsp;
 using Org.BouncyCastle.Crypto.Digests;
+using System.Collections.Concurrent;
 
 namespace SmartBid
 {
@@ -275,8 +280,11 @@ namespace SmartBid
       //string revisionDateStamp = dm.GetInnerText(@"dm/utils/rev_01/dateTime")[..6];
       string oppFolder = dm.GetInnerText(@"dm/utils/utilsData/opportunityFolder");
 
-      string processedToolsPath = Path.Combine(H.GetSProperty("processPath"), oppFolder, dm.SBidRevision, "TOOLS");
-      string processedOutputsPath = Path.Combine(H.GetSProperty("processPath"), oppFolder, dm.SBidRevision, "OUTPUT");
+      string processedPath = Path.Combine(H.GetSProperty("processPath"), oppFolder, dm.SBidRevision);
+      string processedToolsPath = Path.Combine(processedPath, "TOOLS");
+      string processedOutputsPath = Path.Combine(processedPath, "OUTPUT");
+      string processedDocsPath = Path.Combine(processedPath, "DOCS");
+
 
       string destinationPath = Path.Combine(H.GetSProperty("oppsPath"),
                                             $"OFERTAS {dm.GetInnerText("dm/projectData/opportunityID").Substring(0, 4)}",
@@ -289,6 +297,9 @@ namespace SmartBid
       string oppsDeliveriesPath = Path.Combine(destinationPath,
                                           dm.SBidRevision,
                                           "OUTPUT");
+      string oppsDocsPath = Path.Combine(destinationPath,
+                                          dm.SBidRevision,
+                                          "DOCS");
 
       if (H.GetBProperty("returnTools"))
         foreach (string file in Directory.GetFiles(processedToolsPath))
@@ -311,6 +322,53 @@ namespace SmartBid
       if (!H.GetBProperty("storeDeliveries"))
         foreach (string file in Directory.GetFiles(processedOutputsPath))
           File.Delete(file);
+
+      if (H.GetBProperty("createInputDocsShortcut"))
+      {
+        XmlNode inputDocsXML;
+        try
+        {
+          inputDocsXML = dm.DM.SelectSingleNode($"/dm/utils/{dm.SBidRevision}/inputDocs");
+          XmlDocument aaa = new XmlDocument();
+          aaa.LoadXml("<root></root>");
+          XmlNode importedNode = aaa.ImportNode(inputDocsXML, true);
+          aaa.DocumentElement.AppendChild(importedNode);
+          H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ReturnRemoveFiles", $"Creating inputDocs shortcut in {destinationPath}", aaa);
+        }
+        catch (Exception)
+        {
+          throw new Exception($"No inputDocs group found in DataMaster revision {dm.SBidRevision}");
+        }
+
+        Directory.CreateDirectory(processedDocsPath);
+
+        if (inputDocsXML != null)
+        {
+          foreach (XmlNode node in inputDocsXML.ChildNodes)
+          {
+            string filePath = node.InnerText.Trim();
+            string shortcutPath = Path.Combine(processedDocsPath, $"{node.Name} - {Path.GetFileName(filePath)}.url");
+
+            if (Path.Exists(filePath))
+            {
+              using (StreamWriter writer = new StreamWriter(shortcutPath))
+              {
+                writer.WriteLine("[InternetShortcut]");
+                writer.WriteLine($"URL={filePath}");
+                writer.WriteLine("IconIndex=0");
+                writer.WriteLine("IconFile=explorer.exe");
+              }
+
+            }          }
+        }
+      }
+
+      if (H.GetBProperty("returnDocsShortcuts"))
+        foreach (string file in Directory.GetFiles(processedDocsPath))
+        {
+          _ = Directory.CreateDirectory(oppsDocsPath); // Crea si no existe
+          File.Copy(file, Path.Combine(oppsDocsPath, Path.GetFileName(file)), overwrite: true);
+        }
 
       if (H.GetBProperty("returnDataMaster"))
         File.Copy(dm.FileName, Path.Combine(destinationPath, Path.GetFileName(dm.FileName)), overwrite: true);

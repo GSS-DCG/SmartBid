@@ -19,18 +19,20 @@ namespace SmartBid
     public int Call { get; }
     public string Name { get; }
     public string FileType { get; }
+    public string Interpreter { get; }
     public string Version { get; }
     public string Lenguage { get; }
     public string Description { get; }
     public string FileName { get; }
 
-    public ToolData(string resource, string code, int call, string name, string filetype, string version, string language, string description)
+    public ToolData(string resource, string code, int call, string name, string filetype, string interpreter,string version, string language, string description)
     {
       Resource = resource;
       Code = code;
       Call = call;
       Name = name;
       FileType = filetype.ToLowerInvariant(); // aquí se normaliza
+      Interpreter = interpreter;
       Version = version;
       Lenguage = language;
       Description = description;
@@ -47,15 +49,16 @@ namespace SmartBid
     public XmlElement ToXML(XmlDocument mainDoc)
     {
       XmlElement toolElement = mainDoc.CreateElement("tool");
-      toolElement.SetAttribute("fileName", FileName);
-      toolElement.SetAttribute("description", Description);
-      toolElement.SetAttribute("language", Lenguage);
-      toolElement.SetAttribute("version", Version);
-      toolElement.SetAttribute("fileType", FileType);
-      toolElement.SetAttribute("name", Name);
-      toolElement.SetAttribute("call", Call.ToString());
-      toolElement.SetAttribute("code", Code);
       toolElement.SetAttribute("resource", Resource);
+      toolElement.SetAttribute("code", Code);
+      toolElement.SetAttribute("call", Call.ToString());
+      toolElement.SetAttribute("name", Name);
+      toolElement.SetAttribute("interpreter", Interpreter);
+      toolElement.SetAttribute("fileType", FileType);
+      toolElement.SetAttribute("version", Version);
+      toolElement.SetAttribute("language", Lenguage);
+      toolElement.SetAttribute("description", Description);
+      toolElement.SetAttribute("fileName", FileName);
 
       return toolElement;
     }
@@ -130,6 +133,7 @@ namespace SmartBid
             int.TryParse(node.Attributes["call"]!.InnerText, out int callValue) ? callValue : 1, // Call
             node.Attributes["name"]!.InnerText ?? string.Empty,
             node.Attributes["fileType"]!.InnerText ?? string.Empty,
+            node.Attributes["interpreter"]!.InnerText ?? string.Empty,
             node.Attributes["version"]!.InnerText ?? string.Empty,
             node.Attributes["language"]!.InnerText ?? string.Empty,
             node.Attributes["description"]!.InnerText ?? string.Empty
@@ -211,6 +215,7 @@ namespace SmartBid
             int.TryParse(row["CALL"]?.ToString(), out int callValue) ? callValue : 1,
             row["name"]?.ToString() ?? string.Empty,
             row["FILE TYPE"]?.ToString() ?? string.Empty,
+            row["INTERPRETER"]?.ToString() ?? string.Empty,
             int.TryParse(row["VERSION"]?.ToString(), out int value) ? value.ToString("D3") : "000",
             row["LANGUAGE"]?.ToString() ?? string.Empty,
             row["DESCRIPTION"]?.ToString() ?? string.Empty
@@ -495,7 +500,11 @@ namespace SmartBid
         if (Path.GetExtension(filePath).Equals(".py", StringComparison.OrdinalIgnoreCase))
         {
           arguments = $"\"{filePath}\" 00"; // any argument should be sent to the call to indicate that the input is coming from stdin
-          filePath = @"python.exe";
+
+          if (tool.Interpreter != null && tool.Interpreter != "")
+            filePath = tool.Interpreter;
+          else
+            filePath = @"python.exe";
         }
       }
       else

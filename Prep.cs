@@ -135,15 +135,17 @@ namespace SmartBid
 
       XmlElement root = areaCall.CreateElement("call");
       _ = areaCall.AppendChild(root);
+      XmlElement variables = areaCall.CreateElement("variables");
+      _ = root.AppendChild(variables);
 
-      XmlElement variables = areaCall.CreateElement("out");
+      XmlElement variablesOut = areaCall.CreateElement("out");
       foreach (XmlNode var in inputXML.SelectNodes("//variables/*"))
       {
         string varArea = var.Attributes["area"]!.Value;
         if (varArea == area)
-          _ = variables.AppendChild(areaCall.ImportNode(var, true));
+          _ = variablesOut.AppendChild(areaCall.ImportNode(var, true));
       }
-      _ = root.AppendChild(variables);
+      _ = variables.AppendChild(variablesOut);
 
       XmlElement inputDocs = areaCall.CreateElement("inputDocs");
 

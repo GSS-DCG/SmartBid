@@ -522,10 +522,12 @@ namespace SmartBid
       XmlElement callNode = callXml.CreateElement("call");
       callXml.AppendChild(callNode);
 
-      XmlElement variablesIn = callXml.CreateElement("variables");
-      callNode.AppendChild(variablesIn);
-      XmlElement variablesOut= callXml.CreateElement("out");
-      callNode.AppendChild(variablesOut);
+      XmlElement variables = callXml.CreateElement("variables");
+      callNode.AppendChild(variables);
+      XmlElement variablesIn = callXml.CreateElement("in");
+      variables.AppendChild(variablesIn);
+      XmlElement variablesOut = callXml.CreateElement("out");
+      variables.AppendChild(variablesOut);
 
       foreach (var entry in variableList)
       {

@@ -97,7 +97,7 @@ namespace SmartBid
         XmlDocument xmlDoc = null)
     {
 
-      // Trim user to text before '@' (email local-part). If no '@', keep as-is.
+      // Trim user to text before '@' (recipients local-part). If no '@', keep as-is.
       string displayUser = user ?? string.Empty;
       int atIdx = displayUser.IndexOf('@');
       if (atIdx > 0) displayUser = displayUser.Substring(0, atIdx);
@@ -213,14 +213,14 @@ namespace SmartBid
     }
 
 
-    public static bool MailTo(List<string> email, string subject, string body = "", string? attachmentPath = null)
+    public static bool MailTo(List<string> recipients, string subject, string body = "", string? attachmentPath = null, bool isHtml = false)
     {
       // Asegura logs sin depender de TC
       string userForLog = TC.ID?.Value?.User ?? "SYSTEM";
 
       try
       {
-        if (email == null || email.Count == 0)
+        if (recipients == null || recipients.Count == 0)
         {
           PrintLog(5, "00:00.000", userForLog, "MailTo", "⚠️ No recipients supplied.");
           PrintLog(5, "00:00.000", userForLog, "Subject", $"{subject}");
@@ -228,13 +228,29 @@ namespace SmartBid
         }
 
         var outlookApp = new Outlook.Application();
+
+
+
+
+
         var mailItem = (Outlook.MailItem)outlookApp.CreateItem(Outlook.OlItemType.olMailItem);
 
-        // Usar los parámetros recibidos (antes estaban hardcodeados)
         mailItem.Subject = subject ?? string.Empty;
-        mailItem.Body = body ?? string.Empty;
 
-        foreach (string _email in email)
+        if (isHtml)
+          mailItem.HTMLBody = body ?? string.Empty;
+        else
+          mailItem.Body = body ?? string.Empty;
+
+
+
+        //var mailItem = (Outlook.MailItem)outlookApp.CreateItem(Outlook.OlItemType.olMailItem);
+
+          //// Usar los parámetros recibidos (antes estaban hardcodeados)
+          //mailItem.Subject = subject ?? string.Empty;
+          //mailItem.Body = body ?? string.Empty;
+
+        foreach (string _email in recipients)
         {
           if (!string.IsNullOrWhiteSpace(_email))
             _ = mailItem.Recipients.Add(_email);
@@ -255,7 +271,7 @@ namespace SmartBid
         mailItem.Send();
 
         PrintLog(5, "00:00.000", userForLog, "MailTo",
-            $"Correo enviado a:\n {string.Join("\n ", email)}\n" +
+            $"Correo enviado a:\n {string.Join("\n ", recipients)}\n" +
             (string.IsNullOrWhiteSpace(attachmentPath) ? "" : $"Adjunto: {attachmentPath}"));
         return true;
       }

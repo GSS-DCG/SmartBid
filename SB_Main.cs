@@ -1,17 +1,7 @@
-﻿using System;
-using System.IO;
-using System.Xml;
+﻿using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Security.Cryptography;
 using System.Text.RegularExpressions;
-using System.Windows.Forms;
-using DocumentFormat.OpenXml.InkML;
-using DocumentFormat.OpenXml.Math;
-using Mysqlx.Crud;
-using MySqlX.XDevAPI;
-using Org.BouncyCastle.Asn1.Ocsp;
-using Org.BouncyCastle.Crypto.Digests;
-using System.Collections.Concurrent;
+using System.Xml;
 
 namespace SmartBid
 {
@@ -117,7 +107,7 @@ namespace SmartBid
       {
         H.PrintLog(5, "00:00.000", "Main", "Main", $"Ejecutando Autorun: {H.GetSProperty("autorun")}\n" +
             $"Para ejectutar normalmente eliminar el valor en la propiedad 'autorun' en properties.xml\n\n");
-        Process.Start(H.GetSProperty("autorun"));
+        _ = Process.Start(H.GetSProperty("autorun"));
       }
 
       // Monitor de entrada para salir con 'Q'
@@ -133,7 +123,7 @@ namespace SmartBid
           _cts.Cancel();
           try
           {
-            Task.WhenAll(
+            _ = Task.WhenAll(
                 _listener1Task ?? Task.CompletedTask,
                 _listener2Task ?? Task.CompletedTask
             ).Wait(2000); // small grace period
@@ -197,7 +187,7 @@ namespace SmartBid
 
         Calculator calculator = new(dm, targets);
         calculator.RunCalculations();
-      
+
         if (xmlCall.SelectSingleNode("/request/requestInfo")!.Attributes!["type"]?.Value == "create" && H.GetBProperty("createOppsFoldersStructure"))
           createOppsFoldersStructure(dm.GetInnerText("dm/projectData/opportunityID"), dm.GetInnerText("dm/utils/utilsData/opportunityFolder"));
 
@@ -207,9 +197,9 @@ namespace SmartBid
 
         string project = dm.GetValueString("opportunityFolder");
 
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"-- ****{new string('*', project.Length+17)}**** --");
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User,  "ProcessFile", $"-- **** PROJECT: {project} DONE  **** --");
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"-- ****{new string('*', project.Length+17)}**** --");
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"-- ****{new string('*', project.Length + 17)}**** --");
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"-- **** PROJECT: {project} DONE  **** --");
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"-- ****{new string('*', project.Length + 17)}**** --");
 
         List<string> emailRecipients = [];
         // Add KAM email if configured to do so
@@ -219,7 +209,40 @@ namespace SmartBid
         if (H.GetBProperty("mailCreatedBy"))
           emailRecipients.Add(dm.GetValueString("createdBy"));
 
-        _ = H.MailTo(emailRecipients, $@"SmartBid: Opportunity:{dm.GetValueString("opportunityFolder")} revision: {dm.SBidRevision} DONE", "Enviado desde SmartBid");
+
+        string bodyHtml = $@"
+          <p>Enviado desde SmartBid</p>
+
+          <p>Le informamos de que la generación de los documentos técnicos relacionados con el proyecto <b>{dm.GetValueString("opportunityFolder")}</b> ha terminado con éxito.</p>
+
+          <p>Podrá encontrar los documentos en la carpeta <b>2.ING&#8203;/{dm.SBidRevision}/OUTPUT</b> de la oportunidad (los documentos podrán tardar unos minutos en actualizarse en SharePoint).</p>
+
+          <table style='font-family:Courier New, monospace; border-collapse:collapse;'>
+              <tr>
+                  <td style='vertical-align: top; font-weight: bold;'>Created by:</td>
+                  <td>{TC.ID.Value!.User}</td>
+              </tr>
+              <tr>
+                  <td style='vertical-align: top; font-weight: bold;'>KAM:</td>
+                  <td>{dm.DM.SelectSingleNode("//projectData/kam")!.InnerText}</td>
+              </tr>
+              <tr>
+                  <td style='vertical-align: top; font-weight: bold;'>Call:</td>
+                  <td>{Path.GetFileName(filePath)}</td>
+              </tr>
+              <tr style='border-top: 1px solid black; padding-top: 12px'>
+                  <td style='vertical-align: top; font-weight: bold;'>Docs Generated:</td>
+                  <td colspan='2'>{string.Join("<br/>", targets.Select(x => " " + x.Code))}
+                  </td>
+              </tr>
+          </table>
+          ";
+
+        _ = H.MailTo( recipients:emailRecipients,
+                      subject:$@"SmartBid: Opportunity:{dm.GetValueString("opportunityFolder")} revision: {dm.SBidRevision} DONE",
+                      body: bodyHtml,
+                      isHtml: true);
+
       }
       catch (Exception ex)
       {
@@ -228,16 +251,48 @@ namespace SmartBid
         H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"\uD83E\uDDE8 Excepción: {ex.GetType().Name}");
         H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"\uD83D\uDCC4 Mensaje: {ex.Message}");
         H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"\uD83E\uDDED StackTrace:\n{ex.StackTrace}");
-        H.MailTo(H.GetSProperty("EngineeringEmail").Split(';').ToList(),
+
+        string bodyHtml = $@"
+          <p>Enviado desde SmartBid</p>
+
+          <p>El proceso de generación de la opp: <b>{dm.GetValueString("opportunityFolder")}</b> ha terminado con ERROR.</p>
+
+          <table style='font-family:Courier New, monospace; border-collapse:collapse;'>
+              <tr>
+                  <td style='vertical-align: top; font-weight: bold;'>Error details:</td>
+                  <td></td>
+              </tr>
+              <tr>
+                  <td style='vertical-align: top; font-weight: bold;'>Type:</td>
+                  <td>{ex.GetType().Name}</td>
+              </tr>
+              <tr>
+                  <td style='vertical-align: top; font-weight: bold;'>Message:</td>
+                  <td>{ex.Message}</td>
+              </tr>
+              <tr style='border-top: 1px solid black; padding-top: 12px'>
+                  <td style='vertical-align: top; font-weight: bold;'>StackTrace:</td>
+                  <td colspan='2'>{ex.StackTrace}</td>
+              </tr>
+              <tr>
+                  <td style='vertical-align: top; font-weight: bold;'>User:</td>
+                  <td>{TC.ID.Value!.User}</td>
+              </tr>
+              <tr>
+                  <td style='vertical-align: top; font-weight: bold;'>Call:</td>
+                  <td>{Path.GetFileName(filePath)}</td>
+              </tr>
+              <tr>
+                  <td style='vertical-align: top; font-weight: bold;'>DataMaster:</td>
+                  <td>{dm.FileName}</td>
+              </tr>
+          </table>
+          ";
+
+        _ = H.MailTo(H.GetSProperty("EngineeringEmail").Split(';').ToList(),
             subject: $"SmartBid Error processing {dm.GetValueString("opportunityFolder")}",
-            body: $"Error details:\n\n" +
-                  $"Type: {ex.GetType().Name}\n" +
-                  $"Message: {ex.Message}\n\n" +
-                  $"StackTrace:\n{ex.StackTrace}\n\n" +
-                  $"User: {TC.ID.Value!.User}\n" +
-                  $"Call: {Path.GetFileName(filePath)}\n" +
-                  $"DataMaster: {dm.FileName}\n"
-        );
+            body: bodyHtml, 
+            isHtml: true);
         H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"--❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌--");
       }
     }
@@ -246,7 +301,7 @@ namespace SmartBid
     {
       //Instantiating the DataMaster class with the XML string
       DataMaster dm = new(xmlCall, targets);
-      //Creating the oppFolder in the storage directory
+      //Creating the opportunityFolder in the storage directory
       string projectFolder = Path.Combine(H.GetSProperty("processPath"), dm.DM.SelectSingleNode(@"dm/utils/utilsData/opportunityFolder")?.InnerText ?? "");
       if (!Directory.Exists(projectFolder))
         _ = Directory.CreateDirectory(projectFolder);
@@ -278,34 +333,32 @@ namespace SmartBid
     private static void ReturnRemoveFiles(DataMaster dm)
     {
       //string revisionDateStamp = dm.GetInnerText(@"dm/utils/rev_01/dateTime")[..6];
-      string oppFolder = dm.GetInnerText(@"dm/utils/utilsData/opportunityFolder");
+      string opportunityFolder = dm.GetInnerText(@"dm/utils/utilsData/opportunityFolder");
 
-      string processedPath = Path.Combine(H.GetSProperty("processPath"), oppFolder, dm.SBidRevision);
-      string processedToolsPath = Path.Combine(processedPath, "TOOLS");
+      string processedPath = Path.Combine(H.GetSProperty("processPath"),
+                                          opportunityFolder,
+                                          dm.SBidRevision);
+
+      string processedToolsPath =   Path.Combine(processedPath, "TOOLS");
       string processedOutputsPath = Path.Combine(processedPath, "OUTPUT");
-      string processedDocsPath = Path.Combine(processedPath, "DOCS");
+      string processedDocsPath =    Path.Combine(processedPath, "DOCS");
 
 
-      string destinationPath = Path.Combine(H.GetSProperty("oppsPath"),
+      string returnPath = Path.Combine(H.GetSProperty("oppsPath"),
                                             $"OFERTAS {dm.GetInnerText("dm/projectData/opportunityID").Substring(0, 4)}",
-                                            oppFolder, 
-                                            @$"2.ING");
+                                            opportunityFolder,
+                                            @$"2.ING",
+                                            dm.SBidRevision);
 
-      string oppsToolsPath = Path.Combine(destinationPath,
-                                          dm.SBidRevision,
-                                          "TOOLS");
-      string oppsDeliveriesPath = Path.Combine(destinationPath,
-                                          dm.SBidRevision,
-                                          "OUTPUT");
-      string oppsDocsPath = Path.Combine(destinationPath,
-                                          dm.SBidRevision,
-                                          "DOCS");
+      string returnToolsPath =   Path.Combine(returnPath, "TOOLS");
+      string returnOutputsPath = Path.Combine(returnPath, "OUTPUT");
+      string returnDocsPath =    Path.Combine(returnPath, "DOCS");
 
       if (H.GetBProperty("returnTools"))
         foreach (string file in Directory.GetFiles(processedToolsPath))
         {
-          _ = Directory.CreateDirectory(oppsToolsPath); // Create if it doesn't exists
-          File.Copy(file, Path.Combine(oppsToolsPath, Path.GetFileName(file)), overwrite: true);
+          Directory.CreateDirectory(returnToolsPath); // Create if it doesn't exists
+          File.Copy(file, Path.Combine(returnToolsPath, Path.GetFileName(file)), overwrite: true);
         }
 
       if (!H.GetBProperty("storeTools"))
@@ -315,8 +368,8 @@ namespace SmartBid
       if (H.GetBProperty("returnDeliveries"))
         foreach (string file in Directory.GetFiles(processedOutputsPath))
         {
-          _ = Directory.CreateDirectory(oppsDeliveriesPath); // Crea si no existe
-          File.Copy(file, Path.Combine(oppsDeliveriesPath, Path.GetFileName(file)), overwrite: true);
+          Directory.CreateDirectory(returnOutputsPath); // Create if it doesn't exists
+          File.Copy(file, Path.Combine(returnOutputsPath, Path.GetFileName(file)), overwrite: true);
         }
 
       if (!H.GetBProperty("storeDeliveries"))
@@ -332,15 +385,15 @@ namespace SmartBid
           XmlDocument aaa = new XmlDocument();
           aaa.LoadXml("<root></root>");
           XmlNode importedNode = aaa.ImportNode(inputDocsXML, true);
-          aaa.DocumentElement.AppendChild(importedNode);
-          H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ReturnRemoveFiles", $"Creating inputDocs shortcut in {destinationPath}", aaa);
+          _ = aaa.DocumentElement.AppendChild(importedNode);
+          H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ReturnRemoveFiles", $"Creating inputDocs shortcut in {returnPath}", aaa);
         }
         catch (Exception)
         {
           throw new Exception($"No inputDocs group found in DataMaster revision {dm.SBidRevision}");
         }
 
-        Directory.CreateDirectory(processedDocsPath);
+        _ = Directory.CreateDirectory(processedDocsPath);
 
         if (inputDocsXML != null)
         {
@@ -359,27 +412,28 @@ namespace SmartBid
                 writer.WriteLine("IconFile=explorer.exe");
               }
 
-            }          }
+            }
+          }
         }
       }
 
       if (H.GetBProperty("returnDocsShortcuts"))
         foreach (string file in Directory.GetFiles(processedDocsPath))
         {
-          _ = Directory.CreateDirectory(oppsDocsPath); // Crea si no existe
-          File.Copy(file, Path.Combine(oppsDocsPath, Path.GetFileName(file)), overwrite: true);
+          _ = Directory.CreateDirectory(returnDocsPath); // Crea si no existe
+          File.Copy(file, Path.Combine(returnDocsPath, Path.GetFileName(file)), overwrite: true);
         }
 
       if (H.GetBProperty("returnDataMaster"))
-        File.Copy(dm.FileName, Path.Combine(destinationPath, Path.GetFileName(dm.FileName)), overwrite: true);
+        File.Copy(dm.FileName, Path.Combine(returnPath, Path.GetFileName(dm.FileName)), overwrite: true);
     }
 
     private static void createOppsFoldersStructure(string opportunityID, string oppFolder)
     {
       string templatePath = H.GetSProperty("oppsFoldersTemplate");
       string baseDestinationPath = H.GetSProperty("oppsPath");
-      string destinationPath = Path.Combine(baseDestinationPath, 
-                                            $"OFERTAS {opportunityID.Substring(0,4)}",
+      string destinationPath = Path.Combine(baseDestinationPath,
+                                            $"OFERTAS {opportunityID.Substring(0, 4)}",
                                             oppFolder);
 
       if (!Directory.Exists(templatePath))
@@ -389,7 +443,7 @@ namespace SmartBid
       }
 
       // Create the destination folder
-      Directory.CreateDirectory(destinationPath);
+      _ = Directory.CreateDirectory(destinationPath);
 
       // Copy all subfolders and files
       CopyDirectory(templatePath, destinationPath);
@@ -401,7 +455,7 @@ namespace SmartBid
       foreach (string dirPath in Directory.GetDirectories(sourceDir, "*", SearchOption.AllDirectories))
       {
         string newDirPath = dirPath.Replace(sourceDir, destinationDir);
-        Directory.CreateDirectory(newDirPath);
+        _ = Directory.CreateDirectory(newDirPath);
       }
 
       // Copy all files
@@ -523,7 +577,7 @@ namespace SmartBid
           H.PrintLog(5, "00:00.000", "SYSTEM", "DoStuff1", "⚠️ 'callsPath' vacío en properties.xml");
           return;
         }
-        Directory.CreateDirectory(callsPath);
+        _ = Directory.CreateDirectory(callsPath);
 
         string dest = Path.Combine(callsPath, Path.GetFileName(filePath));
         try
@@ -588,7 +642,7 @@ namespace SmartBid
           H.PrintLog(5, "00:00.000", "SYSTEM", "DoStuff1", "⚠️ 'storageTemp' vacío en properties.xml");
           return;
         }
-        Directory.CreateDirectory(tempDir);
+        _ = Directory.CreateDirectory(tempDir);
         string movedPath = Path.Combine(tempDir, Path.GetFileName(filePath));
 
         try { File.Move(filePath, movedPath); }
@@ -739,7 +793,7 @@ namespace SmartBid
               $"⚠️ No se encontró XML cuyo LYOT coincida con '{dwgBaseName}'.");
           //Enviar un correo electrónico al dwg_recipiant indicando el error y poniendo en el texto que revise el nombre del fichero para que 
           // coincida con el nombre del fichero original (enviar el nombre como recordatorio)
-          H.MailTo(H.GetSProperty("DWG_recipiant").Split(';').ToList(),
+          _ = H.MailTo(H.GetSProperty("DWG_recipiant").Split(';').ToList(),
               subject: "Error: DWG name mismatch",
               body: $"The returned DWG file '{Path.GetFileName(returnedDwgPath)}' does not match any LYOT in the pending XML calls.\n" +
                     $"Please ensure the DWG file name matches the original LYOT name exactly.");
@@ -818,7 +872,7 @@ namespace SmartBid
       public int ThreadId { get; }
       public string User { get; }
 
-      
+
       public ThreadInfo(string user)
       {
         ThreadId = Environment.CurrentManagedThreadId;

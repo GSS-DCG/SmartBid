@@ -1,79 +1,76 @@
 ﻿using System.Data;
 using System.Text;
 using System.Xml;
-using System.Xml.Linq;
-using DocumentFormat.OpenXml.Bibliography;
-using DocumentFormat.OpenXml.Office2010.Excel;
 using ExcelDataReader;
-using Microsoft.Office.Interop.Excel;
-using Microsoft.Office.Interop.Word;
-using SmartBid;
 using DataTable = System.Data.DataTable;
 using File = System.IO.File;
 
 namespace SmartBid
 {
 
+
   public class VariableData(
-      string id,
-      string varName,
-      string area,
-      string source,
-      bool critic,
-      bool mandatory,
-      string type,
-      string unit = "",
-      string defaultValue = "",
-      string description = "",
-      string prompt = "",
-      int deep = 0,
-      List<string>? allowableRange = null,
-      string value = "")
+  string id,
+  string varName,
+  string area,
+  string source,
+  bool critic,
+  bool mandatory,
+  string type,
+  string unit = "",
+  string defaultValue = "",
+  string description = "",
+  string prompt = "",
+  int deep = 0,
+  List<string>? allowableRange = null,
+  string value = ""
+)
   {
-    #region Properties
+    // Properties
     public string ID { get; set; } = id;
     public string VarName { get; set; } = varName;
     public string Area { get; set; } = area;
     public string Source { get; set; } = source;
     public bool Critic { get; set; } = critic;
     public bool Mandatory { get; set; } = mandatory;
+
+    // Consider renaming to DataType for clarity
     public string Type { get; set; } = type;
+
     public string Unit { get; set; } = unit;
     public string Default { get; set; } = defaultValue;
     public string Description { get; set; } = description;
     public string Prompt { get; set; } = prompt;
+    public string Note { get; set; } = "";
+    public string Origen { get; set; } = "";
     public string? InOut { get; set; }
     public int? Call { get; set; }
     public int Deep { get; set; } = deep;
+
+    // C# 12 collection expression; replace with `new List<string>()` if needed.
     public List<string> AllowableRange { get; set; } = allowableRange ?? [];
     public string Value { get; set; } = value;
 
-    #endregion
-    #region Constructor
-
-    #endregion
-
-    #region Methods
-
     public VariableData Clone()
     {
-
       return new VariableData(
-          this.ID,
-          this.VarName,
-          this.Area,
-          this.Source,
-          this.Critic,
-          this.Mandatory,
-          this.Type,
-          this.Unit,
-          this.Default,
-          this.Description,
-          this.Prompt,
-          this.Deep,
-          [.. this.AllowableRange] // Ensure a new list instance
+        this.ID,
+        this.VarName,
+        this.Area,
+        this.Source,
+        this.Critic,
+        this.Mandatory,
+        this.Type,
+        this.Unit,
+        this.Default,
+        this.Description,
+        this.Prompt,
+        this.Deep,
+        [.. this.AllowableRange], // deep copy list
+        this.Value                // preserve Value
       );
     }
+
     public XmlDocument ToXMLDocument()
     {
       XmlDocument doc = new();
@@ -93,41 +90,40 @@ namespace SmartBid
       if (!string.IsNullOrEmpty(Unit))
         varElem.SetAttribute("unit", Unit);
       varElem.SetAttribute("varName", VarName);
-      varElem.SetAttribute("critic", Critic.ToString());
-      varElem.SetAttribute("mandatory", Mandatory.ToString());
+      varElem.SetAttribute("critic", Critic.ToString().ToLowerInvariant());
+      varElem.SetAttribute("mandatory", Mandatory.ToString().ToLowerInvariant());
       varElem.SetAttribute("deep", Deep.ToString());
 
-      //Add description
-      XmlElement descriptionElem = mainDoc.CreateElement("description");
+      // description
+      var descriptionElem = mainDoc.CreateElement("description");
       descriptionElem.InnerText = Description;
       _ = varElem.AppendChild(descriptionElem);
 
-      // Add allowableRange if present
-      var ranges = AllowableRange;
-      if (ranges != null && ranges.Count > 0)
+      // allowableRange
+      if (AllowableRange.Count > 0)
       {
-        XmlElement rangeElem = mainDoc.CreateElement("allowableRange");
-        foreach (var val in ranges)
+        var rangeElem = mainDoc.CreateElement("allowableRange");
+        foreach (var val in AllowableRange)
         {
-          XmlElement valElem = mainDoc.CreateElement("value");
+          var valElem = mainDoc.CreateElement("value");
           valElem.InnerText = val;
           _ = rangeElem.AppendChild(valElem);
         }
         _ = varElem.AppendChild(rangeElem);
       }
 
-      // Add default if present
+      // default
       if (!string.IsNullOrEmpty(Default))
       {
-        XmlElement defaultElem = mainDoc.CreateElement("default");
+        var defaultElem = mainDoc.CreateElement("default");
         defaultElem.InnerText = Default;
         _ = varElem.AppendChild(defaultElem);
       }
 
-      // Add promt if present
+      // prompt
       if (!string.IsNullOrEmpty(Prompt))
       {
-        XmlElement promptElem = mainDoc.CreateElement("prompt");
+        var promptElem = mainDoc.CreateElement("prompt");
         promptElem.InnerText = Prompt;
         _ = varElem.AppendChild(promptElem);
       }
@@ -135,8 +131,8 @@ namespace SmartBid
       return varElem;
     }
 
-    #endregion
   }
+
 
   public class VariablesMap
   {
@@ -234,8 +230,8 @@ namespace SmartBid
     {
       XmlDocument doc = new();
       XmlDeclaration xmlDeclaration = doc.CreateXmlDeclaration("1.0", "UTF-8", null);
-      doc.AppendChild(xmlDeclaration);
-      doc.AppendChild(ToXml(doc, varList));
+      _ = doc.AppendChild(xmlDeclaration);
+      _ = doc.AppendChild(ToXml(doc, varList));
       doc.Save(xmlPath);
     }
 
@@ -281,17 +277,17 @@ namespace SmartBid
         try
         {
           VariableData data = new(
-          row["ID"]!.ToString()!,            
-          row["NAME"]!.ToString()!,          
-          row["AREA"]!.ToString()!,          
-          row["SOURCE"]!.ToString()!,        
-          Convert.ToBoolean(row["CRITICAL"]!.ToString()), 
+          row["ID"]!.ToString()!,
+          row["NAME"]!.ToString()!,
+          row["AREA"]!.ToString()!,
+          row["SOURCE"]!.ToString()!,
+          Convert.ToBoolean(row["CRITICAL"]!.ToString()),
           Convert.ToBoolean(row["MANDATORY"]!.ToString()),
-          row["DATA TYPE"]?.ToString()!,     
-          row["UNIT"]?.ToString()!,          
-          row["DEFAULT VALUE"]?.ToString()!, 
-          row["DESCRIPTION"]?.ToString()!,   
-          row["PROMPT"]?.ToString()!         
+          row["DATA TYPE"]?.ToString()!,
+          row["UNIT"]?.ToString()!,
+          row["DEFAULT VALUE"]?.ToString()!,
+          row["DESCRIPTION"]?.ToString()!,
+          row["PROMPT"]?.ToString()!
           );
 
           if (!row.IsNull("ALLOWABLE VALUE"))

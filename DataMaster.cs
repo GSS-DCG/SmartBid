@@ -24,8 +24,6 @@ namespace SmartBid
     public int BidRevision { get; set; }
     public string SBidRevision => $"rev_{BidRevision.ToString("D2")}";
 
-
-
     // Constructor público con XmlDocument ==> para crear un nuevo DataMaster
     public DataMaster(XmlDocument xmlRequest, List<ToolData> targets)
     {
@@ -93,8 +91,8 @@ namespace SmartBid
           // (creating an xml with config data variables and send it to UpdateData for inserting in DM)
           if (variable.Area == "config")
           {
-            //tomamos el nombre de la variable
-            //                        _ = _dataNode.AppendChild(GetImportedElement(xmlRequest, @$"//config/{variable.Code}"));
+            //tomamos el nombre de la variableNode
+            //                        _ = _dataNode.AppendChild(GetImportedElement(xmlRequest, @$"//config/{variableNode.Code}"));
 
             // Variable 
             XmlElement newVar = configDataXML.CreateElement(variable.ID);
@@ -119,7 +117,7 @@ namespace SmartBid
         XmlNode utilsData = _utilsNode!.AppendChild(DM.CreateElement("utilsData"))!;
 
         // Add opportunityFolder to dataMaster and _data dictionary
-        _ = utilsData.AppendChild(CreateElement("dataMasterFileName", FileName));
+        _ = utilsData.AppendChild(CreateDmElement("dataMasterFileName", FileName));
         _ = utilsData.AppendChild(GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder"));
         StoreValue("opportunityFolder", GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder").InnerText);
         StoreValue("createdBy", GetImportedElement(xmlRequest, "//requestInfo/createdBy").InnerText);
@@ -141,14 +139,28 @@ namespace SmartBid
 
     }
 
+    // Constructor público con nombre de archivo ==> para cargar un DataMaster existente
+    public DataMaster(string dmFileName)
+    {
+      _vm = VariablesMap.Instance;
+      // Implementación pendiente
+    }
+
+    // private Methods
+    private static XmlElement CreateElement(XmlDocument doc, string name, string value)
+    {
+      XmlElement element = doc.CreateElement(name);
+      element.InnerText = value;
+      return element;
+    }
     private XmlElement CreateRevisionElement(int revisionNo, XmlDocument xmlRequest, List<ToolData> targets, string opportunityFolder)
     {
       //Add first revision element
       _ = _utilsNode.AppendChild(_dm.CreateComment("First Revision"));
       XmlElement revision = _dm.CreateElement(SBidRevision);
 
-      _ = revision.AppendChild(CreateElement("dateTime", DateTime.Now.ToString("yyMMdd_HHmm")));
-      _ = revision.AppendChild(CreateElement("outputFolder", Path.Combine(  H.GetSProperty("processPath"),
+      _ = revision.AppendChild(CreateDmElement("dateTime", DateTime.Now.ToString("yyMMdd_HHmm")));
+      _ = revision.AppendChild(CreateDmElement("outputFolder", Path.Combine(  H.GetSProperty("processPath"),
                                                                             GetValueString("opportunityFolder"),
                                                                             SBidRevision,
                                                                             "OUTPUT")));
@@ -167,7 +179,7 @@ namespace SmartBid
       //add each one of the fileName in targets as a new element called "doc" to newNode
       foreach (ToolData target in targets)
       {
-        XmlElement newChild = CreateElement("doc", target.FileName);
+        XmlElement newChild = CreateDmElement("doc", target.FileName);
         newChild.SetAttribute("code", target.Code);
         newChild.SetAttribute("version", target.Version);
         newNode.AppendChild(newChild);
@@ -182,14 +194,6 @@ namespace SmartBid
       _ = newNode != null ? revision.AppendChild(_dm.ImportNode(newNode, true)) : null;
       return revision;
     }
-
-    // Constructor público con nombre de archivo ==> para cargar un DataMaster existente
-    public DataMaster(string dmFileName)
-    {
-      _vm = VariablesMap.Instance;
-      // Implementación pendiente
-    }
-
     private XmlElement ProcessInputFiles(XmlElement inputDocs)
     {
       XmlElement newInputDocs = H.CreateElement(_dm, "inputDocs", "");
@@ -223,14 +227,48 @@ namespace SmartBid
 
       return newInputDocs;
     }
-
-
-    public void UpdateData(XmlDocument newData)
+    private XmlElement CreateDmElement(string name, string value)
     {
-      //storing the tool node from /root/utils in newData to the node dm/utils/rev_XX/tool in _dm
-      //where the number of the revision can be found at  _dm.BidRevision, the name of the revision node 
-      //should be created as rev_XX where XX is the number with two digits
+      XmlElement element = _dm.CreateElement(name);
+      element.InnerText = value;
+      return element;
+    }
+    private VariableData StoreValue(string id, string value, string origin = "", string notes = "")
+    {
+      H.PrintLog(1, TC.ID.Value!.Time(), User, "StoreValue", $"variable ||{id}: {value}|| added to DataMaster data");
+      VariableData varData = _vm.GetVariableData(id);
 
+      varData.Value = (varData.Type != "num") ? value: value.Replace(',', '.');
+
+      varData.Origen = origin;
+      
+      varData.Note = notes;
+
+      _data.Add(id, varData);
+      return varData;
+    }
+    private void StoreValue(string id, VariableData varData)
+    {
+      H.PrintLog(1, TC.ID.Value!.Time(), User, "StoreValue", $"variable ||{id}|| added to DataMaster data");
+      _data.Add(id, varData);
+    }
+    private XmlElement GetImportedElement(XmlDocument sourceDoc, string elementName)
+    {
+      XmlElement?
+        sourceElement = (XmlElement)sourceDoc.DocumentElement!.SelectSingleNode(elementName)! ??
+        throw new XmlException($"Element '{elementName}' not found in the source document.");
+      XmlElement importedElement = (XmlElement)_dm.ImportNode(sourceElement, true);
+      return importedElement;
+    }
+    // public Methods
+    public void _CreateData(XmlDocument newData)
+    {
+      //storing tool results to the dataMaster for the first time creating the set01
+      //first: Adding the notes from the calculation
+      //       from /root/utils in newData to the node dm/utils/rev_XX/tool in _dm
+      //second: Adding the variables from /root/variables in newData to the DataMaster node dm/data
+      //        check whether the variableNode is of type "num". Whenever it's a number change the decimal separator
+      //        to dot "." 
 
       H.MergeXmlNodes(newData, _dm, "/*/utils", $"/dm/utils/{SBidRevision}");
 
@@ -248,9 +286,13 @@ namespace SmartBid
 
         XmlElement setElment = _dm.CreateElement($"set{BidRevision.ToString("D2")}");
 
+
+
+
+
         foreach (XmlNode child in importedNode.ChildNodes)
         {
-          _ = setElment.AppendChild(child.CloneNode(true));
+          setElment.AppendChild(child.CloneNode(true));
           if (child.Name == "value")
           {
             StoreValue(variable.Name, child.InnerXml);
@@ -262,6 +304,55 @@ namespace SmartBid
         _ = importedNode.AppendChild(setElment);
 
         _ = _dataNode.AppendChild(importedNode);
+      }
+    }
+    public void UpdateData(XmlDocument newData)
+    {
+      //storing tool results to the dataMaster for the first time creating the set01
+      //first: Adding the notes from the calculation
+      //       from /root/utils in newData to the node dm/utils/rev_XX/tool in _dm
+      //second: Adding the variables from /root/variables in newData to the DataMaster node dm/data
+      //        check whether the variableNode is of type "num". Whenever it's a number change the decimal separator
+      //        to dot "." 
+
+      H.MergeXmlNodes(newData, _dm, "/*/utils", $"/dm/utils/{SBidRevision}");
+
+      XmlNode variablesNode = newData.SelectSingleNode("//*/variables")!;
+      if (variablesNode == null) return;
+
+      foreach (XmlNode variableNode in variablesNode.ChildNodes)
+      {
+        VariableData var = StoreValue(  variableNode.Name, 
+                                        variableNode.SelectSingleNode("value").InnerXml, 
+                                        variableNode.SelectSingleNode("origin").InnerText, 
+                                        variableNode.SelectSingleNode("note").InnerText);
+
+        XmlNode? variableDMNode = _dataNode.SelectSingleNode(var.ID);
+        if (variableDMNode == null)
+        {
+          variableDMNode = _dm.CreateElement(XmlConvert.EncodeName(var.ID));
+          _dataNode.AppendChild(variableDMNode);
+        }
+
+
+        //Create the revision index 
+        XmlNode? revisionIndex = variableDMNode.SelectSingleNode("revision");
+        if (revisionIndex == null)
+        {
+          revisionIndex = _dm.CreateElement("revision");
+          variableDMNode.AppendChild(revisionIndex);
+
+        }
+        // for now: adding the value to the set element. for now creating a new set, later: seeking for the right set, if not exists create
+        revisionIndex.AppendChild(CreateDmElement(SBidRevision, $"set{BidRevision.ToString("D2")}"));
+
+
+        // for now: creating the set node without looking for an existing set with the same value. Later: seek for the right set, if not exists create
+        XmlElement setNode = _dm.CreateElement($"set{BidRevision.ToString("D2")}");
+        variableDMNode.AppendChild(setNode);
+        setNode.AppendChild(CreateDmElement("value", var.Value));
+        setNode.AppendChild(CreateDmElement("origin", var.Origen));
+        setNode.AppendChild(CreateDmElement("Note", var.Note));
       }
     }
     public void SaveDataMaster()
@@ -303,27 +394,11 @@ namespace SmartBid
     }
     public double? GetValueNumber(string key)
     {
-      if (_data.ContainsKey(key))
-      {
-        return double.TryParse(_data[key]?.Value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out double num) ? num : null;
-      }
-      else
-      {
-        H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM.GetValueNumber", $"Key '{key}' not found in DataMaster.");
-        throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
-      }
+        return double.TryParse(GetValueString(key), NumberStyles.Float, CultureInfo.InvariantCulture, out double num) ? num : null;
     }
     public bool? GetValueBoolean(string key)
     {
-      if (_data.ContainsKey(key))
-      {
-        return bool.TryParse(_data[key]?.Value.ToString(), out bool num) ? num : null;
-      }
-      else
-      {
-        H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM.GetValueBoolean", $"Key '{key}' not found in DataMaster.");
-        throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
-      }
+        return bool.TryParse(GetValueString(key), out bool num) ? num : null;
     }
     public XmlNode GetValueXmlNode(string key)
     {
@@ -391,26 +466,6 @@ namespace SmartBid
         throw new XmlException($"Node not found for XPath: {xpath}");
       }
     }
-    private void StoreValue(string id, string value)
-    {
-      H.PrintLog(1, TC.ID.Value!.Time(), User, "StoreValue", $"variable ||{id}: {value}|| added to DataMaster data");
-      VariableData varData = _vm.GetVariableData(id);
-      varData.Value = value;
-      _data.Add(id, varData);
-    }
-    private void StoreValue(string id, VariableData varData)
-    {
-      H.PrintLog(1, TC.ID.Value!.Time(), User, "StoreValue", $"variable ||{id}|| added to DataMaster data");
-      _data.Add(id, varData);
-    }
-    private XmlElement GetImportedElement(XmlDocument sourceDoc, string elementName)
-    {
-      XmlElement? 
-        sourceElement = (XmlElement)sourceDoc.DocumentElement!.SelectSingleNode(elementName)! ??
-        throw new XmlException($"Element '{elementName}' not found in the source document.");
-      XmlElement importedElement = (XmlElement)_dm.ImportNode(sourceElement, true);
-      return importedElement;
-    }
     public void CheckMandatoryValues()
     {
       List<string> missingValues = [];
@@ -432,18 +487,6 @@ namespace SmartBid
         H.PrintLog(5, TC.ID.Value!.Time(), User, "CheckMandatoryValues", $"❌Error❌: Mandatory values not found in DataMaster. Cannot continue with calculations. Faltan: {string.Join(", ", missingValues)}");
         throw new InvalidOperationException("MandatoryValues missing");
       }
-    }
-    private XmlElement CreateElement(string name, string value)
-    {
-      XmlElement element = _dm.CreateElement(name);
-      element.InnerText = value;
-      return element;
-    }
-    private static XmlElement CreateElement(XmlDocument doc, string name, string value)
-    {
-      XmlElement element = doc.CreateElement(name);
-      element.InnerText = value;
-      return element;
     }
   }
 }

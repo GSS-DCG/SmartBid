@@ -80,6 +80,7 @@ namespace SmartBid
 
     private VariablesMap _variablesMap = VariablesMap.Instance; // Instance of VariablesMap
 
+    private readonly object _trafficLightLock = new object();
     private Dictionary<string, List<int>> _trafficLight = new Dictionary<string, List<int>>();
 
     // Public static property to get the single instance
@@ -129,61 +130,61 @@ namespace SmartBid
 
     public bool CheckForGreenLight(string toolID, int callID)
     {
-      // Check the list for the tool in the dictionary, if it's empty add callID to the list and return true 
-      // if it has members, check whether callID is in the list, if it's the oldest return true, it it is not the oldest return false 
-      // if it's not in the list and the list is not empty add callID to the list and return false
-
       bool green = true;
       List<int> callList;
 
-      if (!_trafficLight.ContainsKey(toolID)) // first time this tool is called: create the list
+      lock (_trafficLightLock)
       {
-        _trafficLight[toolID] = new List<int> { callID };
-        callList = _trafficLight[toolID];
-        green = true;
-      }
-      else //there is a list for this tool
-      {
-        callList = _trafficLight[toolID];
-
-        if (callList.Count == 0)
+        if (!_trafficLight.ContainsKey(toolID))
         {
-          callList.Add(callID);
+          _trafficLight[toolID] = new List<int> { callID };
+          callList = _trafficLight[toolID];
           green = true;
         }
         else
         {
-          if (callList[0] == callID)
+          callList = _trafficLight[toolID];
+
+          if (callList.Count == 0)
           {
+            callList.Add(callID);
             green = true;
           }
           else
           {
-            if (!callList.Contains(callID))
+            if (callList[0] == callID)
             {
-              callList.Add(callID);
+              green = true;
             }
-            green  = false;
+            else
+            {
+              if (!callList.Contains(callID))
+              {
+                callList.Add(callID);
+              }
+              green = false;
+            }
+          }
+        }
+        H.PrintLog(2, TC.ID.Value?.Time() ?? "00:00.000", TC.ID.Value?.User ?? "SYSTEM", "CheckForGreenLight", $"  list for {toolID}: callList = {string.Join(",", callList)}   ---  semaforo: {green}");
+      }
+      return green;
+    }
+    public void ReleaseProcess(string toolID, int callID)
+    {
+      lock (_trafficLightLock)
+      {
+        if (_trafficLight.ContainsKey(toolID))
+        {
+          List<int> callList = _trafficLight[toolID];
+          if (callList.Contains(callID))
+          {
+            callList.Remove(callID);
+            H.PrintLog(2, TC.ID.Value?.Time() ?? "00:00.000", TC.ID.Value?.User ?? "SYSTEM", "ReleaseProcess", $"  Proceso {callID} liberado para la herramienta {toolID}. Lista restante: {string.Join(",", callList)}");
           }
         }
       }
-      H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"  list for {toolID}: callList = {string.Join(",", callList)}   ---  semaforo: {green}");
-      return green;
     }
-
-    public void ReleaseProcess(string toolID, int callID)
-    {
-      // remove callID from the list of the tool in the dictionary
-      if (_trafficLight.ContainsKey(toolID))
-      {
-        List<int> callList = _trafficLight[toolID];
-        if (callList.Contains(callID))
-        {
-          callList.Remove(callID);
-        }
-      }
-    }
-
     private void LoadFromXml(string xmlPath)
     {
       XmlDocument doc = new();

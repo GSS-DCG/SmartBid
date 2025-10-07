@@ -57,11 +57,21 @@ namespace SmartBid
 
             if (!tool.IsThreadSafe)
             {
+
+              Stopwatch sw = Stopwatch.StartNew();
+
               while (!tm.CheckForGreenLight(tool.Code, callID))
               {
+                if (sw.Elapsed.TotalMinutes > 60)
+                {
+                  throw new TimeoutException($"Timeout para {tool.Code} after {sw.Elapsed.TotalMinutes:F1} minutes");
+                }
+
                 H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Esperando turno: {tool.Code} ");
-                Thread.Sleep(10000);
+                Thread.Sleep(15000);
               }
+
+              H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Turno: {tool.Code} Liberado    ....calculando");
             }
             XmlDocument CalcResults = tm.Calculate(tool, dm);
 

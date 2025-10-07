@@ -220,6 +220,14 @@ namespace SmartBid
 
       H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"Procesando archivo: {filePath}");
 
+
+      ThreadPool.GetAvailableThreads(out int workerThreads, out int completionPortThreads);
+      ThreadPool.GetMaxThreads(out int maxWorkerThreads, out int maxCompletionPortThreads);
+
+      H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"Hilos disponibles: {workerThreads} de {maxWorkerThreads}");
+      H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"Hilos IO disponibles: {completionPortThreads} de {maxCompletionPortThreads}");
+
+
       List<ToolData> targets = Calculator.GetDeliveryDocs(xmlCall);
       DataMaster dm = CreateDataMaster(xmlCall, targets);
       // AÑADE InstanceId al log de creación de DataMaster

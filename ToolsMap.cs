@@ -19,19 +19,21 @@ namespace SmartBid
     public int Call { get; }
     public string Name { get; }
     public string FileType { get; }
+    public bool IsThreadSafe { get; set; } = true;
     public string Interpreter { get; }
     public string Version { get; }
     public string Lenguage { get; }
     public string Description { get; }
     public string FileName { get; }
 
-    public ToolData(string resource, string code, int call, string name, string filetype, string interpreter,string version, string language, string description)
+    public ToolData(string resource, string code, int call, string name, string filetype, bool isThreadSafe, string interpreter,string version, string language, string description)
     {
       Resource = resource;
       Code = code;
       Call = call;
       Name = name;
       FileType = filetype.ToLowerInvariant(); // aquí se normaliza
+      IsThreadSafe = isThreadSafe;
       Interpreter = interpreter;
       Version = version;
       Lenguage = language;
@@ -55,6 +57,7 @@ namespace SmartBid
       toolElement.SetAttribute("name", Name);
       toolElement.SetAttribute("interpreter", Interpreter);
       toolElement.SetAttribute("fileType", FileType);
+      toolElement.SetAttribute("isThreadSafe", IsThreadSafe.ToString());
       toolElement.SetAttribute("version", Version);
       toolElement.SetAttribute("language", Lenguage);
       toolElement.SetAttribute("description", Description);
@@ -76,6 +79,8 @@ namespace SmartBid
     public List<string> DeliveryDocsPack { get; private set; } = new();
 
     private VariablesMap _variablesMap = VariablesMap.Instance; // Instance of VariablesMap
+
+    private Dictionary<string, List<int>> _trafficLight = new Dictionary<string, List<int>>();
 
     // Public static property to get the single instance
     public static ToolsMap Instance
@@ -121,6 +126,64 @@ namespace SmartBid
     }
 
     // Methods
+
+    public bool CheckForGreenLight(string toolID, int callID)
+    {
+      // Check the list for the tool in the dictionary, if it's empty add callID to the list and return true 
+      // if it has members, check whether callID is in the list, if it's the oldest return true, it it is not the oldest return false 
+      // if it's not in the list and the list is not empty add callID to the list and return false
+
+      bool green = true;
+      List<int> callList;
+
+      if (!_trafficLight.ContainsKey(toolID)) // first time this tool is called: create the list
+      {
+        _trafficLight[toolID] = new List<int> { callID };
+        callList = _trafficLight[toolID];
+        green = true;
+      }
+      else //there is a list for this tool
+      {
+        callList = _trafficLight[toolID];
+
+        if (callList.Count == 0)
+        {
+          callList.Add(callID);
+          green = true;
+        }
+        else
+        {
+          if (callList[0] == callID)
+          {
+            green = true;
+          }
+          else
+          {
+            if (!callList.Contains(callID))
+            {
+              callList.Add(callID);
+            }
+            green  = false;
+          }
+        }
+      }
+      H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"  list for {toolID}: callList = {string.Join(",", callList)}   ---  semaforo: {green}");
+      return green;
+    }
+
+    public void ReleaseProcess(string toolID, int callID)
+    {
+      // remove callID from the list of the tool in the dictionary
+      if (_trafficLight.ContainsKey(toolID))
+      {
+        List<int> callList = _trafficLight[toolID];
+        if (callList.Contains(callID))
+        {
+          callList.Remove(callID);
+        }
+      }
+    }
+
     private void LoadFromXml(string xmlPath)
     {
       XmlDocument doc = new();
@@ -133,6 +196,7 @@ namespace SmartBid
             int.TryParse(node.Attributes["call"]!.InnerText, out int callValue) ? callValue : 1, // Call
             node.Attributes["name"]!.InnerText ?? string.Empty,
             node.Attributes["fileType"]!.InnerText ?? string.Empty,
+            bool.TryParse(node.Attributes["isThreadSafe"]?.InnerText, out var val) ? val : true,
             node.Attributes["interpreter"]!.InnerText ?? string.Empty,
             node.Attributes["version"]!.InnerText ?? string.Empty,
             node.Attributes["language"]!.InnerText ?? string.Empty,
@@ -215,6 +279,7 @@ namespace SmartBid
             int.TryParse(row["CALL"]?.ToString(), out int callValue) ? callValue : 1,
             row["name"]?.ToString() ?? string.Empty,
             row["FILE TYPE"]?.ToString() ?? string.Empty,
+            bool.TryParse(row["THREAD_SAFE"]?.ToString(), out bool isThreadSafe) ? isThreadSafe : true,
             row["INTERPRETER"]?.ToString() ?? string.Empty,
             int.TryParse(row["VERSION"]?.ToString(), out int value) ? value.ToString("D3") : "000",
             row["LANGUAGE"]?.ToString() ?? string.Empty,

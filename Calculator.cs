@@ -50,11 +50,24 @@ namespace SmartBid
         {
           if (tool.Resource == "TOOL")
           {
-            H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Calling Tool: {tool.Code} ");
+            H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Calling Tool: {tool.Code} - threadSafe: {tool.IsThreadSafe}");
 
-
+            int callID = (int)TC.ID.Value.CallId!;
             //Call calculation
+
+            if (!tool.IsThreadSafe)
+            {
+              while (!tm.CheckForGreenLight(tool.Code, callID))
+              {
+                H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Esperando turno: {tool.Code} ");
+                Thread.Sleep(10000);
+              }
+            }
             XmlDocument CalcResults = tm.Calculate(tool, dm);
+
+            //Once the tool is finished, we release the lock if it is not threadSafe
+            if (!tool.IsThreadSafe)
+              tm.ReleaseProcess(tool.Code, callID);
 
             //Update the DataMaster with the results from the toolD
             dm.UpdateData(CalcResults);

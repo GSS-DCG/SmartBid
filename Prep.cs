@@ -43,7 +43,7 @@ namespace SmartBid
       return File.ReadAllText(inputFile);
     }
 
-    private void DoStuff() // YA NO ES STATIC
+    private void DoStuff() 
     {
       var variableNodes = _inputXML.SelectNodes("//call/variables/variable"); // Acceso a campo de instancia
       var areas = new HashSet<string>();

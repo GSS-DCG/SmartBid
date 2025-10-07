@@ -4,7 +4,7 @@ using System.Text;
 using System.Xml;
 using Microsoft.VisualBasic.ApplicationServices;
 using SmartBid;
-using static SmartBid.TC;
+using static SmartBid.TC; // Esto ya debería estar ahí
 using Outlook = Microsoft.Office.Interop.Outlook;
 
 namespace SmartBid
@@ -94,7 +94,7 @@ namespace SmartBid
         string user,
         string eventLog,
         string message,
-        XmlDocument xmlDoc = null)
+        XmlDocument? xmlDoc = null) // Made xmlDoc nullable
     {
 
       // Trim user to text before '@' (recipients local-part). If no '@', keep as-is.
@@ -102,7 +102,8 @@ namespace SmartBid
       int atIdx = displayUser.IndexOf('@');
       if (atIdx > 0) displayUser = displayUser.Substring(0, atIdx);
 
-      user.Substring(user.IndexOf('@') > 0 ? user.IndexOf('@') : user.Length);
+      int? currentCallId = TC.ID?.Value?.CallId;
+      string contextPrefix = currentCallId.HasValue ? $"[CALL:{currentCallId.Value:D4}]" : "[MAIN]"; // Formato D4 para 4 dígitos
 
       if (GetNProperty("printLevel") <= level)
       {
@@ -125,7 +126,7 @@ namespace SmartBid
             break;
         }
 
-        Console.WriteLine($"{level} {timer} = {user.Substring(0, user.IndexOf('@') > 0 ? user.IndexOf('@') : user.Length)} >> {eventLog}: {message}");
+        Console.WriteLine($"{contextPrefix} {level} {timer} = {displayUser} >> {eventLog}: {message}");
         Console.ResetColor();
 
         if (xmlDoc != null)
@@ -163,11 +164,11 @@ namespace SmartBid
       }
       if (GetNProperty("logLevel") <= level)
       {
-        DBtools.LogMessage(level, user, eventLog, message);
+        DBtools.LogMessage(level, user, eventLog, message, currentCallId);
       }
     }
 
-    public static XmlElement CreateElement(XmlDocument doc, string name, string value, Dictionary<string, string> attributes = null)
+    public static XmlElement CreateElement(XmlDocument doc, string name, string value, Dictionary<string, string>? attributes = null) // Made attributes nullable
     {
       XmlElement element = doc.CreateElement(name);
       element.InnerText = value;
@@ -183,8 +184,8 @@ namespace SmartBid
 
     public static void MergeXmlNodes(XmlDocument sourceDoc, XmlDocument targetDoc, string sourcePath, string targetPath)
     {
-      XmlNode sourceParent = sourceDoc.SelectSingleNode(sourcePath);
-      XmlNode targetParent = targetDoc.SelectSingleNode(targetPath);
+      XmlNode? sourceParent = sourceDoc.SelectSingleNode(sourcePath); // Made nullable
+      XmlNode? targetParent = targetDoc.SelectSingleNode(targetPath); // Made nullable
 
       if (sourceParent == null || targetParent == null)
         return;
@@ -192,7 +193,7 @@ namespace SmartBid
       foreach (XmlNode sourceChild in sourceParent.ChildNodes)
       {
         // Buscar nodo con el mismo nombre en el destino
-        XmlNode targetChild = targetParent.SelectSingleNode(sourceChild.Name);
+        XmlNode? targetChild = targetParent.SelectSingleNode(sourceChild.Name); // Made nullable
 
         if (targetChild == null)
         {
@@ -215,24 +216,22 @@ namespace SmartBid
 
     public static bool MailTo(List<string> recipients, string subject, string body = "", string? attachmentPath = null, bool isHtml = false)
     {
-      // Asegura logs sin depender de TC
+      // Asegura logs sin depender de TC.ID.Value si no está establecido (ej. llamada desde el Main thread)
       string userForLog = TC.ID?.Value?.User ?? "SYSTEM";
+      int? currentCallId = TC.ID?.Value?.CallId; // Captura el CallId para el log
+      string contextPrefix = currentCallId.HasValue ? $"[CALL:{currentCallId.Value:D4}]" : "[MAIN]";
+
 
       try
       {
         if (recipients == null || recipients.Count == 0)
         {
-          PrintLog(5, "00:00.000", userForLog, "MailTo", "⚠️ No recipients supplied.");
-          PrintLog(5, "00:00.000", userForLog, "Subject", $"{subject}");
+          // MODIFICADO: Usar H.PrintLog para registrar el mensaje, que ya maneja el CallId
+          H.PrintLog(5, "00:00.000", userForLog, "MailTo", $"⚠️ No recipients supplied for subject: {subject}.");
           return false;
         }
 
         var outlookApp = new Outlook.Application();
-
-
-
-
-
         var mailItem = (Outlook.MailItem)outlookApp.CreateItem(Outlook.OlItemType.olMailItem);
 
         mailItem.Subject = subject ?? string.Empty;
@@ -241,14 +240,6 @@ namespace SmartBid
           mailItem.HTMLBody = body ?? string.Empty;
         else
           mailItem.Body = body ?? string.Empty;
-
-
-
-        //var mailItem = (Outlook.MailItem)outlookApp.CreateItem(Outlook.OlItemType.olMailItem);
-
-          //// Usar los parámetros recibidos (antes estaban hardcodeados)
-          //mailItem.Subject = subject ?? string.Empty;
-          //mailItem.Body = body ?? string.Empty;
 
         foreach (string _email in recipients)
         {
@@ -270,14 +261,16 @@ namespace SmartBid
 
         mailItem.Send();
 
-        PrintLog(5, "00:00.000", userForLog, "MailTo",
+        // MODIFICADO: Usar H.PrintLog para registrar el mensaje
+        H.PrintLog(5, "00:00.000", userForLog, "MailTo",
             $"Correo enviado a:\n {string.Join("\n ", recipients)}\n" +
             (string.IsNullOrWhiteSpace(attachmentPath) ? "" : $"Adjunto: {attachmentPath}"));
         return true;
       }
       catch (Exception ex)
       {
-        PrintLog(2, "00:00.000", userForLog, "MailTo", $"❌ Error al enviar el correo: {ex.Message}");
+        // MODIFICADO: Usar H.PrintLog para registrar el error
+        H.PrintLog(2, "00:00.000", userForLog, "MailTo", $"❌ Error al enviar el correo: {ex.Message}");
         return false;
       }
     }
@@ -361,9 +354,6 @@ namespace SmartBid
 
       return d[n, m];
     }
-
-
-
   }
 
 }

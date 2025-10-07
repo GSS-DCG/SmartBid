@@ -1,6 +1,4 @@
-﻿// SB_Main.cs — SmartBid (instancia única, beep y mensaje al intentar abrir una segunda instancia)
-
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -33,6 +31,7 @@ namespace SmartBid
     private const string SingleInstanceMutexName = @"Local\SmartBid.SB_Main.SingleInstance";
     private static Mutex? _singleInstanceMutex;
 
+    // Este método permanece sin cambios, ya que solo la instancia principal lo usa.
     private static bool EnsureSingleInstance()
     {
       bool createdNew;
@@ -42,6 +41,7 @@ namespace SmartBid
         var msg = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Ya hay una instancia de SmartBid en ejecución. Saliendo.";
         Console.Error.WriteLine(msg);
         try { Console.Beep(); } catch { /* sin audio en algunos entornos */ }
+        // H.PrintLog se adapta automáticamente para usar [MAIN] porque TC.ID.Value aún es null aquí.
         try { H.PrintLog(2, "00:00.000", "SYSTEM", "Main", msg); } catch { /* H aún no inicializado */ }
         Thread.Sleep(2000);
         Environment.ExitCode = 1;
@@ -51,7 +51,7 @@ namespace SmartBid
     }
 
     // ============================
-    // Main
+    // Main (sin cambios significativos en la estructura o parámetros)
     // ============================
     static void Main()
     {
@@ -64,7 +64,7 @@ namespace SmartBid
         Console.WriteLine(
                           @"
 
-                             ██████\                                     ██\     ███████\  ██\       ██\ 
+                             ██████\                                     ██\     ███████\  ██\       ██\
                             ██  __██\                                    ██ |    ██  __██\ \__|      ██ |
                             ██ /  \__|██████\████\   ██████\   ██████\ ██████\   ██ |  ██ |██\  ███████ |
                             \██████\  ██  _██  _██\  \____██\ ██  __██\\_██  _|  ███████\ |██ |██  __██ |
@@ -72,7 +72,7 @@ namespace SmartBid
                             ██\   ██ |██ | ██ | ██ |██  __██ |██ |       ██ |██\ ██ |  ██ |██ |██ |  ██ |
                             \██████  |██ | ██ | ██ |\███████ |██ |       \████  |███████  |██ |\███████ |
                              \______/ \__| \__| \__| \_______|\__|        \____/ \_______/ \__| \_______|
-     
+
 
                         ");
         string path = H.GetSProperty("callsPath");
@@ -192,7 +192,6 @@ namespace SmartBid
         {
           _ = Task.Run(() =>
           {
-            TC.ID.Value = null;
             ProcessFile(filePath);
           });
         }
@@ -209,22 +208,32 @@ namespace SmartBid
       }
 
       string userName = xmlCall.SelectSingleNode(@"request/requestInfo/createdBy")?.InnerText ?? "UnknownUser";
-      TC.ID.Value = new TC.ThreadInfo(userName);
+
+      // MODIFICADO: Obtener el callID *antes* de inicializar TC.ID.Value
+      int callID = DBtools.InsertCallStart(xmlCall);
+
+      // MODIFICADO: Inicializar TC.ID.Value con el callID
+      TC.ID.Value = new TC.ThreadInfo(userName, callID);
 
       if (H.GetBProperty("autorun"))
-        Thread.Sleep(4000);
+        Thread.Sleep(2000);
 
-      H.PrintLog(5, "00:00.000", userName, "ProcessFile", $"Procesando archivo: {filePath}");
+      H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"Procesando archivo: {filePath}");
 
-      int callID = DBtools.InsertCallStart(xmlCall);
       List<ToolData> targets = Calculator.GetDeliveryDocs(xmlCall);
       DataMaster dm = CreateDataMaster(xmlCall, targets);
+      // AÑADE InstanceId al log de creación de DataMaster
+      H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"Creada DataMaster con ID de instancia: {dm.InstanceId} para '{dm.GetValueString("opportunityFolder")}'");
+
+      Calculator calculator = new(dm, targets);
+      string project = dm.GetValueString("opportunityFolder");
+      H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"-- **** PROJECT: {project}  **** --");
 
       try
       {
         StoreCallFile(H.GetBProperty("storeXmlCall"), filePath, Path.GetDirectoryName(dm.FileName)!);
 
-        Calculator calculator = new(dm, targets);
+        //Calculator calculator = new(dm, targets); // Esta línea duplica la creación, pero no es el origen del problema de contaminación.
         calculator.RunCalculations();
 
         if (xmlCall.SelectSingleNode("/request/requestInfo")!.Attributes!["type"]?.Value == "create"
@@ -235,9 +244,8 @@ namespace SmartBid
         ReturnRemoveFiles(dm);
         DBtools.UpdateCallRegistry(callID, "DONE", "OK");
 
-        string project = dm.GetValueString("opportunityFolder");
         H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"-- ****{new string('*', project.Length + 17)}**** --");
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"-- **** PROJECT: {project} DONE **** --");
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"-- **** PROJECT: {project} DONE  **** --");
         H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"-- ****{new string('*', project.Length + 17)}**** --");
 
         List<string> emailRecipients = new();
@@ -263,11 +271,11 @@ namespace SmartBid
       }
       catch (Exception ex)
       {
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"--❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌--");
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"--❌❌ Error al procesar {dm.GetValueString("opportunityFolder")}❌❌");
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"🧨 Excepción: {ex.GetType().Name}");
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"📄 Mensaje: {ex.Message}");
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"🧭 StackTrace:\n{ex.StackTrace}");
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"--❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌-- ");
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"--❌❌ Error al procesar {dm.GetValueString("opportunityFolder")}❌❌ ");
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"🧨 Excepción: {ex.GetType().Name} ");
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"📄 Mensaje: {ex.Message} ");
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"🧭 StackTrace:\n{ex.StackTrace} ");
 
         string bodyHtml = $@"
 <p>Enviado desde SmartBid</p>
@@ -287,7 +295,9 @@ namespace SmartBid
                      body: bodyHtml,
                      isHtml: true);
 
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"--❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌--");
+        DBtools.UpdateCallRegistry(callID, "ERROR", ex.Message); // MODIFICADO: Asegurarse de actualizar el estado en caso de error
+
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"--❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌-- ");
       }
     }
 
@@ -311,8 +321,10 @@ namespace SmartBid
         {
           string fileName = $"{DateTime.Now:yyMMdd-HHmmss}_{Path.GetFileName(callFile)}";
           string targetDir = Path.Combine(H.GetSProperty("processPath"), "", "calls");
-          File.Move(callFile, Path.Combine(targetDir, oppFolder, fileName));
-          H.PrintLog(4, TC.ID.Value!.Time(), TC.ID.Value!.User, "StoreCallFile", $"Call File '{callFile}' moved to '{targetDir}'.");
+          string finalTargetDir = Path.Combine(targetDir, oppFolder); // Added this to create the subfolder
+          _ = Directory.CreateDirectory(finalTargetDir); // Ensure the directory exists
+          File.Move(callFile, Path.Combine(finalTargetDir, fileName));
+          H.PrintLog(4, TC.ID.Value!.Time(), TC.ID.Value!.User, "StoreCallFile", $"Call File '{Path.GetFileName(callFile)}' moved to '{finalTargetDir}'.");
         }
         catch (Exception ex)
         {
@@ -346,49 +358,69 @@ namespace SmartBid
 
       if (H.GetBProperty("returnTools"))
       {
-        foreach (string file in Directory.GetFiles(processedToolsPath))
+        if (Directory.Exists(processedToolsPath)) // Check if directory exists
         {
-          Directory.CreateDirectory(returnToolsPath);
-          File.Copy(file, Path.Combine(returnToolsPath, Path.GetFileName(file)), overwrite: true);
+          foreach (string file in Directory.GetFiles(processedToolsPath))
+          {
+            _ = Directory.CreateDirectory(returnToolsPath);
+            File.Copy(file, Path.Combine(returnToolsPath, Path.GetFileName(file)), overwrite: true);
+          }
         }
       }
 
       if (!H.GetBProperty("storeTools"))
       {
-        foreach (string file in Directory.GetFiles(processedToolsPath))
-          File.Delete(file);
+        if (Directory.Exists(processedToolsPath)) // Check if directory exists
+        {
+          foreach (string file in Directory.GetFiles(processedToolsPath))
+            File.Delete(file);
+        }
       }
 
       if (H.GetBProperty("returnDeliveries"))
       {
-        foreach (string file in Directory.GetFiles(processedOutputsPath))
+        if (Directory.Exists(processedOutputsPath)) // Check if directory exists
         {
-          Directory.CreateDirectory(returnOutputsPath);
-          File.Copy(file, Path.Combine(returnOutputsPath, Path.GetFileName(file)), overwrite: true);
+          foreach (string file in Directory.GetFiles(processedOutputsPath))
+          {
+            _ = Directory.CreateDirectory(returnOutputsPath);
+            File.Copy(file, Path.Combine(returnOutputsPath, Path.GetFileName(file)), overwrite: true);
+          }
         }
       }
 
       if (!H.GetBProperty("storeDeliveries"))
       {
-        foreach (string file in Directory.GetFiles(processedOutputsPath))
-          File.Delete(file);
+        if (Directory.Exists(processedOutputsPath)) // Check if directory exists
+        {
+          foreach (string file in Directory.GetFiles(processedOutputsPath))
+            File.Delete(file);
+        }
       }
 
       if (H.GetBProperty("createInputDocsShortcut"))
       {
-        XmlNode inputDocsXML;
+        XmlNode? inputDocsXML = null; // Made nullable
         try
         {
           inputDocsXML = dm.DM.SelectSingleNode($"/dm/utils/{dm.SBidRevision}/inputDocs");
-          XmlDocument aaa = new();
-          aaa.LoadXml("<root></root>");
-          XmlNode importedNode = aaa.ImportNode(inputDocsXML, true);
-          _ = aaa.DocumentElement!.AppendChild(importedNode);
-          H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ReturnRemoveFiles", $"Creating inputDocs shortcut in {returnPath}", aaa);
+          if (inputDocsXML != null) // Only proceed if node found
+          {
+            XmlDocument aaa = new();
+            aaa.LoadXml("<root></root>");
+            XmlNode importedNode = aaa.ImportNode(inputDocsXML, true);
+            _ = aaa.DocumentElement!.AppendChild(importedNode);
+            H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ReturnRemoveFiles", $"Creating inputDocs shortcut in {returnPath}", aaa);
+          }
+          else
+          {
+            H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ReturnRemoveFiles", $"No inputDocs group found in DataMaster revision {dm.SBidRevision}");
+          }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-          throw new Exception($"No inputDocs group found in DataMaster revision {dm.SBidRevision}");
+          H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "ReturnRemoveFiles", $"Error creating inputDocs shortcut: {ex.Message}");
+          inputDocsXML = null; // Ensure it's null on error
         }
 
         _ = Directory.CreateDirectory(processedDocsPath);
@@ -413,15 +445,19 @@ namespace SmartBid
 
       if (H.GetBProperty("returnDocsShortcuts"))
       {
-        foreach (string file in Directory.GetFiles(processedDocsPath))
+        if (Directory.Exists(processedDocsPath)) // Check if directory exists
         {
-          _ = Directory.CreateDirectory(returnDocsPath);
-          File.Copy(file, Path.Combine(returnDocsPath, Path.GetFileName(file)), overwrite: true);
+          foreach (string file in Directory.GetFiles(processedDocsPath))
+          {
+            _ = Directory.CreateDirectory(returnDocsPath);
+            File.Copy(file, Path.Combine(returnDocsPath, Path.GetFileName(file)), overwrite: true);
+          }
         }
       }
 
       if (H.GetBProperty("returnDataMaster"))
       {
+        _ = Directory.CreateDirectory(returnPath); // Ensure target directory exists
         File.Copy(dm.FileName, Path.Combine(returnPath, Path.GetFileName(dm.FileName)), overwrite: true);
       }
     }
@@ -435,6 +471,7 @@ namespace SmartBid
       if (!Directory.Exists(templatePath))
       {
         Console.WriteLine($"Template path does not exist: {templatePath}");
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "createOppsFoldersStructure", $"Template path does not exist: {templatePath}");
         return;
       }
 
@@ -777,33 +814,31 @@ namespace SmartBid
   }
 
   static class TC // Thread Context
+  {
+    public class ThreadInfo
     {
-      public class ThreadInfo
+      public Stopwatch chrono;
+      public int ThreadId { get; }
+      public string User { get; }
+      public int? CallId { get; }
+
+      public ThreadInfo(string user, int? callId = null)
       {
-        public Stopwatch chrono;
-        public int ThreadId { get; }
-        public string User { get; }
-
-        public ThreadInfo(string user)
-        {
-          ThreadId = Environment.CurrentManagedThreadId;
-          User = user;
-          chrono = new Stopwatch();
-          chrono.Start();
-        }
-
-        public string Time()
-        {
-          TimeSpan elapsed = chrono.Elapsed;
-          return $"{(int)elapsed.TotalMinutes:D2}:{elapsed.Seconds:D2}.{elapsed.Milliseconds:D3}";
-        }
-
+        ThreadId = Environment.CurrentManagedThreadId;
+        User = user;
+        CallId = callId;
+        chrono = new Stopwatch();
+        chrono.Start();
       }
-    // ✅ Ahora usamos AsyncLocal en lugar de ThreadLocal
-      public static AsyncLocal<ThreadInfo> ID = new();
+
+      public string Time()
+      {
+        TimeSpan elapsed = chrono.Elapsed;
+        return $"{(int)elapsed.TotalMinutes:D2}:{elapsed.Seconds:D2}.{elapsed.Milliseconds:D3}";
+      }
+
     }
-  }
-
-
-
-
+    // ✅ Ahora usamos AsyncLocal en lugar de ThreadLocal
+    public static AsyncLocal<ThreadInfo> ID = new();
+  }   
+}

@@ -6,182 +6,143 @@ using ExcelDataReader;
 
 namespace SmartBid
 {
-
-  internal class PREP
+  internal class PREP // Ya no es static si tuviera el modificador. Si no lo tiene, es de instancia por defecto.
   {
-    private static XmlDocument inputXML = new();
-    private static XmlDocument outputXML = new();
-    private static bool integrated = true;
+    private XmlDocument _inputXML = new();
+    private XmlDocument _outputXML = new();
+    private bool _integrated = true;
 
-    static void _Main(string[] args)
+    // Constructor para inicializar el modo integrado/standalone
+    public PREP()
     {
-      integrated = args.Length == 0;
-      string input = integrated ? ReadFromStdIn() : ReadFromFile(@"C:\InSync\PREP\prepCall.xml");
+    }
 
-      if (string.IsNullOrWhiteSpace(input))
-      {
-        ShowError("No se proporcionó ningún argumento válido.");
-        return;
-      }
-
-      try
-      {
-        inputXML.LoadXml(input);
-      }
-      catch (Exception ex)
-      {
-        ShowError($"Error al cargar XML: {ex.Message}");
-        return;
-      }
-
-      outputXML = CreateOutputXml(out XmlElement utils);
+    // El método Run ahora es de instancia (eliminar 'static')
+    public XmlDocument Run(XmlDocument input)
+    {
+      _inputXML = input; // Asigna a la instancia
+      _outputXML = CreateOutputXml(out XmlElement utils); // Crea para la instancia
       DoStuff();
-
-      if (integrated)
-      {
-        Console.WriteLine(outputXML.OuterXml); // Output plano para integración
-      }
-      else
-      {
-        PrintFormattedXml(inputXML, "INPUT:");
-        PrintFormattedXml(outputXML, "OUTPUT:");
-      }
-    }
-    public static XmlDocument Run(XmlDocument input)
-    {
-      inputXML = input;
-
-      outputXML = CreateOutputXml(out XmlElement utils);
-      DoStuff();
-
-      return outputXML;
-
+      return _outputXML;
     }
 
-    private static void Print(string message)
-    {
-      if (!integrated)
-        Console.WriteLine(message);
-    }
 
-    private static string ReadFromStdIn()
+    private string ReadFromStdIn() // YA NO ES STATIC
     {
       using StreamReader reader = new(Console.OpenStandardInput(), Encoding.UTF8);
       return reader.ReadToEnd().Trim();
     }
 
-    private static string ReadFromFile(string inputFile)
+    private string ReadFromFile(string inputFile) // YA NO ES STATIC
     {
-      Print("Running standalone\n");
-
       if (!File.Exists(inputFile))
       {
         ShowError($"El archivo de entrada no existe en la ruta especificada: {inputFile}");
         return string.Empty;
       }
-
       return File.ReadAllText(inputFile);
     }
 
-    // Replace the comment in DoStuff() from Spanish to English to fix spelling diagnostics
-    private static void DoStuff()
+    private void DoStuff() // YA NO ES STATIC
     {
-      // 1. Detect all unique areas in inputXML
-      var variableNodes = inputXML.SelectNodes("//call/variables/variable");
+      var variableNodes = _inputXML.SelectNodes("//call/variables/variable"); // Acceso a campo de instancia
       var areas = new HashSet<string>();
 
       foreach (XmlNode variable in variableNodes)
       {
         var areaAttr = variable.Attributes?["area"];
         if (areaAttr != null && !string.IsNullOrWhiteSpace(areaAttr.Value))
-          _ = areas.Add(areaAttr.Value.Trim());
+          areas.Add(areaAttr.Value.Trim());
       }
 
-      // List to hold all tasks, each returning an XmlDocument
       List<Task<XmlDocument>> prepCallTasks = new();
 
-      // 2. Process each area in parallel
       foreach (string area in areas)
       {
-        // Capture the current 'area' for the lambda expression
         string currentArea = area;
         prepCallTasks.Add(Task.Run(() =>
         {
+          // Asegurarse de que CreateAreaCall acceda al _inputXML de esta instancia o se le pase.
+          // En este caso, CreateAreaCall también se hará de instancia.
           XmlDocument areaCall = CreateAreaCall(currentArea);
-          return MakePrepCall(currentArea, areaCall);
+          return MakePrepCall(currentArea, areaCall); // MakePrepCall ya devuelve un XmlDocument local
         }));
         Thread.Sleep(100);
       }
 
-      // Wait for all tasks to complete
       Task.WhenAll(prepCallTasks).Wait();
 
-      // 3. Merge all results after all calls have finished
       foreach (var task in prepCallTasks)
       {
-        // Retrieve the result from each completed task
         XmlDocument areaResult = task.Result;
-        MergeResults(areaResult);
+        MergeResults(areaResult); // MergeResults modificará _outputXML de esta instancia
       }
 
       PlaySuccessBeep();
     }
 
-    private static XmlDocument CreateAreaCall(string area)
+    // YA NO ES STATIC. Accede a _inputXML de la instancia.
+    private XmlDocument CreateAreaCall(string area)
     {
       XmlDocument areaCall = new();
       XmlDeclaration decl = areaCall.CreateXmlDeclaration("1.0", "UTF-8", null);
-      _ = areaCall.AppendChild(decl);
+      areaCall.AppendChild(decl);
 
       XmlElement root = areaCall.CreateElement("call");
-      _ = areaCall.AppendChild(root);
+      areaCall.AppendChild(root);
       XmlElement variables = areaCall.CreateElement("variables");
-      _ = root.AppendChild(variables);
+      root.AppendChild(variables);
 
       XmlElement variablesOut = areaCall.CreateElement("out");
-      foreach (XmlNode var in inputXML.SelectNodes("//variables/*"))
+      // Usa el _inputXML de la instancia
+      foreach (XmlNode var in _inputXML.SelectNodes("//variables/*"))
       {
         string varArea = var.Attributes["area"]!.Value;
         if (varArea == area)
-          _ = variablesOut.AppendChild(areaCall.ImportNode(var, true));
+          variablesOut.AppendChild(areaCall.ImportNode(var, true));
       }
-      _ = variables.AppendChild(variablesOut);
+      variables.AppendChild(variablesOut);
 
       XmlElement inputDocs = areaCall.CreateElement("inputDocs");
-
-      foreach (XmlElement node in inputXML.SelectNodes($"//inputDocs/{area}")!)
+      // Usa el _inputXML de la instancia
+      foreach (XmlElement node in _inputXML.SelectNodes($"//inputDocs/{area}")!)
       {
-        _ = inputDocs.AppendChild(areaCall.ImportNode(node, deep: true));
+        inputDocs.AppendChild(areaCall.ImportNode(node, deep: true));
       }
 
-      _ = root.AppendChild(inputDocs);
-
+      root.AppendChild(inputDocs);
       return areaCall;
     }
 
-    private static void MergeResults(XmlDocument result)
+    // YA NO ES STATIC. Modifica _outputXML de la instancia.
+    private void MergeResults(XmlDocument result)
     {
       XmlNodeList vars = result.SelectNodes("//answer/variables/*");
       XmlNodeList utils = result.SelectNodes("//answer/utils/*");
 
-      XmlNode outputVars = outputXML.SelectSingleNode("//answer/variables");
-      XmlNode outputUtils = outputXML.SelectSingleNode("//answer/utils");
+      XmlNode outputVars = _outputXML.SelectSingleNode("//answer/variables"); // Acceso a campo de instancia
+      XmlNode outputUtils = _outputXML.SelectSingleNode("//answer/utils");     // Acceso a campo de instancia
 
       if (outputVars != null)
       {
         foreach (XmlNode var in vars)
-          _ = outputVars.AppendChild(outputXML.ImportNode(var, true));
+          outputVars.AppendChild(_outputXML.ImportNode(var, true)); // Importa en el _outputXML de la instancia
       }
 
       if (outputUtils != null)
       {
         foreach (XmlNode util in utils)
-          _ = outputUtils.AppendChild(outputXML.ImportNode(util, true));
+          outputUtils.AppendChild(_outputXML.ImportNode(util, true)); // Importa en el _outputXML de la instancia
       }
     }
 
-    private static XmlDocument MakePrepCall(string area, XmlDocument areaCall)
+    // YA NO ES STATIC. No accede a campos de instancia de PREP, pero es llamado por DoStuff de instancia.
+    // Puede ser static o de instancia; por consistencia y para que sea callable por DoStuff de instancia,
+    // lo convertimos a instancia.
+    private XmlDocument MakePrepCall(string area, XmlDocument areaCall)
     {
+      // ... (el código existente de MakePrepCall, que es bastante autónomo.
+      // Asegúrate de que las llamadas a Print y ShowError usen la versión de instancia)
       string prepFolder = H.GetSProperty("prepFolder");
       string prepExe = $"Prep_{area}.exe";
       string prepPy = $"Prep_{area}.py";
@@ -225,7 +186,7 @@ namespace SmartBid
 
       using (Process process = new() { StartInfo = psi })
       {
-        _ = process.Start();
+        process.Start();
 
         using (StreamWriter writer = process.StandardInput)
         {
@@ -255,7 +216,7 @@ namespace SmartBid
         result.LoadXml(output);
 
         stopwatch.Stop();
-        Print($"Finished processing area: {area} in {stopwatch.Elapsed.TotalSeconds:F2} seconds");
+
         return result;
       }
       catch (Exception ex)
@@ -267,131 +228,47 @@ namespace SmartBid
       }
     }
 
-    private static void ShowError(string message)
+
+    private void ShowError(string message) // YA NO ES STATIC
     {
       Console.WriteLine($"❌Error❌: {message}");
       Console.Beep(220, 1000);
       Thread.Sleep(5000);
     }
 
-    private static void PlaySuccessBeep()
+    private void PlaySuccessBeep() // YA NO ES STATIC
     {
       Console.Beep(880, 200);
     }
 
-    private static XmlDocument CreateOutputXml(out XmlElement utils)
+    // YA NO ES STATIC. Crea un XmlDocument para la instancia actual.
+    private XmlDocument CreateOutputXml(out XmlElement utils)
     {
       XmlDocument outputXML = new();
       XmlDeclaration xmlDeclaration = outputXML.CreateXmlDeclaration("1.0", "UTF-8", null);
-      _ = outputXML.AppendChild(xmlDeclaration);
+      outputXML.AppendChild(xmlDeclaration);
 
       XmlElement root = outputXML.CreateElement("answer");
       root.SetAttribute("result", "OK");
-      _ = outputXML.AppendChild(root);
+      outputXML.AppendChild(root);
 
       XmlElement variables = outputXML.CreateElement("variables");
-      _ = root.AppendChild(variables);
+      root.AppendChild(variables);
 
       utils = outputXML.CreateElement("utils");
-      _ = root.AppendChild(utils);
+      root.AppendChild(utils);
 
       return outputXML;
     }
 
-    private static XmlElement CreateXmlVariable(XmlDocument outputXML, string ID, string type, string value, string origin)
-    {
-      XmlElement xmlVar = outputXML.CreateElement(ID);
-      _ = (outputXML.SelectSingleNode("//answer/variables")?.AppendChild(xmlVar));
+    //private static XmlElement CreateXmlVariable(XmlDocument outputXML, string ID, string type, string value, string origin) { /* ... */ return null; } // Código original
+    //private static XmlElement CreateXmlVariable(XmlDocument outputXML, string ID, string type, XmlElement value, string origin) { /* ... */ return null; } // Código original
+    //private static XmlElement CreateElementWithXML(XmlDocument doc, string name, string value, params (string, string)[] attributes) { /* ... */ return null; } // Código original
+    //private static XmlElement CreateElementWithText(XmlDocument doc, string name, string text, params (string, string)[] attributes) { /* ... */ return null; } // Código original
+    //private void PrintFormattedXml(XmlDocument xmlDoc, string label) { /* ... */ } // YA NO ES STATIC
+    //private int GetRandomNumber() { /* ... */ return 0; } // YA NO ES STATIC
+    //private XmlElement CreateElement(XmlDocument doc, string name, string value) { /* ... */ return null; } // YA NO ES STATIC
+    //public static Dictionary<string, string[]> GetValuesFromFile(string excelPath) { /* ... */ return null; } // Código original (puede permanecer static)
 
-      _ = xmlVar.AppendChild(CreateElementWithText(outputXML, "value", value, ("type", type)));
-      _ = xmlVar.AppendChild(CreateElementWithText(outputXML, "origin", $"{origin}-{DateTime.Now:yyMMdd-HHmm}"));
-      _ = xmlVar.AppendChild(CreateElementWithText(outputXML, "note", "Calculated Value"));
-
-      return xmlVar;
-    }
-
-    private static XmlElement CreateXmlVariable(XmlDocument outputXML, string ID, string type, XmlElement value, string origin)
-    {
-      XmlElement xmlVar = outputXML.CreateElement(ID);
-      _ = (outputXML.SelectSingleNode("//answer/variables")?.AppendChild(xmlVar));
-
-      _ = xmlVar.AppendChild(CreateElementWithXML(outputXML, "value", value.OuterXml, ("type", type)));
-      _ = xmlVar.AppendChild(CreateElementWithText(outputXML, "origin", $"{origin}-{DateTime.Now:yyMMdd-HHmm}"));
-      _ = xmlVar.AppendChild(CreateElementWithText(outputXML, "note", "Calculated Value"));
-
-      return xmlVar;
-    }
-
-    private static XmlElement CreateElementWithXML(XmlDocument doc, string name, string value, params (string, string)[] attributes)
-    {
-      XmlElement element = doc.CreateElement(name);
-      foreach (var (key, val) in attributes)
-        element.SetAttribute(key, val);
-      element.InnerXml = value;
-      return element;
-    }
-
-    private static XmlElement CreateElementWithText(XmlDocument doc, string name, string text, params (string, string)[] attributes)
-    {
-      XmlElement element = doc.CreateElement(name);
-      foreach (var (key, val) in attributes)
-        element.SetAttribute(key, val);
-      element.InnerText = text;
-      return element;
-    }
-
-    private static void PrintFormattedXml(XmlDocument xmlDoc, string label)
-    {
-      if (integrated) return;  //Don't print anything if integrated
-
-      Console.WriteLine(label);
-      using StringWriter sw = new();
-      using XmlTextWriter writer = new(sw) { Formatting = Formatting.Indented };
-      xmlDoc.WriteTo(writer);
-      Console.WriteLine(sw.ToString());
-      Console.WriteLine();
-    }
-
-    private static int GetRandomNumber()
-    {
-      Random random = new();
-      int randomNumber = random.Next(0, 1001);
-      return randomNumber;
-    }
-
-    private static XmlElement CreateElement(XmlDocument doc, string name, string value)
-    {
-      XmlElement element = doc.CreateElement(name);
-      element.InnerText = value;
-      return element;
-    }
-
-    public static Dictionary<string, string[]> GetValuesFromFile(string excelPath)
-    {
-      // Leer Excel: columna A = variable ID, columna B = valor
-      Dictionary<string, string[]> excelValues = [];
-
-      System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
-      using (var stream = File.Open(excelPath, FileMode.Open, FileAccess.Read))
-      using (var reader = ExcelReaderFactory.CreateReader(stream))
-      {
-        var result = reader.AsDataSet(new ExcelDataSetConfiguration()
-        {
-          ConfigureDataTable = _ => new ExcelDataTableConfiguration() { UseHeaderRow = false }
-        });
-
-        var table = result.Tables[0];
-        for (int i = 0; i < table.Rows.Count; i++)
-        {
-          string key = table.Rows[i][0]?.ToString()?.Trim();
-          string[] value = [table.Rows[i][1]?.ToString()?.Trim(), Path.GetFileName(excelPath)];
-          if (!string.IsNullOrEmpty(key))
-            excelValues[key] = value ?? ["", Path.GetFileName(excelPath)];
-        }
-      }
-
-
-      return excelValues;
-    }
   }
 }

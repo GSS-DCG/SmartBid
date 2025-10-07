@@ -8,69 +8,59 @@ using File = System.IO.File;
 namespace SmartBid
 {
 
-
-  public class VariableData(
-  string id,
-  string varName,
-  string area,
-  string source,
-  bool critic,
-  bool mandatory,
-  string type,
-  string unit = "",
-  string defaultValue = "",
-  string description = "",
-  string prompt = "",
-  int deep = 0,
-  List<string>? allowableRange = null,
-  string value = ""
-)
+  public class VariableData
   {
-    // Properties
-    public string ID { get; set; } = id;
-    public string VarName { get; set; } = varName;
-    public string Area { get; set; } = area;
-    public string Source { get; set; } = source;
-    public bool Critic { get; set; } = critic;
-    public bool Mandatory { get; set; } = mandatory;
-
-    // Consider renaming to DataType for clarity
-    public string Type { get; set; } = type;
-
-    public string Unit { get; set; } = unit;
-    public string Default { get; set; } = defaultValue;
-    public string Description { get; set; } = description;
-    public string Prompt { get; set; } = prompt;
-    public string Note { get; set; } = "";
-    public string Origen { get; set; } = "";
+    // AÑADE ESTA PROPIEDAD DENTRO DE TU CLASE VariableData
+    public string ID { get; set; }
+    public string VarName { get; set; }
+    public string Area { get; set; }
+    public string Source { get; set; }
+    public bool Critic { get; set; }
+    public bool Mandatory { get; set; }
+    public string Type { get; set; }
+    public string Unit { get; set; }
+    public string Default { get; set; }
+    public string Description { get; set; }
+    public string Prompt { get; set; }
+    public string Note { get; set; }
+    public string Origen { get; set; }
     public string? InOut { get; set; }
     public int? Call { get; set; }
-    public int Deep { get; set; } = deep;
+    public int Deep { get; set; }
+    public List<string> AllowableRange { get; set; }
+    public string Value { get; set; }
 
-    // C# 12 collection expression; replace with `new List<string>()` if needed.
-    public List<string> AllowableRange { get; set; } = allowableRange ?? [];
-    public string Value { get; set; } = value;
+    // Constructor completo de VariableData (ajusta a tu implementación real)
+    public VariableData(
+      string id, string varName, string area, string source, bool critic, bool mandatory, string type,
+      string unit = "", string defaultValue = "", string description = "", string prompt = "",
+      int deep = 0, List<string>? allowableRange = null, string value = ""
+    )
+    {
+      ID = id;
+      VarName = varName;
+      Area = area;
+      Source = source;
+      Critic = critic;
+      Mandatory = mandatory;
+      Type = type;
+      Unit = unit;
+      Default = defaultValue;
+      Description = description;
+      Prompt = prompt;
+      Deep = deep;
+      AllowableRange = allowableRange ?? new List<string>();
+      Value = value;
+    }
 
     public VariableData Clone()
     {
       return new VariableData(
-        this.ID,
-        this.VarName,
-        this.Area,
-        this.Source,
-        this.Critic,
-        this.Mandatory,
-        this.Type,
-        this.Unit,
-        this.Default,
-        this.Description,
-        this.Prompt,
-        this.Deep,
-        [.. this.AllowableRange], // deep copy list
-        this.Value                // preserve Value
+        this.ID, this.VarName, this.Area, this.Source, this.Critic, this.Mandatory,
+        this.Type, this.Unit, this.Default, this.Description, this.Prompt,
+        this.Deep, new List<string>(this.AllowableRange), this.Value
       );
     }
-
     public XmlDocument ToXMLDocument()
     {
       XmlDocument doc = new();
@@ -373,7 +363,7 @@ $"❌❌ Error ❌❌ -- Unexpected title in VariableMap/VarMap table \n{ex}");
 
     public VariableData GetVariableData(string id)
     {
-      return Variables.FirstOrDefault(variable => variable.ID == id);
+      return  Variables.FirstOrDefault(variable => variable.ID == id); 
     }
 
     public VariableData? GetNewVariableData(string id)

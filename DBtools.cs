@@ -185,23 +185,26 @@ namespace SmartBid
       }
     }
 
-    public static void LogMessage(int level, string user, string eventLog, string message)
+    public static void LogMessage(int level, string user, string eventLog, string message, int? callId = null)
     {
       try
       {
         using var conn = DBConnectionFactory.CreateConnection();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "INSERT INTO log (Log_time, Log_level, Log_event, Log_user, Log_message) VALUES (@Timestamp, @Level, @Event, @User, @Message)";
+        cmd.CommandText = "INSERT INTO log (Log_time, Log_level, Log_event, Log_user, Log_message, Log_CallId) VALUES (@Timestamp, @Level, @Event, @User, @Message, @CallId)";
         _ = cmd.Parameters.AddWithValue("@Timestamp", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
         _ = cmd.Parameters.AddWithValue("@Level", level);
         _ = cmd.Parameters.AddWithValue("@Event", eventLog);
         _ = cmd.Parameters.AddWithValue("@User", user);
         _ = cmd.Parameters.AddWithValue("@Message", message);
+        _ = cmd.Parameters.AddWithValue("@CallId", callId.HasValue ? (object)callId.Value : DBNull.Value);
         _ = cmd.ExecuteNonQuery();
       }
       catch (Exception ex)
       {
         Console.WriteLine($"DBtools ❌❌ Error ❌❌  - LogMessage ❌❌ Error ❌❌  during insert: " + ex.Message);
+        // NOTA: Aquí no podemos usar H.PrintLog porque DBtools.LogMessage es llamado por H.PrintLog,
+        // lo que crearía un bucle infinito. La salida a Console.WriteLine es adecuada para este caso.
       }
     }
 
@@ -223,6 +226,8 @@ namespace SmartBid
       }
       catch (Exception ex)
       {
+        // NOTA: Se asume que TC.ID.Value estará disponible aquí. Si este método pudiera ser llamado
+        // desde un contexto sin TC.ID.Value, deberías añadir una comprobación similar a la de H.MailTo.
         H.PrintLog(5, TC.ID.Value!.Time(), "DBtools", $"❌❌ Error ❌❌  - InsertFileHash", $"❌❌ Error ❌❌  during insert inputFileHashs: " + ex.Message);
       }
     }

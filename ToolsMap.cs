@@ -370,6 +370,7 @@ namespace SmartBid
 
     private XmlDocument CalculateExcel(ToolData tool, DataMaster dm)
     {
+      //reading metadata
       MirrorXML mirror = new(tool);
       var variableMap = mirror.VarList;
 
@@ -386,8 +387,12 @@ namespace SmartBid
           tool.FileName
       );
 
-      _ = Directory.CreateDirectory(Path.GetDirectoryName(toolPath)!);
-      File.Copy(originalToolPath, toolPath, true);
+      //create folder if not exists and copy the tool to process folder
+      Directory.CreateDirectory(Path.GetDirectoryName(toolPath)!);
+
+      //copy tool template only for first call
+      if (!File.Exists(toolPath) || tool.Call == 1)
+        File.Copy(originalToolPath, toolPath, true);
 
       H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"  Calling tool {tool.Code}");
 
@@ -713,28 +718,50 @@ namespace SmartBid
         string direction = entry.Value[1];
         if (direction == "out" && mirror.GetVarCallLevel(variableID) == tool.Call && !resultVarIDs.Contains(variableID))
         {
-          XmlElement varElement = CreateXmlVariable(results, variableID, _variablesMap.GetVariableData(variableID).Type, _variablesMap.GetVariableData(variableID).Default ?? string.Empty, $"{tool.Code}+{DateTime.Now:dd-HH:mm}");
+          
+
+          XmlElement varElement = CreateXmlVariable(results,
+                                                  variableID,
+                                                  _variablesMap.GetVariableData(variableID).Type,
+                                                  _variablesMap.GetVariableData(variableID).Default ?? string.Empty,
+                                                  $"{tool.Code}+{DateTime.Now:dd-HH:mm}",
+                                                  "Calculated Value");
+
           resultsVariablesNode.AppendChild(varElement);
           H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"❌ Missing output variable '{variableID}' added with default value.");
         }
       }
-
-
-
       return results;
     }
 
-    private static XmlElement CreateXmlVariable(XmlDocument outputXML, string ID, string type, string value, string origin)
+    private static XmlElement CreateXmlVariable(XmlDocument outputXML, string ID, string type, string value, string origin, string? note = null)
     {
       XmlElement xmlVar = outputXML.CreateElement(ID);
       outputXML.SelectSingleNode("//answer/variables")?.AppendChild(xmlVar);
 
       xmlVar.AppendChild(CreateElementWithText(outputXML, "value", value, ("type", type)));
       xmlVar.AppendChild(CreateElementWithText(outputXML, "origin", $"{origin}-{DateTime.Now:yyMMdd-HHmm}"));
-      xmlVar.AppendChild(CreateElementWithText(outputXML, "note", "Calculated Value"));
+      if (note != null)
+        xmlVar.AppendChild(CreateElementWithText(outputXML, "note", note));
 
       return xmlVar;
     }
+
+    private static XmlElement CreateXmlVariable(XmlDocument outputXML, string ID, string type, XmlElement value, string origin, string? note = null)
+    {
+      XmlElement xmlVar = outputXML.CreateElement(ID);
+      outputXML.SelectSingleNode("//answer/variables")?.AppendChild(xmlVar);
+
+      XmlElement valueElement = (XmlElement)xmlVar.AppendChild(value!)!;
+      valueElement.SetAttribute("type", type);
+      xmlVar.AppendChild(CreateElementWithText(outputXML, "origin", $"{origin}-{DateTime.Now:yyMMdd-HHmm}"));
+      if (note != null)
+        xmlVar.AppendChild(CreateElementWithText(outputXML, "note", note));
+
+      return xmlVar;
+    }
+
+
     private static XmlElement CreateElementWithText(XmlDocument doc, string elementName, string textContent, params (string, string)[] attributes)
     {
       XmlElement element = doc.CreateElement(elementName);

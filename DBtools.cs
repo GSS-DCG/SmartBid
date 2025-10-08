@@ -185,7 +185,7 @@ namespace SmartBid
       }
     }
 
-    public static void LogMessage(int level, string user, string eventLog, string message, int? callId = null)
+    public static void LogMessage(int level, string user, string eventLog, string message, int? callId = null, string? xmlMessage = null)
     {
       try
       {
@@ -199,6 +199,18 @@ namespace SmartBid
         _ = cmd.Parameters.AddWithValue("@Message", message);
         _ = cmd.Parameters.AddWithValue("@CallId", callId.HasValue ? (object)callId.Value : DBNull.Value);
         _ = cmd.ExecuteNonQuery();
+
+        if (xmlMessage != null)
+        {
+          cmd.CommandText = "INSERT INTO log (Log_time, Log_level, Log_event, Log_user, Log_message, Log_CallId) VALUES (@Timestamp, @Level, @Event, @User, @XmlMessage, @CallId)";
+          //_ = cmd.Parameters.AddWithValue("@Timestamp", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+          //_ = cmd.Parameters.AddWithValue("@Level", level);
+          //_ = cmd.Parameters.AddWithValue("@Event", eventLog);
+          //_ = cmd.Parameters.AddWithValue("@User", user);
+          _ = cmd.Parameters.AddWithValue("@XmlMessage", xmlMessage);
+          //_ = cmd.Parameters.AddWithValue("@CallId", callId.HasValue ? (object)callId.Value : DBNull.Value);
+          _ = cmd.ExecuteNonQuery();
+        }
       }
       catch (Exception ex)
       {

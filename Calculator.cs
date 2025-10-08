@@ -70,8 +70,8 @@ namespace SmartBid
                   throw new TimeoutException($"Timeout para {tool.Code} after {sw.Elapsed.TotalMinutes:F1} minutes");
                 }
 
-                H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Esperando turno: {tool.Code} (puesto en cola: {order} timeout set to: {timeout})");
-                Thread.Sleep(15000);
+                H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Esperando turno: {tool.Code} por {sw.Elapsed.TotalMinutes:F2} minutos. (Puesto en cola: {order} Timeout set to: {timeout:F0} minutes)");
+                Thread.Sleep(30000);
               }
 
               H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Turno: {tool.Code} Liberado    ....calculando");

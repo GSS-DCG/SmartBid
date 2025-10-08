@@ -104,6 +104,7 @@ namespace SmartBid
 
       int? currentCallId = TC.ID?.Value?.CallId;
       string contextPrefix = currentCallId.HasValue ? $"[CALL:{currentCallId.Value:D4}]" : "[MAIN]"; // Formato D4 para 4 dígitos
+      string? indentedXml = xmlDoc != null ? xmlDoc.OuterXml : null;
 
       if (GetNProperty("printLevel") <= level)
       {
@@ -152,7 +153,7 @@ namespace SmartBid
           writer.Flush();
 
           // Añadir indentación global de 4 espacios
-          string indentedXml = string.Join(Environment.NewLine,
+          indentedXml = string.Join(Environment.NewLine,
               sw.ToString()
                 .Split(new[] { Environment.NewLine }, StringSplitOptions.None)
                 .Select(line => "    " + line));
@@ -164,7 +165,7 @@ namespace SmartBid
       }
       if (GetNProperty("logLevel") <= level)
       {
-        DBtools.LogMessage(level, user, eventLog, message, currentCallId);
+        DBtools.LogMessage(level, user, eventLog, message, currentCallId, indentedXml);
       }
     }
 

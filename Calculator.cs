@@ -59,20 +59,24 @@ namespace SmartBid
             {
 
               Stopwatch sw = Stopwatch.StartNew();
+              int order;
+              double timeout = 60*24;
 
-              while (!tm.CheckForGreenLight(tool.Code, callID))
+              while (!tm.CheckForGreenLight(tool.Code, callID, out order))
               {
-                if (sw.Elapsed.TotalMinutes > 60)
+                if ((sw.Elapsed.TotalMinutes + order * 60) < timeout) timeout = sw.Elapsed.TotalMinutes + order * 60; //Adjusting timeout to the position in the queue
+                if (sw.Elapsed.TotalMinutes > timeout)
                 {
                   throw new TimeoutException($"Timeout para {tool.Code} after {sw.Elapsed.TotalMinutes:F1} minutes");
                 }
 
-                H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Esperando turno: {tool.Code} ");
+                H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Esperando turno: {tool.Code} (puesto en cola: {order} timeout set to: {timeout})");
                 Thread.Sleep(15000);
               }
 
               H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Turno: {tool.Code} Liberado    ....calculando");
             }
+
             XmlDocument CalcResults = tm.Calculate(tool, dm);
 
             //Once the tool is finished, we release the lock if it is not threadSafe

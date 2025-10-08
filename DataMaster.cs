@@ -38,7 +38,7 @@ namespace SmartBid
       _dm = new();
       _data = new Dictionary<string, VariableData>();
 
-      H.PrintLog(5, TC.ID.Value!.Time(), User, "DataMaster constructor", $"Create  (Dictionary Hash: {_data.GetHashCode()}) using call:", xmlRequest);
+      H.PrintLog(5, TC.ID.Value!.Time(), User, "DataMaster constructor", $"Create   using call:", xmlRequest);
 
 
       if (GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder") == null)
@@ -141,7 +141,7 @@ namespace SmartBid
       _vm = VariablesMap.Instance;
       _dm = new();
       _data = new Dictionary<string, VariableData>(); // ASEGURAR QUE SE INICIALIZA AQUÍ
-      H.PrintLog(5, TC.ID.Value!.Time(), User, "DataMaster constructor", $"Create DataMaster (from file) ID: {this.InstanceId} (Dictionary Hash: {_data.GetHashCode()}) using file: {dmFileName}");
+      H.PrintLog(5, TC.ID.Value!.Time(), User, "DataMaster constructor", $"Create DataMaster (from file) ID: {this.InstanceId}  using file: {dmFileName}");
       // Implementación pendiente
     }
 
@@ -235,7 +235,7 @@ namespace SmartBid
     private VariableData StoreValue(string id, string value, string origin = "", string notes = "")
     {
       // Log con InstanceId de DataMaster y HashCode del diccionario
-      H.PrintLog(1, TC.ID.Value!.Time(), User, "StoreValue", $" (Dictionary Hash: {_data.GetHashCode()}) - variable ||{id}: {value}|| added/updated to DataMaster data");
+      H.PrintLog(1, TC.ID.Value!.Time(), User, "StoreValue", $"  - variable ||{id}: {value}|| added/updated to DataMaster data");
       VariableData? varData = _vm.GetNewVariableData(id); 
 
       // Log con InstanceId de VariableData clonada
@@ -262,7 +262,7 @@ namespace SmartBid
     private void StoreValue(string id, VariableData varData)
     {
       // Log con InstanceId de DataMaster y HashCode del diccionario
-      H.PrintLog(1, TC.ID.Value!.Time(), User, "StoreValue", $" (Dictionary Hash: {_data.GetHashCode()}) - variable ||{id}|| added/updated to DataMaster data (from existing VariableData instance)");
+      H.PrintLog(1, TC.ID.Value!.Time(), User, "StoreValue", $"  - variable ||{id}|| added/updated to DataMaster data (from existing VariableData instance)");
 
       // Log con InstanceId de VariableData (la que se está pasando)
       H.PrintLog(1, TC.ID.Value!.Time(), User, "StoreValue", $"  -> VariableData for key '{id}'. Value: '{varData.Value}'. ()");
@@ -290,7 +290,7 @@ namespace SmartBid
     public void UpdateData(XmlDocument newData)
     {
       // Log con InstanceId de DataMaster y HashCode del diccionario
-      H.PrintLog(5, TC.ID.Value!.Time(), User, "DataMaster.UpdateData", $"Actualizando  (Dictionary Hash: {_data.GetHashCode()}) para '{GetValueString("opportunityFolder")}' con nueva data.");
+      H.PrintLog(5, TC.ID.Value!.Time(), User, "DataMaster.UpdateData", $"Actualizando   para '{GetValueString("opportunityFolder")}' con nueva data.");
       H.MergeXmlNodes(newData, _dm, "/*/utils", $"/dm/utils/{SBidRevision}");
 
       XmlNode variablesNode = newData.SelectSingleNode("//*/variables")!;
@@ -334,7 +334,7 @@ namespace SmartBid
     public void SaveDataMaster()
     {
       _dm.Save(FileName);
-      H.PrintLog(3, TC.ID.Value!.Time(), User, "DM", $"XML guardado en {FileName}.  (Dictionary Hash: {_data.GetHashCode()})");
+      H.PrintLog(3, TC.ID.Value!.Time(), User, "DM", $"XML guardado en {FileName}.  ");
     }
     public string GetValueString(string key)
     {
@@ -394,7 +394,7 @@ namespace SmartBid
         }
         catch
         {
-          H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM.GetValueXmlNode", $"Key '{key}' found in  (Dictionary Hash: {_data.GetHashCode()}), but value is not valid XML: '{xmlString}'.");
+          H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM.GetValueXmlNode", $"Key '{key}' found in  , but value is not valid XML: '{xmlString}'.");
           return null; // returns NULL when the Value has not XML format
         }
       }
@@ -406,7 +406,7 @@ namespace SmartBid
           return _dm.SelectSingleNode($"/dm/utils/{SBidRevision}/{key}");
         }
       }
-      H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM", $"Key '{key}' not found in . (Dictionary Hash: {_data.GetHashCode()})");
+      H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM", $"Key '{key}' not found in . ");
       throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
     }
     public string GetValueUnit(string key)
@@ -428,7 +428,7 @@ namespace SmartBid
       }
       else
       {
-        H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM.GetVariableData", $"Key '{key}' not found in . (Dictionary Hash: {_data.GetHashCode()})");
+        H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM.GetVariableData", $"Key '{key}' not found in . ");
         throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
       }
     }
@@ -441,7 +441,7 @@ namespace SmartBid
       }
       else
       {
-        H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM.GetInnerText", $"Node not found for XPath: {xpath} in . (Dictionary Hash: {_data.GetHashCode()})");
+        H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM.GetInnerText", $"Node not found for XPath: {xpath} in . ");
         throw new XmlException($"Node not found for XPath: {xpath}");
       }
     }

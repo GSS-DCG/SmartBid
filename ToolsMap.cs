@@ -128,9 +128,10 @@ namespace SmartBid
 
     // Methods
 
-    public bool CheckForGreenLight(string toolID, int callID)
+    public bool CheckForGreenLight(string toolID, int callID, out int order)
     {
       bool green = true;
+      order = 0;
       List<int> callList;
 
       lock (_trafficLightLock)
@@ -162,11 +163,12 @@ namespace SmartBid
               {
                 callList.Add(callID);
               }
+              order = callList.IndexOf(callID) + 1;
               green = false;
             }
           }
         }
-        H.PrintLog(2, TC.ID.Value?.Time() ?? "00:00.000", TC.ID.Value?.User ?? "SYSTEM", "CheckForGreenLight", $"  list for {toolID}: callList = {string.Join(",", callList)}   ---  semaforo: {green}");
+        H.PrintLog(2, TC.ID.Value?.Time() ?? "00:00.000", TC.ID.Value?.User ?? "SYSTEM", "CheckForGreenLight", $"  semaforo: {green} for {toolID}: order: {order} \n callList = {string.Join(",", callList)}");
       }
       return green;
     }
@@ -560,6 +562,8 @@ namespace SmartBid
       //from the stdout of the process. the exact location of the file is read from the mirrorXML of the tool. 
       //originalToolPath is coming as an argument from the answer of the tool
 
+
+
       MirrorXML mirror = new(tool);
       var variableList = mirror.VarList;
 
@@ -623,7 +627,7 @@ namespace SmartBid
 
       H.PrintLog(4, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"   Calling Tool: {Path.GetFileName(filePath)} {arguments}");
       H.PrintLog(1, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"   Calling Tool: {filePath} {arguments}");
-      H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", "   call message:", callXml);
+      H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", "1   call message:", callXml);
 
 
       ProcessStartInfo psi = new()
@@ -643,7 +647,25 @@ namespace SmartBid
 
       using (Process process = new() { StartInfo = psi })
       {
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :   Configuración de ProcessStartInfo:\n");
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:FileName: {psi.FileName}");
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:Arguments: {psi.Arguments}");
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:RedirectStandardInput: {psi.RedirectStandardInput}");
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:RedirectStandardOutput: {psi.RedirectStandardOutput}");
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:RedirectStandardError: {psi.RedirectStandardError}");
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:UseShellExecute: {psi.UseShellExecute}");
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:CreateNoWindow: {psi.CreateNoWindow}");
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:StandardInputEncoding: {psi.StandardInputEncoding?.EncodingName}");
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:WorkingDirectory: {psi.WorkingDirectory}");
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:WindowStyle: {psi.WindowStyle}");
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:UserName: {psi.UserName}");
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:Domain: {psi.Domain}");
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:LoadUserProfile: {psi.LoadUserProfile}\n\n");
+
         _ = process.Start();
+
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", "3   *****   process started \n");
+
 
         using (StreamWriter writer = process.StandardInput)
         {
@@ -652,10 +674,15 @@ namespace SmartBid
           writer.Close();
         }
 
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"4   *****   process sent to stdin call: {xmlVarList}\n");
+
         output = process.StandardOutput.ReadToEnd();
         error = process.StandardError.ReadToEnd();
         process.WaitForExit();
       }
+
+      H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "Calculate", $"5   *****   processReturn from tool output \n{output}\n\n");
+      H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "Calculate", $"5   *****   processReturn from tool error \n{error}\n\n");
 
       XmlDocument results = new();
       results.LoadXml(output);

@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using System.Diagnostics;
+using System.Net;
 using System.Text;
 using System.Xml;
 using ExcelDataReader;
@@ -569,10 +570,11 @@ namespace SmartBid
 
       string? filePath = mirror.FileName;
       string? arguments = "";
+      string processType = (Path.GetExtension(filePath).Equals(".py", StringComparison.OrdinalIgnoreCase))? "python" : "exe";
 
 
       if (File.Exists(filePath)) {
-        if (Path.GetExtension(filePath).Equals(".py", StringComparison.OrdinalIgnoreCase))
+        if (processType == "python")
         {
           arguments = $"\"{filePath}\" 00"; // any argument should be sent to the call to indicate that the input is coming from stdin
 
@@ -629,39 +631,41 @@ namespace SmartBid
       H.PrintLog(1, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"   Calling Tool: {filePath} {arguments}");
       H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", "1   call message:", callXml);
 
-
-      ProcessStartInfo psi = new()
+      ProcessStartInfo psi;
+      if (processType == "python")
       {
-        FileName = filePath,
-        Arguments = arguments,
-        RedirectStandardInput = true,
-        RedirectStandardOutput = true,
-        RedirectStandardError = true,
-        UseShellExecute = false,
-        CreateNoWindow = true,
-        StandardInputEncoding = Encoding.UTF8
-      };
+        psi = new()
+        {
+          FileName = filePath,
+          Arguments = arguments,
+          RedirectStandardInput = true,
+          RedirectStandardOutput = true,
+          RedirectStandardError = true,
+          UseShellExecute = false,
+          CreateNoWindow = true,
+          StandardInputEncoding = Encoding.UTF8
+        };
+      }
+      else
+      {
+        psi = new()
+        {
+          FileName = filePath,
+          Arguments = arguments,
+          RedirectStandardInput = true,
+          RedirectStandardOutput = true,
+          RedirectStandardError = true,
+          UseShellExecute = false,
+          CreateNoWindow = true,
+        };
+      }
+
 
       string output;
       string error;
 
       using (Process process = new() { StartInfo = psi })
       {
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :   Configuración de ProcessStartInfo:\n");
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:FileName: {psi.FileName}");
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:Arguments: {psi.Arguments}");
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:RedirectStandardInput: {psi.RedirectStandardInput}");
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:RedirectStandardOutput: {psi.RedirectStandardOutput}");
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:RedirectStandardError: {psi.RedirectStandardError}");
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:UseShellExecute: {psi.UseShellExecute}");
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:CreateNoWindow: {psi.CreateNoWindow}");
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:StandardInputEncoding: {psi.StandardInputEncoding?.EncodingName}");
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:WorkingDirectory: {psi.WorkingDirectory}");
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:WindowStyle: {psi.WindowStyle}");
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:UserName: {psi.UserName}");
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:Domain: {psi.Domain}");
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"2   *****   process :         psi:LoadUserProfile: {psi.LoadUserProfile}\n\n");
-
         _ = process.Start();
 
         H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", "3   *****   process started \n");
@@ -745,8 +749,6 @@ namespace SmartBid
         string direction = entry.Value[1];
         if (direction == "out" && mirror.GetVarCallLevel(variableID) == tool.Call && !resultVarIDs.Contains(variableID))
         {
-          
-
           XmlElement varElement = CreateXmlVariable(results,
                                                   variableID,
                                                   _variablesMap.GetVariableData(variableID).Type,

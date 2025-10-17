@@ -215,7 +215,7 @@ namespace SmartBid
         // --- Extract cross-reference fields ---
         foreach (Field field in doc.Fields)
         {
-          if (field.Type == WdFieldType.wdFieldRef)
+          if (field.Type == WdFieldType.wdFieldRef || field.Type == WdFieldType.wdFieldEmpty)
           {
             string fieldCode = field.Code.Text.Trim();
 
@@ -229,10 +229,16 @@ namespace SmartBid
                   .Trim();
 
               if (!string.IsNullOrWhiteSpace(cleaned))
-                varList.Add(cleaned);
+                {
+                  cleaned = cleaned.Split('\\')[0];
+                  varList.Add(cleaned); 
+                }
             }
           }
+
         }
+        varList = varList.Distinct().ToList();
+        varList = varList.Select(item => item.Contains("/") ? item[(item.IndexOf('/') + 1)..] : item).ToList();
 
         // --- Extract bookmarks ---
         foreach (Bookmark bookmark in doc.Bookmarks)
@@ -340,12 +346,16 @@ namespace SmartBid
                          name.StartsWith(inPrefix2, StringComparison.OrdinalIgnoreCase) ||
                          name.StartsWith(outPrefix, StringComparison.OrdinalIgnoreCase))];
 
-      _ = varNames.Remove("GSS_DATA"); // Remove GSS_DATA from the list
+      varNames.Remove("GSS_DATA"); // Remove GSS_DATA from the list
+
+      // generating a list with variables missing in varMap
       List<string> nonDeclaredVars = [];
 
       foreach (string item in varNames)
       {
-        string varName = item;
+        // eliminamos la marca de lista /xx
+        string varName = item.Split('\\')[0];
+
         string[] value = ["", "", "1", ""];
 
         if (varName.ToLower().StartsWith(inPrefix1))
@@ -380,13 +390,11 @@ namespace SmartBid
           nonDeclaredVars.Add(varName);
         }
 
-        if (varList.ContainsKey(varName))
+        if (!varList.ContainsKey(varName))
         {
-          H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - ExtractVariablesFromXlsx", $"Ya existe una variable con el nombre '{varName}' en en la herramienta.");
-          throw new InvalidOperationException($"Ya existe una variable con el nombre '{varName}' en en la herramienta.");
+          varList.Add(new string(varName), value);
         }
 
-        varList.Add(new string(varName), value);
       }
 
       if (nonDeclaredVars.Count > 0)

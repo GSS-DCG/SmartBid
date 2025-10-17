@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8" ?> 
 <root>
 	<!-- String de conexión a la base de datos -->
-	<DBConnextion>server=localhost;port=3306;database=SmartBid;user=SB_user01;password=_0000_</DBConnextion>
+	<DBConnextion>server=localhost;port=3306;database=SmartBid;user=SB_superuser;password=_0000_</DBConnextion>
+	<DBConnextion>server=10.25.4.155;port=3306;database=SmartBid;user=SB_user01;password=_0000_</DBConnextion>
 	<DBConnextion>server=10.25.3.189;port=3306;database=SmartBid;user=SB_user01;password=_0000_</DBConnextion>
 
-		<!-- Mapa de directorios -->
+	<!-- Mapa de directorios -->
 	<callsPath>C:\InSync\SmartBid\files\calls_temp</callsPath>	<!-- Directorio de escucha para generación de oferta-->
 	<callsPathDWG>C:\InSync\SmartBid\files\calls_DWG</callsPathDWG> <!-- Directorio de escucha para la devolución del DWG-->
 	<callsPathTemp>C:\InSync\SmartBid\files\calls</callsPathTemp>	<!-- Directorio de escucha para el call del directo de Hermes -->
@@ -27,8 +28,7 @@
 	
 	<!-- Configuration-->
 	<tableStyle>MyStyle</tableStyle>  <!-- Nombre del formato que se dará a las tablas insertadas en los Templates -->
-	<allowableVarTypes>num;text;code;bool;date;image;table;route;path</allowableVarTypes>	<!-- Lista de tipos de variable permitidos-->
-	<languages>EN;ES</languages>	<!-- Lista de idiomas en templates-->
+	<allowableVarTypes>num;text;code;bool;date;image;table;route;path;list&lt;num&gt;;list&lt;str&gt;</allowableVarTypes>	<!-- Lista de tipos de variable permitidos-->	<languages>EN;ES</languages>	<!-- Lista de idiomas en templates-->
 	<defaultLanguage>EN</defaultLanguage>	<!-- Idioma por defecto-->
 
 	<ExcelValidationCheck>true</ExcelValidationCheck>
@@ -52,9 +52,9 @@
 
 
 	<mailKAM>false</mailKAM> <!-- Envía mail al kam al terminar la generación -->
-	<mailCreatedBy>false</mailCreatedBy><!-- Envía mail al kam al usuario que inció la generación -->
+	<mailCreatedBy>true</mailCreatedBy><!-- Envía mail al kam al usuario que inció la generación -->
 	
-	<logLevel>5</logLevel>  <!-- Nivel de anotaciones en el Log: 0-Todo 5-Mínimo -->
+	<logLevel>2</logLevel>  <!-- Nivel de anotaciones en el Log: 0-Todo 5-Mínimo -->
 	<printLevel>0</printLevel>  <!-- Nivel de printouts en consola: 0-Todo 5-Mínimo -->
 
 	<autorun>C:\InSync\SmartBid\files\calls\pasteFiles.bat</autorun> <!-- Script que se ejecuta al iniciar el programa para desarrollo-->

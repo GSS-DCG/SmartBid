@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Xml;
@@ -21,13 +22,14 @@ namespace SmartBid
       excelApp = new Microsoft.Office.Interop.Excel.Application { Visible = false };
       workbook = excelApp.Workbooks.Open(filePath);
     }
+    
     public bool FillUpValue(string rangeName, string value)
     {
+      H.PrintLog(1, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Excel.FillUpValue", $"Procesando celda '{rangeName}'...");
 
       bool validationCheck = H.GetBProperty("ExcelValidationCheck");
       Excel.Range range = workbook!.Names.Item(rangeName).RefersToRange;
 
-      H.PrintLog(1, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Excel.FillUpValue", $"Procesando celda '{rangeName}'...");
 
       if (!validationCheck)
       {
@@ -137,16 +139,36 @@ namespace SmartBid
       }
     }
 
-    public string GetSValue(string rangeName)
+    public string GetSValue(string rangeName, bool isNumber = false)
     {
       Excel.Range cell = workbook.Names.Item(rangeName).RefersToRange;
       if (cell.Value != null)
       {
-        return cell.Value.ToString();
+        string rawValue = cell.Value.ToString();
+
+        if (isNumber)
+        {
+          // Normalizar el valor: eliminar separadores de miles y convertir coma decimal a punto
+          string normalized = rawValue
+            .Replace("'", "")   // eliminar apóstrofes como separador de miles
+            .Replace(" ", "")   // eliminar espacios
+            .Replace(",", "."); // convertir coma decimal a punto
+
+          if (double.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsedValue))
+          {
+            return parsedValue.ToString(CultureInfo.InvariantCulture); // devuelve con punto decimal
+          }
+          else
+          {
+            throw new FormatException($"❌ El valor '{rawValue}' del rango '{rangeName}' no puede convertirse a número.");
+          }
+        }
+
+        return rawValue;
       }
       else
       {
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Excel.getValue", $"❌ Named range '{rangeName}' is empty or not found in the workbook '{filePath}'.");
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Excel.GetSValue", $"❌ Named range '{rangeName}' is empty or not found in the workbook '{filePath}'.");
         return string.Empty;
       }
     }

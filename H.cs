@@ -158,7 +158,7 @@ namespace SmartBid
                 .Split(new[] { Environment.NewLine }, StringSplitOptions.None)
                 .Select(line => "    " + line));
 
-          Console.ForegroundColor = ConsoleColor.Magenta;
+          Console.ForegroundColor = ConsoleColor.Green;
           Console.WriteLine(indentedXml);
           Console.ResetColor();
         }

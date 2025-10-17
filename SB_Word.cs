@@ -66,17 +66,20 @@ namespace SmartBid
       }
     }
 
-    public void ReplaceFieldMarks(Dictionary<string, VariableData> varList)
+    public void ReplaceFieldMarks(Dictionary<string, VariableData> varList, DataMaster dm)
     {
       string prefix = H.GetSProperty("VarPrefix");
 
       foreach (Field field in doc.Fields) //each mark in the word document
       {
-        if (field.Type == WdFieldType.wdFieldRef && field.Code.Text.Trim().StartsWith(prefix)) // when the mark is an insert mark if (a)
+        string fieldText = field.Code.Text.Trim();
+        if ((field.Type == WdFieldType.wdFieldRef || field.Type == WdFieldType.wdFieldEmpty)  && fieldText.StartsWith(prefix)) // when the mark is an insert mark if (a)
         {
-          string variableID = field.Code.Text.Trim()[prefix.Length..];
+         
+          //string variableID = fieldText[prefix.Length..];
+          string variableID = fieldText.StartsWith(prefix) ? fieldText.Substring(prefix.Length).Split('\\')[0] : fieldText;
 
-          Microsoft.Office.Interop.Word.Range fieldRange = field.Result; // place to inserte found
+          Microsoft.Office.Interop.Word.Range fieldRange = field.Result; // place to insert found
 
           if (field.Code.Text.Contains(variableID))
           {
@@ -121,12 +124,22 @@ namespace SmartBid
               // 📌 Apply "MyStyle" formatting
               table.set_Style(H.GetSProperty("tableStyle"));
 
-              // 📌 Remove the reference mark after insertion
-              field.Delete();
+              
+              field.Unlink(); // Convierte la referencia en texto estático
 
               H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "GenerateOuputWord", $"Tabla insertada y referencia '{variableID}' eliminada correctamente.");
             }
-            //NO ES TABLA
+            else if(varList[variableID].Type == "list<str>" || varList[variableID].Type == "list<num>")
+            {
+              //if list<num> isNumber set to true, if list<str> isNumber set to false
+              bool isNumber = varList[variableID].Type == "list<num>";
+
+              List<string> listData = dm.GetValueList(variableID, isNumber);
+
+
+              fieldRange.Text = listData[int.Parse(fieldText.Split('\\')[1])];
+              field.Unlink(); // Convierte la referencia en texto estático
+            }
             else
             {
               fieldRange.Text = varList[variableID].Value;

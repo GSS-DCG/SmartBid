@@ -108,7 +108,14 @@ namespace SmartBid
       if (outputVars != null)
       {
         foreach (XmlNode var in vars)
+        {
           _ = outputVars.AppendChild(_outputXML.ImportNode(var, true));
+          //Creating a new xmldocument from the var xmlnode to printout
+          XmlDocument doc = new();
+          doc.AppendChild(doc.ImportNode(var, true));
+          H.PrintLog(1, TC.ID.Value!.Time(), TC.ID.Value!.User, "Prep.MergeResults", $"Merged variable: {var.Name}", doc);
+        }
+        
       }
 
       if (outputUtils != null)
@@ -358,6 +365,10 @@ namespace SmartBid
     {
       if (string.IsNullOrWhiteSpace(currentValue) || string.IsNullOrWhiteSpace(allowSpec))
         return true;
+      
+      //For now no validation for lists
+      if (type != null && (type.Equals("list<num>") || type.Equals("list<str>")))
+        return true; 
 
       static string NormNum(string s) => s.Trim().Replace(',', '.'); // allow comma decimals
 

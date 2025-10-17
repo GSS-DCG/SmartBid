@@ -1,13 +1,8 @@
 ﻿using System.Data;
 using System.Diagnostics;
-using System.Net;
 using System.Text;
 using System.Xml;
 using ExcelDataReader;
-using Microsoft.Office.Interop.Excel;
-using Microsoft.Office.Interop.Outlook;
-using Mysqlx.Prepare;
-using OfficeOpenXml.Utils;
 using Exception = System.Exception;
 using File = System.IO.File;
 
@@ -27,7 +22,7 @@ namespace SmartBid
     public string Description { get; }
     public string FileName { get; }
 
-    public ToolData(string resource, string code, int call, string name, string filetype, bool isThreadSafe, string interpreter,string version, string language, string description)
+    public ToolData(string resource, string code, int call, string name, string filetype, bool isThreadSafe, string interpreter, string version, string language, string description)
     {
       Resource = resource;
       Code = code;
@@ -67,7 +62,7 @@ namespace SmartBid
       return toolElement;
     }
   }
-    public class ToolsMap
+  public class ToolsMap
   {
     // Private static instance
     private static ToolsMap? _instance;
@@ -182,7 +177,7 @@ namespace SmartBid
           List<int> callList = _trafficLight[toolID];
           if (callList.Contains(callID))
           {
-            callList.Remove(callID);
+            _ = callList.Remove(callID);
             H.PrintLog(2, TC.ID.Value?.Time() ?? "00:00.000", TC.ID.Value?.User ?? "SYSTEM", "ReleaseProcess", $"  Proceso {callID} liberado para la herramienta {toolID}. Lista restante: {string.Join(",", callList)}");
           }
         }
@@ -228,21 +223,21 @@ namespace SmartBid
     {
       XmlDocument doc = new();
       XmlElement root = doc.CreateElement("root");
-      doc.AppendChild(root);
+      _ = doc.AppendChild(root);
 
 
-      XmlElement tools= doc.CreateElement("tools");
-      root.AppendChild(tools);
+      XmlElement tools = doc.CreateElement("tools");
+      _ = root.AppendChild(tools);
       foreach (var tool in Tools)
       {
-        tools.AppendChild(tool.ToXML(doc));
+        _ = tools.AppendChild(tool.ToXML(doc));
       }
 
       XmlElement deliveryDocs = doc.CreateElement("deliveryDocsPack");
-      root.AppendChild(deliveryDocs);
+      _ = root.AppendChild(deliveryDocs);
       foreach (string template in DeliveryDocsPack)
       {
-        deliveryDocs.AppendChild(H.CreateElement(doc, "deliveryDocs", template));
+        _ = deliveryDocs.AppendChild(H.CreateElement(doc, "deliveryDocs", template));
       }
 
 
@@ -321,11 +316,11 @@ namespace SmartBid
       {
         filteredTools = Tools.Where(tool => tool.Code.Equals(code, StringComparison.OrdinalIgnoreCase) && tool.Lenguage.Equals(H.GetSProperty("defaultLanguage"), StringComparison.OrdinalIgnoreCase)).ToList();
 
-        H.PrintLog(4, 
-          TC.ID.Value!.Time(), 
-          TC.ID.Value!.User, 
+        H.PrintLog(4,
+          TC.ID.Value!.Time(),
+          TC.ID.Value!.User,
           "getToolDataByCode",
-					$"❌❌Error❌❌ -- No tool found with code '{code}' and language '{language}, used defaultLanguage ({H.GetSProperty("defaultLanguage")})instead'.");
+          $"❌❌Error❌❌ -- No tool found with code '{code}' and language '{language}, used defaultLanguage ({H.GetSProperty("defaultLanguage")})instead'.");
       }
 
       if (filteredTools.Count == 0) //try default language
@@ -348,7 +343,7 @@ namespace SmartBid
         return tool;
       }
     }
-    
+
     public List<ToolData> getToolsByResource(string resource)
     {
       return Tools.Where(tool => tool.Resource.Equals(resource, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -391,7 +386,7 @@ namespace SmartBid
       );
 
       //create folder if not exists and copy the tool to process folder
-      Directory.CreateDirectory(Path.GetDirectoryName(toolPath)!);
+      _ = Directory.CreateDirectory(Path.GetDirectoryName(toolPath)!);
 
       //copy tool template only for first call
       if (!File.Exists(toolPath) || tool.Call == 1)
@@ -431,9 +426,22 @@ namespace SmartBid
                   H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"No table data found for variable '{variableID}'.");
                 }
               }
+              else if (type == "list<num>" || type == "list<str>")
+              {
+                //if list<num> isNumber set to true, if list<str> isNumber set to false
+                bool isNumber = type == "list<num>";
+
+                List<string> listData = dm.GetValueList(variableID, isNumber);
+
+                // call fillupValue for each item in the listData
+                foreach (var (item, index) in listData.Select((value, i) => (value, i)))
+                {
+                  workbook.FillUpValue($"{rangeName}\\{index}", item);
+                }
+              }
               else
               {
-                _ = workbook.FillUpValue(rangeName, dm.GetValueString(variableID));
+                workbook.FillUpValue(rangeName, dm.GetValueString(variableID));
               }
             }
           }
@@ -446,12 +454,14 @@ namespace SmartBid
         XmlElement varNode = results.CreateElement("variables");
         _ = answer.AppendChild(varNode);
 
+
         string timestamp = DateTime.Now.ToString("dd-HH:mm");
 
         foreach (var entry in variableMap)
         {
           string variableID = entry.Key;
           string direction = entry.Value[1];
+          string type = _variablesMap.GetVariableData(variableID).Type;
 
           if (mirror.GetVarCallLevel(variableID) == tool.Call && direction == "out")
           {
@@ -460,8 +470,6 @@ namespace SmartBid
 
             try
             {
-              string type = _variablesMap.GetVariableData(variableID).Type;
-              bool setValue = false;
 
               XmlElement value = results.CreateElement("value");
               value.SetAttribute("type", type);
@@ -469,16 +477,9 @@ namespace SmartBid
 
               XmlElement note = results.CreateElement("note");
               _ = varElement.AppendChild(note);
-
               _ = varElement.AppendChild(H.CreateElement(results, "origin", $"{tool.Code}+{timestamp}"));
 
-              if (type != "table")
-              {
-                value.InnerText = workbook.GetSValue(rangeName);
-                note.InnerText = "Calculated Value";
-                setValue = true;
-              }
-              else
+              if (type == "table")
               {
                 XmlNode tableXmlValue = results.ImportNode(workbook.GetTValue(rangeName), true);
 
@@ -486,18 +487,72 @@ namespace SmartBid
                 {
                   _ = value.AppendChild(tableXmlValue);
                   note.InnerText = "Calculated Value";
-                  setValue = true;
                 }
                 else
                 {
                   value.InnerText = "No data found in table.";
                 }
               }
-
-              if (!setValue)
+              else if (type == "list<num>" || type == "list<str>")
               {
-                value.InnerText = _variablesMap.GetVariableData(variableID).Default ?? string.Empty;
-                H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"❌ Named range '{rangeName}' is empty or not found in the workbook '{toolPath}'. Default value used");
+                //we cannot read all list values at once, we're going to store the values in a  <List<string> by searching for values in cellRanges named rangeName\0, rangeName\1, rangeName\2... until we find no more values. Then with the list complete we will create the <l><li>item1</li><li>item2</li>...</l> structure to be added to the <value>
+
+                bool isNumber = type == "list<num>";
+                List<string> listValues = new List<string>();
+                int index = 0;
+                while (true)
+                {
+                  // check the existance of the range name before calling to get the value
+                  List<string> namedRanges = workbook.ListNamedRanges();
+                  string namedRangeToFind = $"{rangeName}\\{index}";
+                  string? cellValue = null;
+
+                  if (namedRanges.Contains(namedRangeToFind))
+                  {
+                    cellValue = workbook.GetSValue(namedRangeToFind, isNumber);
+
+                  }
+                  if (cellValue != null && cellValue != string.Empty)
+                  {
+                    listValues.Add(cellValue);
+                    index++;
+                  }
+                  else
+                  {
+                    break;
+                  }
+                }
+
+                if (listValues.Count > 0)
+                {
+
+                  value.SetAttribute("type", type);
+                  XmlElement listElement = results.CreateElement("l");
+                  foreach (string item in listValues)
+                  {
+                    _ = listElement.AppendChild(H.CreateElement(results, "li", item));
+                  }
+                  value.AppendChild(listElement);
+                  note.InnerText = "Calculated Value";
+
+                }
+              }
+              else
+              {
+                string cellValue = workbook.GetSValue(rangeName, type == "num");
+
+                if (cellValue != null && cellValue != string.Empty)
+                {
+                  value.InnerText = cellValue;
+                  note.InnerText = "Calculated Value";
+                }
+                else
+                {
+                  value.InnerText = _variablesMap.GetVariableData(variableID).Default ?? string.Empty;
+                  note.InnerText = "Default Value";
+
+                  H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"❌ Named range '{rangeName}' is empty or not found in the workbook '{toolPath}'. Default value used");
+                }
               }
             }
             catch (Exception ex)
@@ -505,10 +560,9 @@ namespace SmartBid
               H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"❌Error❌ reading range '{rangeName}': {ex.Message}");
             }
 
-            _ = varNode.AppendChild(varElement);
+            varNode.AppendChild(varElement);
           }
         }
-
         H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"Values returned from {tool.Code} calculation", results);
       }
       finally
@@ -524,7 +578,7 @@ namespace SmartBid
       if (utilsNode == null)
       {
         utilsNode = results.CreateElement("utils");
-        results.DocumentElement.AppendChild(utilsNode);
+        _ = results.DocumentElement.AppendChild(utilsNode);
       }
 
       // Check whether <tools> exists in <utils>  and append the <tools> node if it doesn't
@@ -532,7 +586,7 @@ namespace SmartBid
       if (toolsNode == null)
       {
         toolsNode = results.CreateElement("tools");
-        utilsNode.AppendChild(toolsNode);
+        _ = utilsNode.AppendChild(toolsNode);
       }
 
       XmlElement toolNode = tool.ToXML(results);
@@ -549,7 +603,7 @@ namespace SmartBid
             newToolNode.SetAttribute(attr.Name, toolPath);
         }
       }
-      toolsNode.AppendChild(newToolNode);
+      _ = toolsNode.AppendChild(newToolNode);
 
 
 
@@ -570,10 +624,11 @@ namespace SmartBid
 
       string? filePath = mirror.FileName;
       string? arguments = "";
-      string processType = (Path.GetExtension(filePath).Equals(".py", StringComparison.OrdinalIgnoreCase))? "python" : "exe";
+      string processType = Path.GetExtension(filePath).Equals(".py", StringComparison.OrdinalIgnoreCase) ? "python" : "exe";
 
 
-      if (File.Exists(filePath)) {
+      if (File.Exists(filePath))
+      {
         if (processType == "python")
         {
           arguments = $"\"{filePath}\" 00"; // any argument should be sent to the call to indicate that the input is coming from stdin
@@ -597,14 +652,14 @@ namespace SmartBid
       _ = callXml.AppendChild(xmlDeclaration);
 
       XmlElement callNode = callXml.CreateElement("call");
-      callXml.AppendChild(callNode);
+      _ = callXml.AppendChild(callNode);
 
       XmlElement variables = callXml.CreateElement("variables");
-      callNode.AppendChild(variables);
+      _ = callNode.AppendChild(variables);
       XmlElement variablesIn = callXml.CreateElement("in");
-      variables.AppendChild(variablesIn);
+      _ = variables.AppendChild(variablesIn);
       XmlElement variablesOut = callXml.CreateElement("out");
-      variables.AppendChild(variablesOut);
+      _ = variables.AppendChild(variablesOut);
 
       foreach (var entry in variableList)
       {
@@ -616,12 +671,12 @@ namespace SmartBid
           XmlElement varElement = callXml.CreateElement(variableID);
           varElement.SetAttribute("unit", dm.GetValueUnit(variableID));
           varElement.InnerText = dm.GetValueString(variableID);
-          variablesIn.AppendChild(varElement);
+          _ = variablesIn.AppendChild(varElement);
         }
         else if (direction == "out" && mirror.GetVarCallLevel(variableID) == tool.Call)
         {
           XmlElement varElement = _variablesMap.GetVariableData(variableID).ToXML(callXml);
-          variablesOut.AppendChild(varElement);
+          _ = variablesOut.AppendChild(varElement);
         }
       }
 
@@ -631,6 +686,9 @@ namespace SmartBid
       H.PrintLog(1, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"   Calling Tool: {filePath} {arguments}");
       H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", "1   call message:", callXml);
 
+
+      // SmartSize does not accept Encoding.UTF8 in the ProcessStartInfo StandardInputEncoding property
+      // it works using the default value.
       ProcessStartInfo psi;
       if (processType == "python")
       {
@@ -668,9 +726,6 @@ namespace SmartBid
       {
         _ = process.Start();
 
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", "3   *****   process started \n");
-
-
         using (StreamWriter writer = process.StandardInput)
         {
           writer.Write(xmlVarList);
@@ -678,20 +733,15 @@ namespace SmartBid
           writer.Close();
         }
 
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"4   *****   process sent to stdin call: {xmlVarList}\n");
-
         output = process.StandardOutput.ReadToEnd();
         error = process.StandardError.ReadToEnd();
         process.WaitForExit();
       }
 
-      H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "Calculate", $"5   *****   processReturn from tool output \n{output}\n\n");
-      H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "Calculate", $"5   *****   processReturn from tool error \n{error}\n\n");
-
       XmlDocument results = new();
       results.LoadXml(output);
 
-      H.PrintLog(3, TC.ID.Value!.Time(), TC.ID.Value!.User, "Calculate", $"Return from tool", results);
+      H.PrintLog(3, TC.ID.Value!.Time(), TC.ID.Value!.User, "Calculate", $"Return from tool {tool.Code}", results);
 
       if (!string.IsNullOrWhiteSpace(error))
         H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "Calculate", $"❌Error❌:\n{error}");
@@ -704,7 +754,7 @@ namespace SmartBid
       if (utilsNode == null)
       {
         utilsNode = results.CreateElement("utils");
-        results.DocumentElement.AppendChild(utilsNode);
+        _ = results.DocumentElement.AppendChild(utilsNode);
       }
 
       // Check whether <tools> exists in <utils>  and append the <tools> node if it doesn't
@@ -712,7 +762,7 @@ namespace SmartBid
       if (toolsNode == null)
       {
         toolsNode = results.CreateElement("tools");
-        utilsNode.AppendChild(toolsNode);
+        _ = utilsNode.AppendChild(toolsNode);
       }
 
       XmlElement toolNode = tool.ToXML(results);
@@ -729,7 +779,7 @@ namespace SmartBid
             newToolNode.SetAttribute(attr.Name, attr.Value);
         }
       }
-      toolsNode.AppendChild(newToolNode);
+      _ = toolsNode.AppendChild(newToolNode);
 
 
       // add default value to every expected 'out' variable that is not coming in the results by reading all expected out variables
@@ -756,7 +806,7 @@ namespace SmartBid
                                                   $"{tool.Code}+{DateTime.Now:dd-HH:mm}",
                                                   "Calculated Value");
 
-          resultsVariablesNode.AppendChild(varElement);
+          _ = resultsVariablesNode.AppendChild(varElement);
           H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", $"❌ Missing output variable '{variableID}' added with default value.");
         }
       }
@@ -766,12 +816,12 @@ namespace SmartBid
     private static XmlElement CreateXmlVariable(XmlDocument outputXML, string ID, string type, string value, string origin, string? note = null)
     {
       XmlElement xmlVar = outputXML.CreateElement(ID);
-      outputXML.SelectSingleNode("//answer/variables")?.AppendChild(xmlVar);
+      _ = (outputXML.SelectSingleNode("//answer/variables")?.AppendChild(xmlVar));
 
-      xmlVar.AppendChild(CreateElementWithText(outputXML, "value", value, ("type", type)));
-      xmlVar.AppendChild(CreateElementWithText(outputXML, "origin", $"{origin}-{DateTime.Now:yyMMdd-HHmm}"));
+      _ = xmlVar.AppendChild(CreateElementWithText(outputXML, "value", value, ("type", type)));
+      _ = xmlVar.AppendChild(CreateElementWithText(outputXML, "origin", $"{origin}-{DateTime.Now:yyMMdd-HHmm}"));
       if (note != null)
-        xmlVar.AppendChild(CreateElementWithText(outputXML, "note", note));
+        _ = xmlVar.AppendChild(CreateElementWithText(outputXML, "note", note));
 
       return xmlVar;
     }
@@ -779,13 +829,13 @@ namespace SmartBid
     private static XmlElement CreateXmlVariable(XmlDocument outputXML, string ID, string type, XmlElement value, string origin, string? note = null)
     {
       XmlElement xmlVar = outputXML.CreateElement(ID);
-      outputXML.SelectSingleNode("//answer/variables")?.AppendChild(xmlVar);
+      _ = (outputXML.SelectSingleNode("//answer/variables")?.AppendChild(xmlVar));
 
       XmlElement valueElement = (XmlElement)xmlVar.AppendChild(value!)!;
       valueElement.SetAttribute("type", type);
-      xmlVar.AppendChild(CreateElementWithText(outputXML, "origin", $"{origin}-{DateTime.Now:yyMMdd-HHmm}"));
+      _ = xmlVar.AppendChild(CreateElementWithText(outputXML, "origin", $"{origin}-{DateTime.Now:yyMMdd-HHmm}"));
       if (note != null)
-        xmlVar.AppendChild(CreateElementWithText(outputXML, "note", note));
+        _ = xmlVar.AppendChild(CreateElementWithText(outputXML, "note", note));
 
       return xmlVar;
     }
@@ -815,16 +865,16 @@ namespace SmartBid
 
       // 5. Build the full path to the file
       string templatePath = Path.Combine(
-        template.Resource == "TEMPLATE" ? H.GetSProperty("TemplatesPath") : H.GetSProperty("ToolsPath"), 
+        template.Resource == "TEMPLATE" ? H.GetSProperty("TemplatesPath") : H.GetSProperty("ToolsPath"),
         template.FileName
         );
 
       // 6. Crear copia del archivo para trabajar
       string filePath = Path.Combine(
-        H.GetSProperty("processPath"), 
+        H.GetSProperty("processPath"),
         dm.GetValueString("opportunityFolder"),
         dm.SBidRevision,
-        "OUTPUT", 
+        "OUTPUT",
         template.FileName
         );
 
@@ -879,7 +929,7 @@ namespace SmartBid
 
           doc.DeleteBookmarks(removeBkm);
 
-          doc.ReplaceFieldMarks(varList);
+          doc.ReplaceFieldMarks(varList, dm); 
 
           doc.Save();
 
@@ -941,6 +991,20 @@ namespace SmartBid
                 H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"No table data found for variable '{variableID}'.");
               }
             }
+            else if (type == "list<num>" || type == "list<str>")
+            {
+              //if list<num> isNumber set to true, if list<str> isNumber set to false
+              bool isNumber = type == "list<num>";
+
+              List<string> listData = dm.GetValueList(variableID, isNumber);
+
+              // call fillupValue for each item in the listData
+              foreach (var (item, index) in listData.Select((value, i) => (value, i)))
+              {
+                doc.FillUpValue($"{rangeName}\\{index}", item);
+              }
+            }
+
             else
             {
               _ = doc.FillUpValue(rangeName, dm.GetValueString(variableID));

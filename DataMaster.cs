@@ -341,7 +341,7 @@ namespace SmartBid
       if (_data.TryGetValue(key, out VariableData? value))
       {
         // Log con InstanceId de DataMaster y HashCode del diccionario, y InstanceId de VariableData
-        H.PrintLog(1, TC.ID.Value!.Time(), User, "GetValueString", $" (Dict Hash: {_data.GetHashCode()}) - Reading key '{key}'. Value: '{value!.Value}'");
+        H.PrintLog(1, TC.ID.Value!.Time(), User, "GetValueString", $"- Reading key '{key}'. Value: '{value!.Value}'");
         return value!.Value;
       }
       else
@@ -376,6 +376,47 @@ namespace SmartBid
     public bool? GetValueBoolean(string key)
     {
       return bool.TryParse(GetValueString(key), out bool num) ? num : null;
+    }
+    public List<string> GetValueList(string key, bool isNumber = false)
+    {
+      if (_data.TryGetValue(key, out VariableData? value))
+      {
+        string xmlString = value?.Value ?? string.Empty;
+        List<string> itemList = new();
+
+        if (string.IsNullOrWhiteSpace(xmlString))
+          return null;
+
+        XmlDocument tempDoc = new();
+        try
+        {
+          tempDoc.LoadXml($"{xmlString}"); // Assuming the value is already a well-formed XML fragment as <l><li>item1</li><li>item2</li></l>
+
+          foreach (XmlNode item in tempDoc.DocumentElement.ChildNodes)
+          {
+            if (isNumber)
+            {
+              //test parsing the item as a number, and use . as decimal separator
+              if (double.TryParse(item.InnerText, NumberStyles.Float, CultureInfo.InvariantCulture, out double num))
+              {
+                itemList.Add(num.ToString(CultureInfo.InvariantCulture));
+              }
+            }
+            else
+            {
+              itemList.Add(item.InnerText);
+            }
+          }
+          return itemList;
+        }
+        catch
+        {
+          H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM.GetValueList", $"Key '{key}' found in, but value is not valid XML: '{xmlString}'.");
+          return null; // returns NULL when the Value has not XML format
+        }
+      }
+      H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM", $"Key '{key}' not found in . ");
+      throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
     }
     public XmlNode GetValueXmlNode(string key)
     {

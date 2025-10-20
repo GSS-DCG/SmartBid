@@ -53,15 +53,22 @@ namespace SmartBid
       return value;
     }
 
-    public static int GetNProperty(string name)
+    public static int? GetNProperty(string name, int? def = null)
     {
+      //return the value from the properties file as an integer, or default if not found or invalid, otherwise return null
       string stringValue = GetSProperty(name);
       if (int.TryParse(stringValue, out int result))
       {
         propertyCache[name] = result;
         return result;
       }
-      return 0;
+      else if (def.HasValue)
+      {
+        propertyCache[name] = def.Value;
+        return def.Value;
+      }
+      
+      return null;
     }
 
     public static bool GetBProperty(string name)

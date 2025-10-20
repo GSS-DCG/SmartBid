@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Xml;
 
 namespace SmartBid
@@ -209,36 +203,41 @@ namespace SmartBid
 
       string userName = xmlCall.SelectSingleNode(@"request/requestInfo/createdBy")?.InnerText ?? "UnknownUser";
 
-      // MODIFICADO: Obtener el callID *antes* de inicializar TC.ID.Value
+      // Obtener el callID *antes* de inicializar TC.ID.Value
       int callID = DBtools.InsertCallStart(xmlCall);
+      DataMaster dm = null!;
 
-      // MODIFICADO: Inicializar TC.ID.Value con el callID
+      // Inicializar TC.ID.Value con el callID
       TC.ID.Value = new TC.ThreadInfo(userName, callID);
-
-      if (H.GetBProperty("autorun"))
-        Thread.Sleep(2000);
-
-      H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"Procesando archivo: {filePath}");
-
-
-      ThreadPool.GetAvailableThreads(out int workerThreads, out int completionPortThreads);
-      ThreadPool.GetMaxThreads(out int maxWorkerThreads, out int maxCompletionPortThreads);
-
-      H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"Hilos disponibles: {workerThreads} de {maxWorkerThreads}");
-      H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"Hilos IO disponibles: {completionPortThreads} de {maxCompletionPortThreads}");
-
-
-      List<ToolData> targets = Calculator.GetDeliveryDocs(xmlCall);
-      DataMaster dm = CreateDataMaster(xmlCall, targets);
-      // AÑADE InstanceId al log de creación de DataMaster
-      H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"Creada DataMaster con ID de instancia: {dm.InstanceId} para '{dm.GetValueString("opportunityFolder")}'");
-
-      Calculator calculator = new(dm, targets);
-      string project = dm.GetValueString("opportunityFolder");
-      H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"-- **** PROJECT: {project}  **** --");
+      TC.RegisterCurrent();
+      var me = TC.ID.Value!;
+      me.ArmTimeoutMinutes((int)H.GetNProperty("defaultProcessTimeout", 30)!, reason: "Default watchdog");
 
       try
       {
+        if (H.GetBProperty("autorun"))
+          Thread.Sleep(2000);
+
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"Procesando archivo: {filePath}");
+
+
+        ThreadPool.GetAvailableThreads(out int workerThreads, out int completionPortThreads);
+        ThreadPool.GetMaxThreads(out int maxWorkerThreads, out int maxCompletionPortThreads);
+
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"Hilos disponibles: {workerThreads} de {maxWorkerThreads}");
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"Hilos IO disponibles: {completionPortThreads} de {maxCompletionPortThreads}");
+
+
+        List<ToolData> targets = Calculator.GetDeliveryDocs(xmlCall);
+        dm = CreateDataMaster(xmlCall, targets);
+        // AÑADE InstanceId al log de creación de DataMaster
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"Creada DataMaster con ID de instancia: {dm.InstanceId} para '{dm.GetValueString("opportunityFolder")}'");
+
+        Calculator calculator = new(dm, targets);
+        string project = dm.GetValueString("opportunityFolder");
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"-- **** PROJECT: {project}  **** --");
+
+
         StoreCallFile(H.GetBProperty("storeXmlCall"), filePath, Path.GetDirectoryName(dm.FileName)!);
 
         //Calculator calculator = new(dm, targets); // Esta línea duplica la creación, pero no es el origen del problema de contaminación.
@@ -252,9 +251,11 @@ namespace SmartBid
         ReturnRemoveFiles(dm);
         DBtools.UpdateCallRegistry(callID, "DONE", "OK");
 
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"-- ****{new string('*', project.Length + 17)}**** --");
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"-- **** PROJECT: {project} DONE  **** --");
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"-- ****{new string('*', project.Length + 17)}**** --");
+        string a = $"-- **** PROJECT: {project} DONE  **** --";
+        string b = "--" + string.Concat(Enumerable.Repeat("*", a.Length - 4)) + "--";
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", b);
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", a);
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", b);
 
         List<string> emailRecipients = new();
         if (H.GetBProperty("mailKAM")) emailRecipients.Add(dm.GetValueString("kam"));
@@ -279,11 +280,15 @@ namespace SmartBid
       }
       catch (Exception ex)
       {
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"--❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌-- ");
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"--❌❌ Error al procesar {dm.GetValueString("opportunityFolder")}❌❌ ");
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"🧨 Excepción: {ex.GetType().Name} ");
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"📄 Mensaje: {ex.Message} ");
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"🧭 StackTrace:\n{ex.StackTrace} ");
+        string a = $"--❌❌ Error al procesar {dm.GetValueString("opportunityFolder")}❌❌";
+        string b = "--" + string.Concat(Enumerable.Repeat("❌", a.Length/2 - 4)) + "--\n";
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", b);
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", a);
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", b);
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"--❌❌ 🧨  Excepción: {ex.GetType().Name} ");
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"--❌❌ 📄    Mensaje: {ex.Message} ");
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"--❌❌ 🧭 StackTrace:\n{ex.StackTrace} ");
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", a);
 
         string bodyHtml = $@"
 <p>Enviado desde SmartBid</p>
@@ -303,9 +308,14 @@ namespace SmartBid
                      body: bodyHtml,
                      isHtml: true);
 
-        DBtools.UpdateCallRegistry(callID, "ERROR", ex.Message); // MODIFICADO: Asegurarse de actualizar el estado en caso de error
 
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"--❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌-- ");
+        DBtools.UpdateCallRegistry(callID, "FAILED", ex.Message); // MODIFICADO: Asegurarse de actualizar el estado en caso de error
+      }
+      finally
+      {
+        TC.ID.Value?.DisarmTimeout();    // ⭐ Ensure watchdog is off
+        TC.UnregisterCurrent();          // ⭐ Remove from registry so no stray cancels target this
+        TC.ID.Value?.Dispose();          // ⭐ Cleanup CTS/timer
       }
     }
 
@@ -408,7 +418,7 @@ namespace SmartBid
 
       if (H.GetBProperty("createInputDocsShortcut"))
       {
-        XmlNode? inputDocsXML = null; // Made nullable
+        XmlNode? inputDocsXML;
         try
         {
           inputDocsXML = dm.DM.SelectSingleNode($"/dm/utils/{dm.SBidRevision}/inputDocs");
@@ -821,14 +831,50 @@ namespace SmartBid
     }
   }
 
-  static class TC // Thread Context
+  /// <summary>
+  /// Thread Context utilities. Exposes per-call context (user, callId, chrono),
+  /// cancellation & watchdog (timeout) support, and tracking of external processes
+  /// to kill on cancel/timeout.
+  /// </summary>
+  static class TC
   {
-    public class ThreadInfo
+    /// <summary>
+    /// Per-call/thread info. Lives in AsyncLocal (flows across async).
+    /// </summary>
+    public class ThreadInfo : IDisposable
     {
+      private readonly object _lock = new();
+
+      // --- chrono / identity (your original members) ---
       public Stopwatch chrono;
       public int ThreadId { get; }
       public string User { get; }
       public int? CallId { get; }
+
+      // --- cancellation ---
+      public CancellationTokenSource Cts { get; } = new();
+      public CancellationToken Token => Cts.Token;
+
+      // --- watchdog state ---
+      private Timer? _watchdog;
+      private TimeSpan _timeout = Timeout.InfiniteTimeSpan;
+
+      // --- external processes started by this call ---
+      private readonly ConcurrentBag<Process> _children = new();
+
+      // --- utility disposable (reused for scoped restore) ---
+      private sealed class Disposer : IDisposable
+      {
+        private readonly Action _dispose;
+        private bool _done;
+        public Disposer(Action dispose) => _dispose = dispose;
+        public void Dispose()
+        {
+          if (_done) return;
+          _done = true;
+          _dispose();
+        }
+      }
 
       public ThreadInfo(string user, int? callId = null)
       {
@@ -845,8 +891,279 @@ namespace SmartBid
         return $"{(int)elapsed.TotalMinutes:D2}:{elapsed.Seconds:D2}.{elapsed.Milliseconds:D3}";
       }
 
+      // ------------------------------
+      // Watchdog API (non-scoped)
+      // ------------------------------
+
+      /// <summary>
+      /// Arm (or re-arm) a watchdog that will request cancel (and optionally kill children)
+      /// after the given minutes. Subsequent calls replace the previous timer.
+      /// </summary>
+      public void ArmTimeoutMinutes(int minutes, string? reason = null, bool killChildren = true)
+      {
+        if (minutes <= 0)
+          throw new ArgumentOutOfRangeException(nameof(minutes), "Minutes must be > 0 for ArmTimeoutMinutes.");
+
+        lock (_lock)
+        {
+          _timeout = TimeSpan.FromMinutes(minutes);
+          _watchdog?.Dispose();
+          _watchdog = new Timer(_ =>
+          {
+            RequestCancel(reason ?? $"Watchdog timeout {minutes} min", killChildren);
+          }, null, _timeout, Timeout.InfiniteTimeSpan);
+
+          // Your logger
+          H.PrintLog(4, Time(), User, "Watchdog", $"Armed for {minutes} minute(s).");
+        }
+      }
+
+      /// <summary>
+      /// Reset (pet) the current watchdog to its configured timeout.
+      /// Does nothing if watchdog is not armed.
+      /// </summary>
+      public void PetTimeout()
+      {
+        lock (_lock)
+        {
+          if (_watchdog is null || _timeout == Timeout.InfiniteTimeSpan) return;
+          _watchdog.Change(_timeout, Timeout.InfiniteTimeSpan);
+          H.PrintLog(5, Time(), User, "Watchdog", "Pet (timer reset).");
+        }
+      }
+
+      /// <summary>
+      /// Completely disarm any active watchdog.
+      /// </summary>
+      public void DisarmTimeout()
+      {
+        lock (_lock)
+        {
+          _timeout = Timeout.InfiniteTimeSpan;
+          _watchdog?.Dispose();
+          _watchdog = null;
+          H.PrintLog(4, Time(), User, "Watchdog", "Disarmed.");
+        }
+      }
+
+      // ------------------------------
+      // Scoped watchdog (no-op on 0)
+      // ------------------------------
+
+      /// <summary>
+      /// Arms a watchdog for the given minutes within a scope. When the returned IDisposable is disposed,
+      /// the previous watchdog state is restored. If minutes == 0, returns null and does nothing.
+      /// </summary>
+      public IDisposable? ArmScopedTimeoutMinutes(int minutes, string? reason = null, bool killChildren = true)
+      {
+        // Interpret 0 as "do not apply"
+        if (minutes == 0)
+        {
+          H.PrintLog(3, Time(), User, "Watchdog", "ArmScopedTimeoutMinutes minutes==0 → no-op.");
+          return null; // caller should use "using var" to be null-safe
+        }
+
+        if (minutes < 0)
+          throw new ArgumentOutOfRangeException(nameof(minutes), "Minutes must be >= 0 (0 means no-op).");
+
+        lock (_lock)
+        {
+          // capture current state
+          var prevTimeout = _timeout;
+          var prevWatchdog = _watchdog;
+
+          // arm scoped watchdog
+          var scoped = TimeSpan.FromMinutes(minutes);
+          var localTimer = new Timer(_ =>
+          {
+            RequestCancel(reason ?? $"Scoped watchdog timeout {minutes} min", killChildren);
+          }, null, scoped, Timeout.InfiniteTimeSpan);
+
+          _timeout = scoped;
+          _watchdog = localTimer;
+
+          H.PrintLog(3, Time(), User, "Watchdog", $"Scoped armed for {minutes} minute(s).");
+
+          // disposer that restores previous watchdog setup
+          return new Disposer(() =>
+          {
+            lock (_lock)
+            {
+              try { _watchdog?.Dispose(); } catch { /* ignore */ }
+
+              _timeout = prevTimeout;
+              _watchdog = prevWatchdog;
+
+              if (_watchdog != null && _timeout != Timeout.InfiniteTimeSpan)
+              {
+                try { _watchdog.Change(_timeout, Timeout.InfiniteTimeSpan); } catch { /* ignore */ }
+                H.PrintLog(3, Time(), User, "Watchdog", "Scoped disposed → previous watchdog restored.");
+              }
+              else
+              {
+                H.PrintLog(3, Time(), User, "Watchdog", "Scoped disposed → watchdog disarmed.");
+              }
+            }
+          });
+        }
+      }
+
+      // ------------------------------
+      // Cancellation / External Procs
+      // ------------------------------
+
+      /// <summary>
+      /// Trip cancellation for this call. Optionally kill registered child processes (entire tree).
+      /// </summary>
+      public void RequestCancel(string? reason = null, bool killChildren = true)
+      {
+        if (!Cts.IsCancellationRequested)
+        {
+          H.PrintLog(2, Time(), User, "Cancel", $"Cancellation requested. Reason: {reason ?? "(none)"}");
+          try { Cts.Cancel(); } catch { /* ignore */ }
+
+          if (killChildren)
+            KillChildren();
+        }
+      }
+
+      /// <summary>
+      /// Register an external Process so it can be killed when this call is cancelled/times out.
+      /// </summary>
+      public void RegisterProcess(Process p)
+      {
+        if (p is null) return;
+        _children.Add(p);
+
+        // If already cancelled, kill immediately
+        if (Cts.IsCancellationRequested) SafeKill(p);
+
+        try
+        {
+          p.EnableRaisingEvents = true;
+          p.Exited += (_, __) =>
+          {
+            try
+            {
+              H.PrintLog(2, Time(), User, "RegisterProcess", $"Exited: {p.StartInfo?.FileName} {p.StartInfo?.Arguments}");
+            }
+            catch { /* ignore logging exceptions */ }
+          };
+        }
+        catch { /* some Process impls may throw if not fully started */ }
+      }
+
+      private void KillChildren()
+      {
+        foreach (var p in _children)
+          SafeKill(p);
+      }
+
+      private static void SafeKill(Process p)
+      {
+        try
+        {
+          if (!p.HasExited)
+          {
+            try { p.Kill(entireProcessTree: true); } // .NET Core/5+/6+
+            catch { p.Kill(); }                      // Fallback for .NET Framework
+            try { p.WaitForExit(5000); } catch { }
+          }
+        }
+        catch { /* ignore */ }
+      }
+
+      public void Dispose()
+      {
+        lock (_lock)
+        {
+          try { _watchdog?.Dispose(); } catch { }
+          _watchdog = null;
+          _timeout = Timeout.InfiniteTimeSpan;
+        }
+        try { Cts.Dispose(); } catch { }
+      }
     }
-    // ✅ Ahora usamos AsyncLocal en lugar de ThreadLocal
+
+    // ✅ Per-async-flow context (this is what you already had)
     public static AsyncLocal<ThreadInfo> ID = new();
-  }   
+
+    // --- Registry to control running calls by CallId ---
+    private static readonly ConcurrentDictionary<int, ThreadInfo> _byCallId = new();
+
+    /// <summary>
+    /// Register the current AsyncLocal ThreadInfo into the CallId registry.
+    /// Call once after creating TC.ID.Value with a valid CallId.
+    /// </summary>
+    public static void RegisterCurrent()
+    {
+      var info = ID.Value;
+      if (info?.CallId is int callId)
+        _byCallId[callId] = info;
+    }
+
+    /// <summary>
+    /// Remove current ThreadInfo from the CallId registry.
+    /// Call in finally when the call finishes.
+    /// </summary>
+    public static void UnregisterCurrent()
+    {
+      var info = ID.Value;
+      if (info?.CallId is int callId)
+        _byCallId.TryRemove(callId, out _);
+    }
+
+    /// <summary>
+    /// External cancel by CallId. Returns false if not found.
+    /// </summary>
+    public static bool CancelCall(int callId, string? reason = null, bool killChildren = true)
+    {
+      if (_byCallId.TryGetValue(callId, out var info))
+      {
+        info.RequestCancel(reason ?? "External cancel", killChildren);
+        return true;
+      }
+      return false;
+    }
+
+    /// <summary>
+    /// Arm/Reset a call-level watchdog for a given CallId. Returns false if not found.
+    /// </summary>
+    public static bool ArmTimeoutFor(int callId, int minutes, string? reason = null, bool killChildren = true)
+    {
+      if (_byCallId.TryGetValue(callId, out var info))
+      {
+        info.ArmTimeoutMinutes(minutes, reason, killChildren);
+        return true;
+      }
+      return false;
+    }
+
+    /// <summary>
+    /// Pet the call-level watchdog by CallId. Returns false if not found or watchdog not armed.
+    /// </summary>
+    public static bool PetTimeoutFor(int callId)
+    {
+      if (_byCallId.TryGetValue(callId, out var info))
+      {
+        info.PetTimeout();
+        return true;
+      }
+      return false;
+    }
+
+    /// <summary>
+    /// Disarm any call-level watchdog by CallId. Returns false if not found.
+    /// </summary>
+    public static bool DisarmTimeoutFor(int callId)
+    {
+      if (_byCallId.TryGetValue(callId, out var info))
+      {
+        info.DisarmTimeout();
+        return true;
+      }
+      return false;
+    }
+  }
 }
+

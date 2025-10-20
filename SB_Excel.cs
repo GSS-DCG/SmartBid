@@ -25,16 +25,30 @@ namespace SmartBid
     
     public bool FillUpValue(string rangeName, string value)
     {
-      H.PrintLog(1, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Excel.FillUpValue", $"Procesando celda '{rangeName}'...");
+      H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Excel.FillUpValue", $"Procesando celda '{rangeName}'...");
+
+      Excel.Range? range = null;
+      try
+      {
+        range = workbook!.Names.Item(rangeName).RefersToRange;
+      }
+      catch (Exception)
+      {
+        //if rangeName is type list (it ends with '/n' where n is a number then do not throw and print out a message the the value is not filled up in the spreadsheet
+        if (rangeName.Contains(@"\"))
+        {
+          H.PrintLog(3, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Excel.FillUpValue", $"List Cell: '{rangeName}' does not exist, List is longer than expected. Value has not been set.");
+           return false;
+        }
+        else 
+          throw;
+      }
 
       bool validationCheck = H.GetBProperty("ExcelValidationCheck");
-      Excel.Range range = workbook!.Names.Item(rangeName).RefersToRange;
-
-
       if (!validationCheck)
       {
         range.Value = value;
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Excel.FillUpValue", $"Validación desactivada. Valor '{value}' escrito directamente en '{rangeName}'.");
+        H.PrintLog(0, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Excel.FillUpValue", $"Validación desactivada. Valor '{value}' escrito directamente en '{rangeName}'.");
         return true;
       }
 
@@ -48,7 +62,7 @@ namespace SmartBid
       catch
       {
         range.Value = value;
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Excel.FillUpValue", $"La celda '{rangeName}' no tiene validación. Valor '{value}' escrito directamente.");
+        H.PrintLog(0, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Excel.FillUpValue", $"La celda '{rangeName}' no tiene validación. Valor '{value}' escrito directamente.");
         return true;
       }
 

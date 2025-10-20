@@ -59,7 +59,7 @@ namespace SmartBid
             {
 
               Stopwatch sw = Stopwatch.StartNew();
-              int order;
+              int order, newOrder = 0;
               double timeout = 60*24;
 
               while (!tm.CheckForGreenLight(tool.Code, callID, out order))
@@ -69,8 +69,15 @@ namespace SmartBid
                 {
                   throw new TimeoutException($"Timeout para {tool.Code} after {sw.Elapsed.TotalMinutes:F1} minutes");
                 }
+                //printing only order change with log 5, every 30 seconds with log 2
+                if (order == newOrder)
+                  H.PrintLog(3, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Esperando turno: {tool.Code} por {sw.Elapsed.TotalMinutes:F2} minutos. (Puesto en cola: {order} Timeout set to: {timeout:F0} minutes)");
+                else
+                {
+                  newOrder = order;
+                  H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Esperando turno: {tool.Code} por {sw.Elapsed.TotalMinutes:F2} minutos. (Puesto en cola: {order} Timeout set to: {timeout:F0} minutes)");
+                }
 
-                H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Esperando turno: {tool.Code} por {sw.Elapsed.TotalMinutes:F2} minutos. (Puesto en cola: {order} Timeout set to: {timeout:F0} minutes)");
                 Thread.Sleep(30000);
               }
 

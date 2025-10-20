@@ -38,7 +38,7 @@ namespace SmartBid
       XmlNode? projectDataNode = doc.SelectSingleNode(@"request/projectData");
 
       _ = cmd.Parameters.AddWithValue("@Date", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-      _ = cmd.Parameters.AddWithValue("@Request", requestDataNode!.Attributes!["Type"]?.Value);
+      _ = cmd.Parameters.AddWithValue("@Request", requestDataNode!.Attributes!["type"]?.Value);
       _ = cmd.Parameters.AddWithValue("@OpportunityFolder", requestDataNode["opportunityFolder"]?.InnerText ?? "");
       _ = cmd.Parameters.AddWithValue("@OportunityID", projectDataNode!["opportunityID"]?.InnerText ?? "");
       _ = cmd.Parameters.AddWithValue("@Client", projectDataNode?["client"]?.InnerText ?? "");

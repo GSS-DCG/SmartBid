@@ -250,12 +250,12 @@ namespace SmartBid
       if (_data.ContainsKey(id))
       {
         _data[id] = varData; // Actualizar valor existente
-        H.PrintLog(1, TC.ID.Value!.Time(), User, "StoreValue", $"  -> Updated key '{id}' in _data. New VariableData  New Value: '{varData.Value}'. ()");
+        H.PrintLog(0, TC.ID.Value!.Time(), User, "StoreValue", $"  -> Updated key '{id}' in _data. New VariableData  New Value: '{varData.Value}'. ()");
       }
       else
       {
         _data.Add(id, varData); // Añadir nuevo valor
-        H.PrintLog(1, TC.ID.Value!.Time(), User, "StoreValue", $"  -> Added key '{id}' to _data. New VariableData  Value: '{varData.Value}'. ()");
+        H.PrintLog(0, TC.ID.Value!.Time(), User, "StoreValue", $"  -> Added key '{id}' to _data. New VariableData  Value: '{varData.Value}'. ()");
       }
       return varData;
     }
@@ -340,8 +340,7 @@ namespace SmartBid
     {
       if (_data.TryGetValue(key, out VariableData? value))
       {
-        // Log con InstanceId de DataMaster y HashCode del diccionario, y InstanceId de VariableData
-        H.PrintLog(1, TC.ID.Value!.Time(), User, "GetValueString", $"- Reading key '{key}'. Value: '{value!.Value}'");
+        H.PrintLog(0, TC.ID.Value!.Time(), User, "GetValueString", $"- Reading key '{key}'. Value: '{value!.Value}'");
         return value!.Value;
       }
       else

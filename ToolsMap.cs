@@ -16,13 +16,14 @@ namespace SmartBid
     public string Name { get; }
     public string FileType { get; }
     public bool IsThreadSafe { get; set; } = true;
+    public int TimeoutMinutes { get; set; } = 0;
     public string Interpreter { get; }
     public string Version { get; }
-    public string Lenguage { get; }
+    public string Language { get; }
     public string Description { get; }
     public string FileName { get; }
 
-    public ToolData(string resource, string code, int call, string name, string filetype, bool isThreadSafe, string interpreter, string version, string language, string description)
+    public ToolData(string resource, string code, int call, string name, string filetype, bool isThreadSafe, int timeoutMinutes, string interpreter, string version, string language, string description)
     {
       Resource = resource;
       Code = code;
@@ -30,9 +31,10 @@ namespace SmartBid
       Name = name;
       FileType = filetype.ToLowerInvariant(); // aquí se normaliza
       IsThreadSafe = isThreadSafe;
+      TimeoutMinutes = timeoutMinutes;
       Interpreter = interpreter;
       Version = version;
-      Lenguage = language;
+      Language = language;
       Description = description;
       FileName = $"{name}.{FileType}"; // usa el valor ya normalizado
     }
@@ -54,8 +56,9 @@ namespace SmartBid
       toolElement.SetAttribute("interpreter", Interpreter);
       toolElement.SetAttribute("fileType", FileType);
       toolElement.SetAttribute("isThreadSafe", IsThreadSafe.ToString());
+      toolElement.SetAttribute("timeoutMinutes", TimeoutMinutes.ToString());
       toolElement.SetAttribute("version", Version);
-      toolElement.SetAttribute("language", Lenguage);
+      toolElement.SetAttribute("language", Language);
       toolElement.SetAttribute("description", Description);
       toolElement.SetAttribute("fileName", FileName);
 
@@ -164,7 +167,8 @@ namespace SmartBid
             }
           }
         }
-        H.PrintLog(2, TC.ID.Value?.Time() ?? "00:00.000", TC.ID.Value?.User ?? "SYSTEM", "CheckForGreenLight", $"  semaforo: {green} for {toolID}: order: {order} \n callList = {string.Join(",", callList)}");
+        H.PrintLog(1, TC.ID.Value?.Time() ?? "00:00.000", TC.ID.Value?.User ?? "SYSTEM", "CheckForGreenLight", $"  semaforo: {green} for {toolID}: order: {order}");
+        H.PrintLog(1, TC.ID.Value?.Time() ?? "00:00.000", TC.ID.Value?.User ?? "SYSTEM", "CheckForGreenLight", $"  callList = {string.Join(",", callList)}");
       }
       return green;
     }
@@ -196,6 +200,7 @@ namespace SmartBid
             node.Attributes["name"]!.InnerText ?? string.Empty,
             node.Attributes["fileType"]!.InnerText ?? string.Empty,
             bool.TryParse(node.Attributes["isThreadSafe"]?.InnerText, out var val) ? val : true,
+            int.TryParse(node.Attributes["timeoutMinutes"]?.InnerText, out int timeoutValue) ? timeoutValue : 0, // Timeout Minutes
             node.Attributes["interpreter"]!.InnerText ?? string.Empty,
             node.Attributes["version"]!.InnerText ?? string.Empty,
             node.Attributes["language"]!.InnerText ?? string.Empty,
@@ -279,6 +284,7 @@ namespace SmartBid
             row["name"]?.ToString() ?? string.Empty,
             row["FILE TYPE"]?.ToString() ?? string.Empty,
             bool.TryParse(row["THREAD_SAFE"]?.ToString(), out bool isThreadSafe) ? isThreadSafe : true,
+            int.TryParse(row["TIMEOUT"]?.ToString(), out int timeoutValue) ? timeoutValue : 0,
             row["INTERPRETER"]?.ToString() ?? string.Empty,
             int.TryParse(row["VERSION"]?.ToString(), out int value) ? value.ToString("D3") : "000",
             row["LANGUAGE"]?.ToString() ?? string.Empty,
@@ -310,11 +316,11 @@ namespace SmartBid
       {
         language = H.GetSProperty("defaultLanguage");
       }
-      var filteredTools = Tools.Where(tool => tool.Code.Equals(code, StringComparison.OrdinalIgnoreCase) && tool.Lenguage.Equals(language, StringComparison.OrdinalIgnoreCase)).ToList();
+      var filteredTools = Tools.Where(tool => tool.Code.Equals(code, StringComparison.OrdinalIgnoreCase) && tool.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).ToList();
 
       if (filteredTools.Count == 0) //try default language
       {
-        filteredTools = Tools.Where(tool => tool.Code.Equals(code, StringComparison.OrdinalIgnoreCase) && tool.Lenguage.Equals(H.GetSProperty("defaultLanguage"), StringComparison.OrdinalIgnoreCase)).ToList();
+        filteredTools = Tools.Where(tool => tool.Code.Equals(code, StringComparison.OrdinalIgnoreCase) && tool.Language.Equals(H.GetSProperty("defaultLanguage"), StringComparison.OrdinalIgnoreCase)).ToList();
 
         H.PrintLog(4,
           TC.ID.Value!.Time(),
@@ -436,12 +442,12 @@ namespace SmartBid
                 // call fillupValue for each item in the listData
                 foreach (var (item, index) in listData.Select((value, i) => (value, i)))
                 {
-                  workbook.FillUpValue($"{rangeName}\\{index}", item);
+                  _ = workbook.FillUpValue($"{rangeName}\\{index}", item);
                 }
               }
               else
               {
-                workbook.FillUpValue(rangeName, dm.GetValueString(variableID));
+                _ = workbook.FillUpValue(rangeName, dm.GetValueString(variableID));
               }
             }
           }
@@ -532,7 +538,7 @@ namespace SmartBid
                   {
                     _ = listElement.AppendChild(H.CreateElement(results, "li", item));
                   }
-                  value.AppendChild(listElement);
+                  _ = value.AppendChild(listElement);
                   note.InnerText = "Calculated Value";
 
                 }
@@ -557,13 +563,13 @@ namespace SmartBid
             }
             catch (Exception ex)
             {
-              H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"❌Error❌ reading range '{rangeName}': {ex.Message}");
+              H.PrintLog(4, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"❌Error❌ reading range '{rangeName}': {ex.Message}");
             }
 
-            varNode.AppendChild(varElement);
+            _ = varNode.AppendChild(varElement);
           }
         }
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"Values returned from {tool.Code} calculation", results);
+        H.PrintLog(3, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"Values returned from {tool.Code} calculation", results);
       }
       finally
       {
@@ -722,10 +728,41 @@ namespace SmartBid
       string output;
       string error;
 
+      // Use the current call's CancellationToken (from TC.ThreadInfo)
+      var ct = TC.ID.Value?.Token ?? CancellationToken.None;
+
+      Stopwatch sw = Stopwatch.StartNew();
+
       using (Process process = new() { StartInfo = psi })
       {
+        //take the timestamp when the process starts to print out the total time spent in the process
+
+
         _ = process.Start();
 
+        // Register this external process to be auto-killed on cancel/timeout
+        TC.ID.Value?.RegisterProcess(process);
+
+        // If the call is cancelled, kill the process (and its tree)
+        using var cancelReg = ct.Register(() =>
+        {
+          try
+          {
+            if (!process.HasExited)
+            {
+              try { process.Kill(true); } catch { process.Kill(); }
+            }
+          }
+          catch { /* ignore */ }
+        });
+
+        using var _scoped = TC.ID.Value!.ArmScopedTimeoutMinutes(
+            tool.TimeoutMinutes,
+            reason: $"Timeout Tool {tool.Code}",
+            killChildren: true
+        );
+
+        // Send input and read outputs (same as you already do)
         using (StreamWriter writer = process.StandardInput)
         {
           writer.Write(xmlVarList);
@@ -733,15 +770,48 @@ namespace SmartBid
           writer.Close();
         }
 
+        // NOTE: These ReadToEnd() calls will now unblock if the process is killed by cancel/timeout
         output = process.StandardOutput.ReadToEnd();
         error = process.StandardError.ReadToEnd();
+
+        // Wait for exit (fast returns if already killed)
         process.WaitForExit();
       }
 
-      XmlDocument results = new();
-      results.LoadXml(output);
+      sw.Stop();
 
-      H.PrintLog(3, TC.ID.Value!.Time(), TC.ID.Value!.User, "Calculate", $"Return from tool {tool.Code}", results);
+      // If cancelled, surface a meaningful error
+      if (ct.IsCancellationRequested)
+      {
+        ReleaseProcess(tool.Code, (int)TC.ID.Value.CallId!);
+        //show a canellation exception telling the total time spent until cancellation and the time since the tool calling (whenever the watchdog started)
+        throw new OperationCanceledException($"Tool {tool.Code} was timeout after {sw.Elapsed.Minutes} min.");
+      }
+
+
+      // Validate output to avoid XML parse crash after a forced kill
+      if (string.IsNullOrWhiteSpace(output))
+      {
+        var msg = $"Tool {tool.Code} produced no output.";
+        if (!string.IsNullOrWhiteSpace(error)) msg += $" Stderr: {error}";
+        throw new Exception(msg);
+      }
+
+      XmlDocument results = new();
+
+      try
+      {
+        results.LoadXml(output);
+      }
+      catch (Exception ex)
+      {
+        // Include some stderr to help debug malformed XML cases
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe",
+                   $"❌ Invalid XML from tool '{tool.Code}'. Error: {ex.Message}\nSTDERR:\n{error}");
+        throw;
+      }
+
+      H.PrintLog(3, TC.ID.Value!.Time(), TC.ID.Value!.User, "Calculate", $"Return from tool {tool.Code} after {sw.Elapsed.Minutes} minutes.", results);
 
       if (!string.IsNullOrWhiteSpace(error))
         H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "Calculate", $"❌Error❌:\n{error}");
@@ -840,7 +910,6 @@ namespace SmartBid
       return xmlVar;
     }
 
-
     private static XmlElement CreateElementWithText(XmlDocument doc, string elementName, string textContent, params (string, string)[] attributes)
     {
       XmlElement element = doc.CreateElement(elementName);
@@ -851,8 +920,6 @@ namespace SmartBid
       }
       return element;
     }
-
-
 
     public void GenerateOuput(ToolData template, DataMaster dm)
     {
@@ -929,7 +996,7 @@ namespace SmartBid
 
           doc.DeleteBookmarks(removeBkm);
 
-          doc.ReplaceFieldMarks(varList, dm); 
+          doc.ReplaceFieldMarks(varList, dm);
 
           doc.Save();
 
@@ -1001,7 +1068,7 @@ namespace SmartBid
               // call fillupValue for each item in the listData
               foreach (var (item, index) in listData.Select((value, i) => (value, i)))
               {
-                doc.FillUpValue($"{rangeName}\\{index}", item);
+                _ = doc.FillUpValue($"{rangeName}\\{index}", item);
               }
             }
 

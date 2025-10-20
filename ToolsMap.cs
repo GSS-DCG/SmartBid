@@ -780,10 +780,12 @@ namespace SmartBid
 
       sw.Stop();
 
+      ReleaseProcess(tool.Code, (int)TC.ID.Value.CallId!);
+
+
       // If cancelled, surface a meaningful error
       if (ct.IsCancellationRequested)
       {
-        ReleaseProcess(tool.Code, (int)TC.ID.Value.CallId!);
         //show a canellation exception telling the total time spent until cancellation and the time since the tool calling (whenever the watchdog started)
         throw new OperationCanceledException($"Tool {tool.Code} was timeout after {sw.Elapsed.Minutes} min.");
       }

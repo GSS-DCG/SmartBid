@@ -14,6 +14,7 @@ namespace SmartBid
     private static AutoResetEvent _eventSignal = new(false);
     private static FileSystemWatcher? watcher;
     private static bool _stopRequested = false;
+    private static readonly ConcurrentDictionary<string, DateTime> _recentlyProcessed = new();
 
     // Listeners adicionales
     private static CancellationTokenSource _cts = new();
@@ -25,7 +26,6 @@ namespace SmartBid
     private const string SingleInstanceMutexName = @"Local\SmartBid.SB_Main.SingleInstance";
     private static Mutex? _singleInstanceMutex;
 
-    // Este método permanece sin cambios, ya que solo la instancia principal lo usa.
     private static bool EnsureSingleInstance()
     {
       bool createdNew;
@@ -44,9 +44,6 @@ namespace SmartBid
       return true;
     }
 
-    // ============================
-    // Main (sin cambios significativos en la estructura o parámetros)
-    // ============================
     static void Main()
     {
       // === INSTANCIA ÚNICA ===
@@ -56,39 +53,51 @@ namespace SmartBid
       {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
         Console.WriteLine(
-                          @"
-
-                             ██████\                                     ██\     ███████\  ██\       ██\
-                            ██  __██\                                    ██ |    ██  __██\ \__|      ██ |
-                            ██ /  \__|██████\████\   ██████\   ██████\ ██████\   ██ |  ██ |██\  ███████ |
-                            \██████\  ██  _██  _██\  \____██\ ██  __██\\_██  _|  ███████\ |██ |██  __██ |
-                             \____██\ ██ / ██ / ██ | ███████ |██ |  \__| ██ |    ██  __██\ ██ |██ /  ██ |
-                            ██\   ██ |██ | ██ | ██ |██  __██ |██ |       ██ |██\ ██ |  ██ |██ |██ |  ██ |
-                            \██████  |██ | ██ | ██ |\███████ |██ |       \████  |███████  |██ |\███████ |
-                             \______/ \__| \__| \__| \_______|\__|        \____/ \_______/ \__| \_______|
-
-
-                        ");
+                @"
+                   ██████\                                     ██\     ███████\  ██\       ██\
+                  ██  __██\                                    ██ |    ██  __██\ \__|      ██ |
+                  ██ /  \__|██████\████\   ██████\   ██████\ ██████\   ██ |  ██ |██\  ███████ |
+                  \██████\  ██  _██  _██\  \____██\ ██  __██\\_██  _|  ███████\ |██ |██  __██ |
+                   \____██\ ██ / ██ / ██ | ███████ |██ |  \__| ██ |    ██  __██\ ██ |██ /  ██ |
+                  ██\   ██ |██ | ██ | ██ |██  __██ |██ |       ██ |██\ ██ |  ██ |██ |██ |  ██ |
+                  \██████  |██ | ██ | ██ |\███████ |██ |       \████  |███████  |██ |\███████ |
+                    \______/ \__| \__| \__| \_______|\__|        \____/ \_______/ \__| \_______|
+              ");
         string path = H.GetSProperty("callsPath");
         H.PrintLog(5, "00:00.000", "Main", "Main", $"Usando Varmap: {H.GetSProperty("VarMap")}");
 
         watcher = new FileSystemWatcher
         {
           Path = path,
-          Filter = "*.*",
+          Filter = "*.*", // Puedes cambiarlo a "*.xml" si solo te interesan esos ficheros
           NotifyFilter = NotifyFilters.FileName
         };
 
         watcher.Created += (sender, e) =>
         {
           H.PrintLog(5, "00:00.000", "Main", "Main", $"*** Evento detectado: {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
-          H.PrintLog(5, "00:00.000", "Main", "Main", $"{e.FullPath}");
+          H.PrintLog(5, "00:00.000", "Main", "Main", $"Call detected: {e.FullPath}");
+
+          // Comprobamos si el fichero ya ha sido añadido recientemente.
+          if (_recentlyProcessed.ContainsKey(e.FullPath))
+          {
+            // Si el fichero fue detectado hace menos de 2 segundos, lo ignoramos.
+            if (DateTime.Now.Subtract(_recentlyProcessed[e.FullPath]).TotalSeconds < 2)
+            {
+              H.PrintLog(2, "00:00.000", "Main", "Main", $"Evento duplicado para {e.FullPath}. Ignorando.");
+              return;
+            }
+          }
+          // Añadimos o actualizamos el fichero en nuestro registro con la hora actual.
+          _recentlyProcessed[e.FullPath] = DateTime.Now;
+
           if (Regex.IsMatch(Path.GetFileName(e.FullPath), @"^call_.*\.xml$", RegexOptions.IgnoreCase))
           {
             _fileQueue.Enqueue(e.FullPath);
-            _ = _eventSignal.Set();
+            _eventSignal.Set();
           }
         };
+
 
         SB_Word.CloseWord(H.GetBProperty("closeWord"));
         SB_Excel.CloseExcel(H.GetBProperty("closeExcel"));
@@ -172,10 +181,6 @@ namespace SmartBid
         _singleInstanceMutex?.Dispose();
       }
     }
-
-    // =====================================================
-    // Resto de métodos (sin cambios funcionales)
-    // =====================================================
 
     static void ProcessFiles()
     {
@@ -831,16 +836,12 @@ namespace SmartBid
     }
   }
 
-  /// <summary>
   /// Thread Context utilities. Exposes per-call context (user, callId, chrono),
   /// cancellation & watchdog (timeout) support, and tracking of external processes
   /// to kill on cancel/timeout.
-  /// </summary>
   static class TC
   {
-    /// <summary>
     /// Per-call/thread info. Lives in AsyncLocal (flows across async).
-    /// </summary>
     public class ThreadInfo : IDisposable
     {
       private readonly object _lock = new();

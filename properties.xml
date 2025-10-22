@@ -56,7 +56,7 @@
 	<mailCreatedBy>true</mailCreatedBy><!-- Envía mail al kam al usuario que inció la generación -->
 	
 	<logLevel>2</logLevel>  <!-- Nivel de anotaciones en el Log: 0-Todo 5-Mínimo -->
-	<printLevel>5</printLevel>  <!-- Nivel de printouts en consola: 0-Todo 5-Mínimo -->
+	<printLevel>2</printLevel>  <!-- Nivel de printouts en consola: 0-Todo 5-Mínimo -->
 
 	<autorun>C:\InSync\SmartBid\files\calls\pasteFiles.bat</autorun> <!-- Script que se ejecuta al iniciar el programa para desarrollo-->
 	<processDWG>false</processDWG><!-- Activar/desactivar el procesamiento de DWG -->

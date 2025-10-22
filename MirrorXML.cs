@@ -14,118 +14,105 @@ namespace SmartBid
 {
   public class MirrorXML
   {
+    private ToolData tool;
     private string _fileName;
-    private Dictionary<string, string[]> _varList;
-    // Add the following field and property to the MirrorXML class to fix CS0246
-
-    private Dictionary<string, string> _basicData;
-
-    public Dictionary<string, string[]> VarList
-    {
-      get => _varList;
-      set => _varList = value;
-    }
-
     public string FileName
     {
       get => _fileName;
       set => _fileName = value;
     }
+    private string _toolFilePath;
+    public string ToolFilePath
+    {
+      get => _toolFilePath;
+      set => _toolFilePath = value;
+    }
+    private string _xmlFilePath;
+    public string XmlFilePath
+    {
+      get => _xmlFilePath;
+      set => _xmlFilePath = value;
+    }
 
+    private Dictionary<string, string[]> _varList;
+    
+    private Dictionary<string, string> _basicData;
+    public Dictionary<string, string[]> VarList
+    {
+      get => _varList;
+      set => _varList = value;
+    }
     public Dictionary<string, string> BasicData
     {
       get => _basicData;
       set => _basicData = value;
     }
-    public MirrorXML(ToolData tool)
+    public MirrorXML(ToolData _tool)
     {
+      tool = _tool;
       _varList = [];
       _basicData = [];
 
+      string directoryPath = "";
 
-      //tool = Regex.Replace(tool, "_Call\\d+", "");
-
-      string? toolResource = tool.Resource;
-      string toolsPath = Path.Combine(H.GetSProperty("ToolsPath"));
-      string templatesPath = Path.Combine(H.GetSProperty("TemplatesPath"));
-      string? directoryPath;
-
-      if ((toolResource != null) && (toolResource == "TOOL"))
+      if ((tool.Resource != null) && (tool.Resource == "TOOL"))
       {
-        directoryPath = toolsPath;
+        directoryPath = H.GetSProperty("ToolsPath");
       }
-      else if (toolResource == "TEMPLATE")
+      else if (tool.Resource == "TEMPLATE")
       {
-        directoryPath = templatesPath;
+        directoryPath = H.GetSProperty("TemplatesPath");
       }
-      else
+      if (!Path.Exists(directoryPath))
       {
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - LoadData", $"Tool Resource not found for file: {tool.Code}:{toolResource}");
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - LoadData", $"Tool Resource not found for file: {tool.Code}:{tool.Resource}");
         return;
       }
 
-
       FileName = tool.FileName;
-      string toolPath = Path.Combine(directoryPath, FileName);
-      string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(toolPath);
-      string xmlFile = Path.Combine(directoryPath, fileNameWithoutExtension + ".xml");
-      DateTime fileModified = new(2000,01,01,00,00,00); //Set default to a old date so for .exe will always use the XML
-      DateTime xmlModified = File.Exists(xmlFile) ? File.GetLastWriteTime(xmlFile) : default;
+      ToolFilePath = Path.Combine(directoryPath, FileName);
+      XmlFilePath = Path.Combine(directoryPath, tool.Code + "_v" + tool.Version + ".xml");
 
-      //if tool.filetype is docx, xlsx or xlsm, check if the file exists
+      DateTime fileModified = new(2000,01,01,00,00,00); //Set default to a old date so for .exe will always use the XML
+      DateTime xmlModified = File.Exists(XmlFilePath) ? File.GetLastWriteTime(XmlFilePath) : default;
+
+      //if tool.filetype is docx, xlsx or xlsm, check if the file exists and get the modification time
       if (tool.FileType == "docx" || tool.FileType == "xlsx" || tool.FileType == "xlsm")
       {
-        if (File.Exists(toolPath))
+        if (File.Exists(ToolFilePath))
         {
-          fileModified = File.GetLastWriteTime(toolPath);
+          fileModified = File.GetLastWriteTime(ToolFilePath);
         }
         else
         {
-          H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "LoadData", $"{toolPath} does not exist.");
+          H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "LoadData", $"❌❌ Error ❌❌  - {ToolFilePath} does not exist.");
           return;
         }
       }
 
+      //check if the mirror xml is newer than the actual tool/template
       if (fileModified > xmlModified)
       {
         VariablesMap varMap = VariablesMap.Instance;
 
         if (tool.FileType.Equals("docx", StringComparison.CurrentCultureIgnoreCase))
         {
-          BasicData = ExtractGSSDataFromDocx(toolPath);
-          VarList = ExtractVariablesFromDocx(toolPath);
+          BasicData = ExtractGSSDataFromDocx();
+          VarList = ExtractVariablesFromDocx();
         }
 
         else if (tool.FileType.ToLower().StartsWith("xls"))
         {
-          BasicData = ExtractGSSDataFromXlsx(toolPath);
-          VarList = ExtractVariablesFromXlsx(toolPath);
+          BasicData = ExtractGSSDataFromXlsx();
+          VarList = ExtractVariablesFromXlsx();
         }
 
-        foreach (string variable in VarList.Keys.ToList())
-        {
-          if (!variable.Contains("\\s")) //si la llamada no es la primera
-          {
-            string id = System.Text.RegularExpressions.Regex.Replace(variable, @"^Call[0-9]_", "");
-
-            if (varMap.GetNewVariableData(id) != null)
-            {
-              VarList[variable] = [
-                varMap.GetNewVariableData(id)!.Source, 
-                VarList[variable][1], 
-                VarList[variable][2], 
-                VarList[variable][3]
-                ]; // Fill up source data before saving to XML
-            }
-          }
-        }
-
-        CreateXMLMirror(directoryPath);
+        CreateXMLMirror();
       }
 
-      if (File.Exists(xmlFile))
+      if (File.Exists(XmlFilePath))
       {
-        XElement root = XElement.Load(xmlFile);
+        XElement root = XElement.Load(XmlFilePath);
 
         //reading basicData from GSS_DATA attributes
         root.Attributes().ToList().ForEach(attr => _basicData[attr.Name.LocalName] = attr.Value);
@@ -149,13 +136,13 @@ namespace SmartBid
       }
     }
 
-    static Dictionary<string, string> ExtractGSSDataFromDocx(string docxPath)
+    Dictionary<string, string> ExtractGSSDataFromDocx()
     {
       Dictionary<string, string> bookmarks = new();
 
       try
       {
-        using WordprocessingDocument doc = WordprocessingDocument.Open(docxPath, false);
+        using WordprocessingDocument doc = WordprocessingDocument.Open(ToolFilePath, false);
         var body = doc.MainDocumentPart.Document.Body;
         var bookmarksList = body.Descendants<BookmarkStart>();
 
@@ -185,7 +172,7 @@ namespace SmartBid
       }
       catch (FileNotFoundException)
       {
-        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "ExtractGSSDataFromDocx", $"File not found: {docxPath}");
+        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "ExtractGSSDataFromDocx", $"File not found: {ToolFilePath}");
       }
       catch (Exception ex)
       {
@@ -198,11 +185,10 @@ namespace SmartBid
       return bookmarks;
     }
 
-    private Dictionary<string, string[]> ExtractVariablesFromDocx(string fileName)
+    private Dictionary<string, string[]> ExtractVariablesFromDocx()
     {
       List<string> varList = [];
       List<string> bookmarkList = [];
-      string varPrefix = H.GetSProperty("VarPrefix");
 
       Application wordApp = new();
       Microsoft.Office.Interop.Word.Document? doc = null;
@@ -210,7 +196,7 @@ namespace SmartBid
       try
       {
         wordApp.Visible = false;
-        doc = wordApp.Documents.Open(fileName, ReadOnly: true, Visible: false);
+        doc = wordApp.Documents.Open(ToolFilePath, ReadOnly: true, Visible: false);
 
         // --- Extract cross-reference fields ---
         foreach (Field field in doc.Fields)
@@ -220,10 +206,10 @@ namespace SmartBid
             string fieldCode = field.Code.Text.Trim();
 
             if (!string.IsNullOrWhiteSpace(fieldCode) &&
-                fieldCode.StartsWith(varPrefix, StringComparison.OrdinalIgnoreCase))
+                fieldCode.StartsWith(tool.InPrefix, StringComparison.OrdinalIgnoreCase))
             {
               string cleaned = fieldCode
-                  .Replace(varPrefix, "")
+                  .Replace(tool.InPrefix, "")
                   .Replace("\\* MERGEFORMAT", "", StringComparison.OrdinalIgnoreCase)
                   .Replace("REF ", "", StringComparison.OrdinalIgnoreCase)
                   .Trim();
@@ -244,9 +230,9 @@ namespace SmartBid
         foreach (Bookmark bookmark in doc.Bookmarks)
         {
           if (!string.IsNullOrWhiteSpace(bookmark.Name) &&
-              bookmark.Name.StartsWith(varPrefix, StringComparison.OrdinalIgnoreCase))
+              bookmark.Name.StartsWith(tool.InPrefix, StringComparison.OrdinalIgnoreCase))
           {
-            string cleaned = bookmark.Name.Replace(varPrefix, "").Trim();
+            string cleaned = bookmark.Name.Replace(tool.InPrefix, "").Trim();
             if (!string.IsNullOrWhiteSpace(cleaned))
               bookmarkList.Add(cleaned);
           }
@@ -283,7 +269,7 @@ namespace SmartBid
         {
           H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "❌❌ Error ❌❌  - ExtractVariablesFromDocx", "Declaration Error");
           throw new InvalidOperationException(
-              $"{nonDeclaredVars.Count} variables found in {Path.GetFileName(fileName)} are not declared in VariableMap:\n\n{string.Join("\n", nonDeclaredVars)}\n");
+              $"{nonDeclaredVars.Count} variables found in {FileName} are not declared in VariableMap:\n\n{string.Join("\n", nonDeclaredVars)}\n");
         }
 
         return mergedDict;
@@ -306,10 +292,10 @@ namespace SmartBid
       }
     }
 
-    private static Dictionary<string, string> ExtractGSSDataFromXlsx(string fileName)
+    private  Dictionary<string, string> ExtractGSSDataFromXlsx()
     {
       var gssData = new Dictionary<string, string>();
-      using (SpreadsheetDocument document = SpreadsheetDocument.Open(fileName, false))
+      using (SpreadsheetDocument document = SpreadsheetDocument.Open(ToolFilePath, false))
       {
         WorkbookPart workbookPart = document.WorkbookPart!;
         var listData = GetCellValuesFromRange(workbookPart, "GSS_DATA");
@@ -324,65 +310,64 @@ namespace SmartBid
       return gssData;
     }
 
-    private static Dictionary<string, string[]> ExtractVariablesFromXlsx(string fileName)
+    private Dictionary<string, string[]> ExtractVariablesFromXlsx()
     {
       Dictionary<string, string[]> varList = [];
       List<string> varNames;
       VariablesMap varMap = VariablesMap.Instance;
 
-      using (SpreadsheetDocument document = SpreadsheetDocument.Open(fileName, false))
+      using (SpreadsheetDocument document = SpreadsheetDocument.Open(ToolFilePath, false))
       {
         WorkbookPart workbookPart = document.WorkbookPart!;
         varNames = GetAllRangeNames(workbookPart);
       }
 
-      string inPrefix1 = H.GetSProperty("IN_VarPrefix").ToLower();
-      string inPrefix2 = H.GetSProperty("VarPrefix").ToLower();
-      string outPrefix = H.GetSProperty("OUT_VarPrefix").ToLower();
+
+      //normalizo la lista (añado Call1_ donde no existe para trabajar con la lista de variables normalizada
+
+      string inToolPrefix = H.GetSProperty("IN_VarPrefix").ToLower();
+      string outToolPrefix = H.GetSProperty("OUT_VarPrefix").ToLower();
+      string inTemplatePrefix = H.GetSProperty("VarPrefix").ToLower();
+
+      varNames = varNames.Select(name =>
+      {
+        if (!Regex.IsMatch(name.ToLower(), @"(?i)call\d+_")) {
+          if (name.ToLower().StartsWith(inToolPrefix)) name = inToolPrefix + "call1_" + name[inToolPrefix.Length..];
+          if (name.ToLower().StartsWith(outToolPrefix)) name = outToolPrefix + "call1_" + name[outToolPrefix.Length..];
+        }
+        return name;
+      }).ToList();
 
       // Filtrar la lista
       varNames = [.. varNames
-          .Where(name => name.StartsWith(inPrefix1, StringComparison.OrdinalIgnoreCase) ||
-                         name.StartsWith(inPrefix2, StringComparison.OrdinalIgnoreCase) ||
-                         name.StartsWith(outPrefix, StringComparison.OrdinalIgnoreCase))];
-
-      varNames.Remove("GSS_DATA"); // Remove GSS_DATA from the list
+          .Where(name => name.StartsWith(tool.InPrefix, StringComparison.OrdinalIgnoreCase) ||
+                         name.StartsWith(tool.OutPrefix, StringComparison.OrdinalIgnoreCase))];
 
       // generating a list with variables missing in varMap
       List<string> nonDeclaredVars = [];
 
       foreach (string item in varNames)
       {
-        // eliminamos la marca de lista /xx
+        // eliminamos la marca de lista \xx
         string varName = item.Split('\\')[0];
 
         string[] value = ["", "", "1", ""];
 
-        if (varName.ToLower().StartsWith(inPrefix1))
+        if (varName.ToLower().StartsWith(tool.InPrefix))
         {
           value[1] = "in";
-          varName = varName[inPrefix1.Length..];
+          varName = varName[tool.InPrefix.Length..];
         }
-        else if (varName.ToLower().StartsWith(inPrefix2))
-        {
-          value[1] = "in";
-          varName = varName[inPrefix2.Length..];
-        }
-        else if (varName.ToLower().StartsWith(outPrefix))
+        else if (varName.ToLower().StartsWith(tool.OutPrefix))
         {
           value[1] = "out";
-          varName = varName[outPrefix.Length..];
+          varName = varName[tool.OutPrefix.Length..];
         }
 
-        Match match = Regex.Match(varName.ToLower(), @"^call(\d)_");
-        if (match.Success)
-        {
-          value[2] = match.Groups[1].Value;
-          varName = varName[match.Length..];
-        }
-
+        // comprobamos que todas están declaradas
         if (varMap.IsVariableExists(varName))
         {
+          value[0] = varMap.GetVariableData(varName).Source;
           value[3] = varMap.GetVariableData(varName).Type;
         }
         else
@@ -394,14 +379,13 @@ namespace SmartBid
         {
           varList.Add(new string(varName), value);
         }
-
       }
 
       if (nonDeclaredVars.Count > 0)
       {
         H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - ExtractVariablesFromXlsx", $"Declaration Error");
         throw new InvalidOperationException(
-            $"{nonDeclaredVars.Count} variables found in {Path.GetFileName(fileName)} are not declared in VariableMap:\n\n{string.Join("\n", nonDeclaredVars)}\n"
+            $"{nonDeclaredVars.Count} variables found in {Path.GetFileName(FileName)} are not declared in VariableMap:\n\n{string.Join("\n", nonDeclaredVars)}\n"
         );
       }
 
@@ -538,15 +522,14 @@ namespace SmartBid
       return value;
     }
 
-    private void CreateXMLMirror(string directory)
+    private void CreateXMLMirror()
     {
       string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(FileName);
-      string outputPath = Path.Combine(directory, fileNameWithoutExtension + ".xml");
 
-      ToXMLDocument().Save(outputPath);
-      H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CreateXMLMirror", $"XML file created at: {outputPath}");
+      ToXMLDocument().Save(XmlFilePath);
+      H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CreateXMLMirror", $"XML file created at: {XmlFilePath}");
 
-      ToXMLDocument().Load(outputPath);
+      ToXMLDocument().Load(XmlFilePath);
     }
 
     public XmlDocument ToXMLDocument()

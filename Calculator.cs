@@ -219,11 +219,12 @@ namespace SmartBid
         MirrorXML mirror = new(target);
         int call = 1;
 
-        Match match = Regex.Match(target.Code, @"_Call(\d)$");
-        if (match.Success)
-        {
-          call = int.Parse(match.Groups[1].Value);
-        }
+        //RELACIONADO CON LA FORMA ANTERIOR DE GESTIONAR LAS SUCESIVAS LLAMADAS A HERRAMIENTAS
+        //Match match = Regex.Match(target.Code, @"_Call(\d)$");
+        //if (match.Success)
+        //{
+        //  call = int.Parse(match.Groups[1].Value);
+        //}
 
         foreach (var item in mirror.VarList.Keys)
         {
@@ -233,7 +234,7 @@ namespace SmartBid
           {
             VariableData variableData = varMap.GetNewVariableData(varName)!;
             variableData.InOut = "in";
-            variableData.Call = Convert.ToInt16(mirror.VarList[varName][2]);
+            //variableData.Call = Convert.ToInt16(mirror.VarList[varName][2]);
             variableData.Deep = deep;
             variableList.Add(variableData);
 

@@ -1,8 +1,11 @@
 ﻿using System.Data;
 using System.Diagnostics;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml;
+using DocumentFormat.OpenXml.Drawing.Diagrams;
 using ExcelDataReader;
+using Org.BouncyCastle.Asn1.Cmp;
 using Exception = System.Exception;
 using File = System.IO.File;
 
@@ -10,7 +13,13 @@ namespace SmartBid
 {
   public class ToolData
   {
-    public string Resource { get; }
+
+    private string _resource;
+    public string Resource
+    {
+      get => _resource;
+      set => _resource = value.ToUpper();
+    }
     public string Code { get; }
     public int Call { get; }
     public string Name { get; }
@@ -22,6 +31,9 @@ namespace SmartBid
     public string Language { get; }
     public string Description { get; }
     public string FileName { get; }
+    public string InPrefix {get; }
+    public string OutPrefix { get; }
+    
 
     public ToolData(string resource, string code, int call, string name, string filetype, bool isThreadSafe, int timeoutMinutes, string interpreter, string version, string language, string description)
     {
@@ -37,6 +49,26 @@ namespace SmartBid
       Language = language;
       Description = description;
       FileName = $"{name}.{FileType}"; // usa el valor ya normalizado
+
+      string prefix = string.Empty;
+      if ((Resource == "TOOL"))
+        prefix = H.GetSProperty("IN_VarPrefix") + $"call{Call}_";
+      else if ((Resource == "TEMPLATE"))
+        prefix = H.GetSProperty("VarPrefix");
+      else
+      {
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ToolData", $"Resource not defined for tool {Name}");
+      }
+
+      InPrefix = prefix.ToLower();
+
+      prefix = string.Empty;
+      if ((Resource == "TOOL"))
+        prefix = H.GetSProperty("OUT_VarPrefix") + $"call{Call}_";
+      else if ((Resource == "TEMPLATE"))
+        prefix = "";
+      OutPrefix = prefix.ToLower();
+
     }
 
     public XmlDocument ToXMLDocument()
@@ -417,7 +449,7 @@ namespace SmartBid
 
             if (direction == "in")
             {
-              string rangeName = $"{H.GetSProperty("IN_VarPrefix")}{((tool.Call > 1) ? $"call{tool.Call}_" : "")}{variableID}";
+              string rangeName = tool.InPrefix + variableID;
               string type = _variablesMap.GetVariableData(variableID).Type;
 
               if (type == "table")
@@ -469,10 +501,13 @@ namespace SmartBid
           string direction = entry.Value[1];
           string type = _variablesMap.GetVariableData(variableID).Type;
 
-          if (mirror.GetVarCallLevel(variableID) == tool.Call && direction == "out")
+          if (direction == "out")
           {
             XmlElement varElement = results.CreateElement(variableID);
-            string rangeName = $"{H.GetSProperty("OUT_VarPrefix")}{((tool.Call > 1) ? $"call{tool.Call}_" : "")}{variableID}";
+            string rangeName = tool.OutPrefix + variableID;
+
+            if (Regex.IsMatch(rangeName, @"(?i)Call1_"))
+              rangeName = Regex.Replace(rangeName, @"(?i)Call1_", "");
 
             try
             {
@@ -509,14 +544,21 @@ namespace SmartBid
                 while (true)
                 {
                   // check the existance of the range name before calling to get the value
+
                   List<string> namedRanges = workbook.ListNamedRanges();
                   string namedRangeToFind = $"{rangeName}\\{index}";
                   string? cellValue = null;
 
-                  if (namedRanges.Contains(namedRangeToFind))
+                  if (namedRanges is not null)
                   {
-                    cellValue = workbook.GetSValue(namedRangeToFind, isNumber);
+                    var match = namedRanges
+                        .FirstOrDefault(n => string.Equals(n, namedRangeToFind, StringComparison.OrdinalIgnoreCase));
 
+                    if (match is not null)
+                    {
+                      // Use the matched original-casing name
+                      cellValue = workbook.GetSValue(match, isNumber);
+                    }
                   }
                   if (cellValue != null && cellValue != string.Empty)
                   {

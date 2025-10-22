@@ -2,6 +2,7 @@
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml;
 using Org.BouncyCastle.Asn1.BC;
 using SmartBid;
@@ -30,7 +31,10 @@ namespace SmartBid
       Excel.Range? range = null;
       try
       {
-        range = workbook!.Names.Item(rangeName).RefersToRange;
+        if (!Regex.IsMatch(rangeName, @"(?i)Call1_"))
+          range = workbook!.Names.Item(rangeName).RefersToRange;
+        else
+          range = workbook!.Names.Item(Regex.Replace(rangeName, @"(?i)Call1_", "")).RefersToRange;
       }
       catch (Exception)
       {
@@ -125,6 +129,9 @@ namespace SmartBid
 
     public void WriteTable(string rangeName, XmlNode doc)
     {
+      if (Regex.IsMatch(rangeName, @"(?i)Call1_"))
+        rangeName = Regex.Replace(rangeName, @"(?i)Call1_", "");
+
       try
       {
         // 📌 Parse XML Input

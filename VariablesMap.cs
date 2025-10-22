@@ -25,7 +25,7 @@ namespace SmartBid
     public string Note { get; set; }
     public string Origen { get; set; }
     public string? InOut { get; set; }
-    public int? Call { get; set; }
+    //public int? Call { get; set; }
     public int Deep { get; set; }
     public List<string> AllowableRange { get; set; }
     public string Value { get; set; }

@@ -1,6 +1,7 @@
 ﻿using System.Xml;
 using MySql.Data.MySqlClient;
 using SmartBid;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace SmartBid
 {
@@ -57,7 +58,6 @@ namespace SmartBid
         return -1;
       }
     }
-
     public static void UpdateCallRegistry(int callID, string status, string result)
     {
       using var conn = DBConnectionFactory.CreateConnection();
@@ -81,7 +81,82 @@ namespace SmartBid
         H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - DBtools-UpdateCallRegistry", $"❌❌ Error ❌❌  updating callsTracker registry: " + ex.Message);
       }
     }
+    public static void CreateRouteProgress(int callID, List<string> route)
+    {
+      using var conn = DBConnectionFactory.CreateConnection();
+      using var cmd = conn.CreateCommand();
 
+      //Delete from DB table routeprogress all entries with callID = callID
+      try
+      {
+        cmd.CommandText = @"
+        DELETE FROM `smartbid`.`routeprogress`
+        WHERE `RP_callID` = @RP_callID;
+       ";
+        cmd.Parameters.AddWithValue("@RP_callID", callID);
+        cmd.ExecuteNonQuery();
+        cmd.Parameters.Clear();
+      }
+      catch (Exception ex)
+      {
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - DBtools-CreateRouteProgress", $"❌❌ Error ❌❌  deleting existing route progress: " + ex.Message);
+      }
+
+      foreach (var tool in route)
+      {
+        try
+        {
+          cmd.CommandText = @"
+          INSERT INTO `smartbid`.`routeprogress`
+          ( `RP_callID`,
+            `RP_order`,
+            `RP_tool`,
+            `RP_status`
+          )
+          VALUES
+          ( @RP_callID,
+            @RP_order,
+            @RP_tool,
+            'Ready'
+          );
+         ";
+          cmd.Parameters.AddWithValue("@RP_callID", callID);
+          cmd.Parameters.AddWithValue("@RP_order", route.IndexOf(tool) + 1);
+          cmd.Parameters.AddWithValue("@RP_tool", tool);
+          cmd.ExecuteNonQuery();
+        }
+        catch (Exception ex)
+        {
+          H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - DBtools-CreateRouteProgress", $"❌❌ Error ❌❌  creating route progress: " + ex.Message);
+        }
+        cmd.Parameters.Clear();
+      }
+    }
+    public static void UpdateRouteProgress(int callID, string tool, string status)
+    {
+      using var conn = DBConnectionFactory.CreateConnection();
+      using var cmd = conn.CreateCommand();
+      cmd.CommandText = @"
+        UPDATE `smartbid`.`routeprogress`
+        SET
+        `RP_status` = @Status
+        WHERE `RP_callID` = @CallID
+          AND `RP_tool` = @Tool;
+       ";
+
+      _ = cmd.Parameters.AddWithValue("@CallID", callID);
+      _ = cmd.Parameters.AddWithValue("@Tool", tool);
+      _ = cmd.Parameters.AddWithValue("@Status", status);
+
+      try
+      {
+        _ = cmd.ExecuteNonQuery();
+      }
+      catch (Exception ex)
+      {
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - DBtools-UpdateCallRegistry", $"❌❌ Error ❌❌  updating callsTracker registry: " + ex.Message);
+      }
+    }
     public static int InsertNewProjectWithBid(DataMaster dm)
     {
       XmlDocument dataMaster = dm.DM;
@@ -184,7 +259,6 @@ namespace SmartBid
         return -1;
       }
     }
-
     public static void LogMessage(int level, string user, string eventLog, string message, int? callId = null, string? xmlMessage = null)
     {
       try
@@ -197,7 +271,7 @@ namespace SmartBid
         _ = cmd.Parameters.AddWithValue("@Event", eventLog);
         _ = cmd.Parameters.AddWithValue("@User", user);
         _ = cmd.Parameters.AddWithValue("@Message", message);
-        _ = cmd.Parameters.AddWithValue("@CallId", callId.HasValue ? (object)callId.Value : DBNull.Value);
+        _ = cmd.Parameters.AddWithValue("@CallId", callId.HasValue ? (object)callId.Value : 0);
         _ = cmd.ExecuteNonQuery();
 
         if (xmlMessage != null)
@@ -219,7 +293,6 @@ namespace SmartBid
         // lo que crearía un bucle infinito. La salida a Console.WriteLine es adecuada para este caso.
       }
     }
-
     public static void InsertFileHash(string fileName, string type, string hash, string lastModified)
     {
       try
@@ -243,8 +316,6 @@ namespace SmartBid
         H.PrintLog(5, TC.ID.Value!.Time(), "DBtools", $"❌❌ Error ❌❌  - InsertFileHash", $"❌❌ Error ❌❌  during insert inputFileHashs: " + ex.Message);
       }
     }
-
-
   }
 
 }

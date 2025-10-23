@@ -7,15 +7,16 @@ using DocumentFormat.OpenXml.Drawing.Diagrams;
 using Microsoft.Office.Interop.Word;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Cms;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace SmartBid
 {
   internal class Calculator
   {
-    readonly List<ToolData> _targets;
-    List<ToolData> _calcRoute = [];
-    ToolsMap? tm;
-    DataMaster dm;
+    private List<ToolData> targets;
+    private List<ToolData> calcRoute = [];
+    public ToolsMap? tm;
+    public DataMaster dm;
 
     public Calculator(DataMaster dataMaster, List<ToolData> targets)
     {
@@ -23,34 +24,44 @@ namespace SmartBid
       string opportunityFolder = dm.GetValueString("opportunityFolder");
       H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "Calculator", $"REQUEST: ");
 
-      _targets = targets;
+      this.targets = targets;
     }
     public void RunCalculations()
     {
       tm = ToolsMap.Instance;
 
       //Find the list of variable to get from Preparation Tool
-      string xmlPrepVarList = GetRouteMap(_targets).OuterXml;
+      string xmlPrepVarList = GetRouteMap(targets).OuterXml;
+
+      H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"***  CALCULATE  *** ");
+      H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Calculate rute: {string.Join(" >> ", calcRoute.Select(tool => tool.Code))} ");
+
 
       //Buscamos los datos necesarios con la PreparationTool y los guardamos en el DataMaster
+      DBtools.UpdateRouteProgress(TC.ID.Value!.CallId!.Value, "PREP", "Running");
       dm.UpdateData(CallPrepTool(xmlPrepVarList));
       dm.CheckMandatoryValues(); // thows and exception if not all Mandatory values are present in the DataMaster
       dm.SaveDataMaster(); //Save the DataMaster after preparation
+      DBtools.UpdateRouteProgress(TC.ID.Value!.CallId!.Value, "PREP", "DONE");
 
       //Generate files structure and move input files
-      //Call each toolD in the list of _targets and update the DataMaster with the results
-
-      H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"***  CALCULATE  *** ");
-      H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Calculate rute: {string.Join(" >> ", _calcRoute.Select(tool => tool.Code))} ");
+      //Call each toolD in the list of targets and update the DataMaster with the results
 
       //CALCULATE
-      foreach (ToolData tool in _calcRoute)
+      foreach (ToolData tool in calcRoute)
       {
+        // por el momento nos saltamos PREP porque la ejecutamos manualmente antes de entrar en calculations
+        if (tool.Code == "PREP")
+          break;
+
         if (tm.Tools.Exists(tool => tool.Code == tool.Code))
         {
+
           if (tool.Resource == "TOOL")
           {
             H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Calling Tool: {tool.Code} - threadSafe: {tool.IsThreadSafe}");
+
+            DBtools.UpdateRouteProgress(TC.ID.Value!.CallId!.Value, tool.Code, "Running");
 
             int callID = (int)TC.ID.Value.CallId!;
             //Call calculation
@@ -95,6 +106,27 @@ namespace SmartBid
 
             //Save the DataMaster after each calculation
             dm.SaveDataMaster(); //Save the DataMaster after each calculation
+
+            // Update the DB with the result from the tool calculation
+            try
+            {
+              // Get the <answer> node and read its "result" attribute
+              var answerNode = CalcResults.DocumentElement; // expects <answer ...> as the root
+              var resultRaw = answerNode?.GetAttribute("result") ?? string.Empty;
+
+              string status = answerNode?.GetAttribute("result")?.Equals("OK", StringComparison.OrdinalIgnoreCase) == true
+                  ? "DONE"
+                  : "FAIL";
+
+              // Report to DB
+              DBtools.UpdateRouteProgress(TC.ID.Value!.CallId!.Value, tool.Code, status);
+            }
+            catch (Exception ex)
+            {
+              H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User,
+                  "RunCalculations",
+                  "❌❌ Error ❌❌  reading result from XML or updating DB: " + ex.Message);
+            }
           }
         }
         else
@@ -104,16 +136,22 @@ namespace SmartBid
       }
       H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"- Calculate Done - ");
       H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"***   GENERATE DOCUMENTS   *** ");
-      H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Generation rute: {string.Join(" >> ", _targets.Select(tool => tool.Code))} ");
+      H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Generation rute: {string.Join(" >> ", targets.Select(tool => tool.Code))} ");
 
       //GENERATE DOCUMENTS
-      foreach (ToolData target in _targets)
+      foreach (ToolData target in targets)
       {
         if (target.Resource == "TEMPLATE")
         {
           H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Populating Template: {target.Code} - {target.Description} ");
 
+          DBtools.UpdateRouteProgress(TC.ID.Value!.CallId!.Value, target.Code, "Running");
+
           tm.GenerateOuput(target, dm);
+          //
+          if (true) //Here we could check if the generation was OK or not
+            DBtools.UpdateRouteProgress(TC.ID.Value!.CallId!.Value, target.Code, "DONE");
+
 
           // GENERATE INFO ABOUT TEMPLATES GENERATED (PENDIENTE)
           // dm.UpdateData(NEW_INFO); //Update the DataMaster with the information about generated documents
@@ -163,20 +201,20 @@ namespace SmartBid
       prepVarList.AddRange(Get_PREP_Variables(targets, sourcesSearched, 0, calcTools));
 
       // Build up the list of calls to tools in order
-      _calcRoute = [];
-      HashSet<ToolData> uniqueElements = new(_calcRoute);
+      calcRoute = [];
+      HashSet<ToolData> uniqueElements = new(calcRoute);
       for (int i = calcTools.Count - 1; i >= 0; i--) // Iterate backwards through calcTools
       {
         foreach (var element in calcTools[i])
         {
           if (uniqueElements.Add(element)) // Add only if it's not already present
           {
-            _calcRoute.Add(element);
+            calcRoute.Add(element);
           }
         }
       }
 
-      targets = _calcRoute; // Update _targets with the ordered list of calculation tools
+      targets = calcRoute; // Update targets with the ordered list of calculation tools
 
       _ = prepVarList.RemoveAll(item => !(item.Source == "PREP")); //Remove all non-preparation source variables
 
@@ -190,10 +228,17 @@ namespace SmartBid
       if (dmInputDocs != null)
         prepCallXML.DocumentElement.AppendChild(prepCallXML.ImportNode(dmInputDocs, true));
 
-      H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "GetRouteMap", $"- Calculated Route Map: \n {string.Join(" >> ", _calcRoute.Select(tool => tool.Code))} ");
+      List<string> route = calcRoute.Select(tool => tool.Code).ToList();
+      route.Insert(0, "PREP");
+
+
+      DBtools.CreateRouteProgress(TC.ID.Value!.CallId!.Value, route);
+
+      H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "GetRouteMap", $"- Calculated Route Map: \n {string.Join(" >> ", route)} ");
 
       // Guardamos el XML por si fuese necesario
-      prepCallXML.Save(Path.Combine(Path.GetDirectoryName(H.GetSProperty("ToolsPath")), "preparationCall.xml"));
+
+      prepCallXML.Save(Path.Combine(Path.GetDirectoryName(H.GetSProperty("ToolsPath"))!, "preparationCall.xml"));
       return prepCallXML; //Returning all variables to be read at Preparation in XML format
     }
     private static List<VariableData> Get_PREP_Variables(List<ToolData> targets, List<string> sourcesExcluded, int deep, List<List<ToolData>> calcTools)
@@ -218,13 +263,6 @@ namespace SmartBid
       {
         MirrorXML mirror = new(target);
         int call = 1;
-
-        //RELACIONADO CON LA FORMA ANTERIOR DE GESTIONAR LAS SUCESIVAS LLAMADAS A HERRAMIENTAS
-        //Match match = Regex.Match(target.Code, @"_Call(\d)$");
-        //if (match.Success)
-        //{
-        //  call = int.Parse(match.Groups[1].Value);
-        //}
 
         foreach (var item in mirror.VarList.Keys)
         {

@@ -602,9 +602,11 @@ namespace SmartBid
                   H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"❌ Named range '{rangeName}' is empty or not found in the workbook '{toolPath}'. Default value used");
                 }
               }
+              answer.SetAttribute("result", "OK");
             }
             catch (Exception ex)
             {
+              answer.SetAttribute("result", "NO OK");
               H.PrintLog(4, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"❌Error❌ reading range '{rangeName}': {ex.Message}");
             }
 
@@ -653,9 +655,6 @@ namespace SmartBid
       }
       _ = toolsNode.AppendChild(newToolNode);
 
-
-
-
       return results;
     }
 
@@ -664,9 +663,6 @@ namespace SmartBid
       //Executes type .exe tools, first creates and xml to send as input call and then reads the output xml
       //from the stdout of the process. the exact location of the file is read from the mirrorXML of the tool. 
       //originalToolPath is coming as an argument from the answer of the tool
-
-
-
       MirrorXML mirror = new(tool);
       var variableList = mirror.VarList;
 
@@ -1158,7 +1154,5 @@ namespace SmartBid
 
       }
     }
-
-
   }// End of class ToolsMap
 }// End of namespace SmartBid

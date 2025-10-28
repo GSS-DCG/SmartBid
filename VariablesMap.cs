@@ -337,7 +337,8 @@ $"❌❌ Error ❌❌ -- Unexpected title in VariableMap/VarMap table \n{ex}");
 
     public bool IsVariableExists(string id)
     {
-      return Variables.Any(variable => variable.ID == id);
+      //trim id
+      return Variables.Any(variable => variable.ID.Trim().ToLower() == id.Trim().ToLower());
     }
 
     public List<string> GetVarIDList()

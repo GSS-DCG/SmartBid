@@ -20,6 +20,9 @@ namespace SmartBid
     private static CancellationTokenSource _cts = new();
     private static Task? _listener1Task, _listener2Task;
 
+    // CAMPO para el seguimiento de tareas
+    private static int _activeFileProcessors = 0;
+
     // ============================
     // Instancia única (por sesión de usuario)
     // ============================
@@ -35,7 +38,6 @@ namespace SmartBid
         var msg = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Ya hay una instancia de SmartBid en ejecución. Saliendo.";
         Console.Error.WriteLine(msg);
         try { Console.Beep(); } catch { /* sin audio en algunos entornos */ }
-        // H.PrintLog se adapta automáticamente para usar [MAIN] porque TC.ID.Value aún es null aquí.
         try { H.PrintLog(2, DateTime.Now.ToString("HH:mm:ss"), "SYSTEM", "Main", msg); } catch { /* H aún no inicializado */ }
         Thread.Sleep(2000);
         Environment.ExitCode = 1;
@@ -69,7 +71,7 @@ namespace SmartBid
         watcher = new FileSystemWatcher
         {
           Path = path,
-          Filter = "*.*", // Puedes cambiarlo a "*.xml" si solo te interesan esos ficheros
+          Filter = "*.*",
           NotifyFilter = NotifyFilters.FileName
         };
 
@@ -78,17 +80,14 @@ namespace SmartBid
           H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "Main", "Main", $"*** Evento detectado: {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
           H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "Main", "Main", $"Call detected: {e.FullPath}");
 
-          // Comprobamos si el fichero ya ha sido añadido recientemente.
           if (_recentlyProcessed.ContainsKey(e.FullPath))
           {
-            // Si el fichero fue detectado hace menos de 2 segundos, lo ignoramos.
             if (DateTime.Now.Subtract(_recentlyProcessed[e.FullPath]).TotalSeconds < 2)
             {
               H.PrintLog(2, DateTime.Now.ToString("HH:mm:ss"), "Main", "Main", $"Evento duplicado para {e.FullPath}. Ignorando.");
               return;
             }
           }
-          // Añadimos o actualizamos el fichero en nuestro registro con la hora actual.
           _recentlyProcessed[e.FullPath] = DateTime.Now;
 
           if (Regex.IsMatch(Path.GetFileName(e.FullPath), @"^call_.*\.xml$", RegexOptions.IgnoreCase))
@@ -98,103 +97,158 @@ namespace SmartBid
           }
         };
 
-
         SB_Word.CloseWord(H.GetBProperty("closeWord"));
         SB_Excel.CloseExcel(H.GetBProperty("closeExcel"));
 
         watcher.EnableRaisingEvents = true;
         H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "Main", "Main", $"Observando el directorio: {path}");
 
-        // Listeners extra
-        string dir1 = H.GetSProperty("callsPathTemp"); // Directorio de entrada del Hermes
-        string dir2 = H.GetSProperty("callsPathDWG");  // Directorio de escucha de la devolución del DWG
+        string dir1 = H.GetSProperty("callsPathTemp");
+        string dir2 = H.GetSProperty("callsPathDWG");
 
-        _listener1Task = StartDirectoryListener(
-            path: dir1,
-            onNewFile: file =>
-            {
-              if (Regex.IsMatch(Path.GetFileName(file), @"^call_.*\.xml$", RegexOptions.IgnoreCase))
-                DoStuff1(file);
-              else
-                H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "SYSTEM", "Listener1", $"⚠️ Archivo ignorado (no call_*.xml): {file}");
-            },
-            token: _cts.Token,
-            name: "Listener1"
-        );
-
-        _listener2Task = StartDirectoryListener(
-            path: dir2,
-            onNewFile: file =>
-            {
-              string ext = Path.GetExtension(file);
-              if (ext.Equals(".dwg", StringComparison.OrdinalIgnoreCase) || ext.Equals(".dxf", StringComparison.OrdinalIgnoreCase))
-                DoStuff2(file);
-              else
-                H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "SYSTEM", "Listener2", $"⚠️ Archivo ignorado (no .dwg/.dxf): {file}");
-            },
-            token: _cts.Token,
-            name: "Listener2"
-        );
+        _listener1Task = StartDirectoryListener(path: dir1, onNewFile: file => { if (Regex.IsMatch(Path.GetFileName(file), @"^call_.*\.xml$", RegexOptions.IgnoreCase)) DoStuff1(file); else H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "SYSTEM", "Listener1", $"⚠️ Archivo ignorado (no call_*.xml): {file}"); }, token: _cts.Token, name: "Listener1");
+        _listener2Task = StartDirectoryListener(path: dir2, onNewFile: file => { string ext = Path.GetExtension(file); if (ext.Equals(".dwg", StringComparison.OrdinalIgnoreCase) || ext.Equals(".dxf", StringComparison.OrdinalIgnoreCase)) DoStuff2(file); else H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "SYSTEM", "Listener2", $"⚠️ Archivo ignorado (no .dwg/.dxf): {file}"); }, token: _cts.Token, name: "Listener2");
 
         H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "SYSTEM", "Main", $"Listening: {dir1}");
         H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "SYSTEM", "Main", $"Listening: {dir2}");
-        H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "Main", "Main", "Presiona 'Q' para salir...");
+        H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "Main", "Main", "Presiona 'Q' para salida progresiva o 'Ctrl+Q' para forzar salida...");
 
         _ = Task.Run(ProcessFiles);
 
         Thread.Sleep(400);
         if (!string.IsNullOrEmpty(H.GetSProperty("autorun")))
         {
-          H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "Main", "Main",
-              $"Ejecutando Autorun: {H.GetSProperty("autorun")}\n" +
-              "Para ejectutar normalmente eliminar el valor en la propiedad 'autorun' en properties.xml\n\n");
+          H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "Main", "Main", $"Ejecutando Autorun: {H.GetSProperty("autorun")}\n" + "Para ejectutar normalmente eliminar el valor en la propiedad 'autorun' en properties.xml\n\n");
           _ = Process.Start(H.GetSProperty("autorun"));
         }
 
-        while (true)
-        {
-          if (Console.KeyAvailable && Console.ReadKey(true).Key == ConsoleKey.Q)
-          {
-            H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "Main", "Main", "Salida solicitada... deteniendo el watcher.");
-            watcher.EnableRaisingEvents = false;
-            _stopRequested = true;
+        // ============================================
+        // Iniciar el listener de teclado dedicado en un hilo separado
+        var inputTask = Task.Run(ListenForExitKeys);
 
-            _cts.Cancel();
-            try
-            {
-              _ = Task.WhenAll(
-                  _listener1Task ?? Task.CompletedTask,
-                  _listener2Task ?? Task.CompletedTask
-              ).Wait(2000);
-            }
-            catch { /* Cancelled */ }
-            break;
-          }
+        while (!_stopRequested)
+        {
           Thread.Sleep(1000);
         }
 
+        H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "Main", "Main", "Fase de finalización iniciada. Esperando a que las tareas en curso finalicen...");
+
+        try
+        {
+          // Esperar a que los listeners se detengan
+          Task.WhenAll(_listener1Task ?? Task.CompletedTask, _listener2Task ?? Task.CompletedTask).Wait(3000);
+        }
+        catch (Exception ex) when (ex is OperationCanceledException || ex is AggregateException)
+        {
+          H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "Main", "Main", "Listeners adicionales detenidos.");
+        }
+
+        // Esperar a que los procesadores de archivos terminen
+        while (_activeFileProcessors > 0)
+        {
+          H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "Main", "Main", $"Esperando a que finalicen {_activeFileProcessors} procesos de archivo...");
+          Thread.Sleep(2000);
+        }
+
+        _eventSignal.Set(); // Señal final para asegurar que ProcessFiles sale
+
+        DBtools.ResetAllCallRegistries();
         H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "Main", "Main", "Todos los archivos han sido procesados. Programa terminado.");
       }
       finally
       {
         try { _singleInstanceMutex?.ReleaseMutex(); } catch { }
         _singleInstanceMutex?.Dispose();
+        H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "Main", "Main", "*** Aplicación terminada ***");
       }
     }
 
+    // ==========================================
+    // ========= LISTENER DE TECLADO ============
+    // ==========================================
+    /// <summary>
+    /// Se ejecuta en una tarea en segundo plano para escuchar las pulsaciones de teclas
+    /// sin interferir con el hilo principal.
+    /// </summary>
+    private static void ListenForExitKeys()
+    {
+      while (!_stopRequested)
+      {
+        try
+        {
+          // Console.ReadKey(true) es una llamada bloqueante. Espera aquí hasta que se pulsa una tecla.
+          var keyInfo = Console.ReadKey(intercept: true);
+
+          // Comprobar Ctrl+Q para salida forzada
+          if (keyInfo.Key == ConsoleKey.Q && (keyInfo.Modifiers & ConsoleModifiers.Control) != 0)
+          {
+            H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "Main", "Input", "=============================================================");
+            H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "Main", "Input", "Salida forzada solicitada (Ctrl+Q). Terminando inmediatamente.");
+            H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "Main", "Input", "=============================================================");
+            Thread.Sleep(500); // Dar tiempo a que el log aparezca
+            Environment.Exit(1);
+          }
+          // Comprobar Q para salida progresiva
+          else if (keyInfo.Key == ConsoleKey.Q)
+          {
+            H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "Main", "Input", "============================================================================================");
+            H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "Main", "Input", "Salida progresiva solicitada ('Q'). Finalizando cuando acaben todos los procesos en curso...");
+            H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "Main", "Input", "============================================================================================");
+
+            // Iniciar la secuencia de apagado progresivo
+            watcher.EnableRaisingEvents = false;
+            _cts.Cancel();
+            _stopRequested = true;
+            _eventSignal.Set(); // Despertar a ProcessFiles si está esperando
+
+            // El bucle terminará porque _stopRequested es ahora true
+          }
+        }
+        catch (InvalidOperationException)
+        {
+          // Esto ocurre si la aplicación se ejecuta sin una consola (p. ej., como un servicio).
+          // El listener de teclado no puede funcionar, así que simplemente salimos de este hilo.
+          H.PrintLog(4, DateTime.Now.ToString("HH:mm:ss"), "Main", "Input", "No se puede leer desde la consola. El listener de teclado se detiene.");
+          break;
+        }
+      }
+    }
+
+
     static void ProcessFiles()
     {
-      while (!_stopRequested || !_fileQueue.IsEmpty)
+      while (!_stopRequested)
       {
-        _ = _eventSignal.WaitOne();
+        _eventSignal.WaitOne();
+
         while (_fileQueue.TryDequeue(out string? filePath))
         {
+          if (_stopRequested)
+          {
+            H.PrintLog(4, DateTime.Now.ToString("HH:mm:ss"), "Main", "ProcessFiles", $"Parada solicitada. Se omite el procesamiento de: {filePath}");
+            continue;
+          }
+
           _ = Task.Run(() =>
           {
-            ProcessFile(filePath);
+            try
+            {
+              Interlocked.Increment(ref _activeFileProcessors);
+              ProcessFile(filePath);
+            }
+            finally
+            {
+              Interlocked.Decrement(ref _activeFileProcessors);
+            }
           });
         }
-        Thread.Sleep(250);
+      }
+
+      H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "Main", "ProcessFiles", "Bucle de procesamiento detenido.");
+      if (!_fileQueue.IsEmpty)
+      {
+        H.PrintLog(2, DateTime.Now.ToString("HH:mm:ss"), "Main", "ProcessFiles", $"AVISO: {_fileQueue.Count} archivos en cola no serán procesados debido a la parada del servicio.");
+        _fileQueue.Clear();
       }
     }
 
@@ -208,11 +262,9 @@ namespace SmartBid
 
       string userName = xmlCall.SelectSingleNode(@"request/requestInfo/createdBy")?.InnerText ?? "UnknownUser";
 
-      // Obtener el callID *antes* de inicializar TC.ID.Value
       int callID = DBtools.InsertCallStart(xmlCall);
       DataMaster dm = null!;
 
-      // Inicializar TC.ID.Value con el callID
       TC.ID.Value = new TC.ThreadInfo(userName, callID);
       TC.RegisterCurrent();
       var me = TC.ID.Value!;
@@ -235,7 +287,6 @@ namespace SmartBid
 
         List<ToolData> targets = Calculator.GetDeliveryDocs(xmlCall);
         dm = CreateDataMaster(xmlCall, targets);
-        // AÑADE InstanceId al log de creación de DataMaster
         H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"Creada DataMaster con ID de instancia: {dm.InstanceId} para '{dm.GetValueString("opportunityFolder")}'");
 
         Calculator calculator = new(dm, targets);
@@ -245,7 +296,6 @@ namespace SmartBid
 
         StoreCallFile(H.GetBProperty("storeXmlCall"), filePath, Path.GetDirectoryName(dm.FileName)!);
 
-        //Calculator calculator = new(dm, targets); // Esta línea duplica la creación, pero no es el origen del problema de contaminación.
         calculator.RunCalculations();
 
         if (xmlCall.SelectSingleNode("/request/requestInfo")!.Attributes!["type"]?.Value == "create"
@@ -286,7 +336,7 @@ namespace SmartBid
       catch (Exception ex)
       {
         string a = $"--❌❌ Error al procesar {dm.GetValueString("opportunityFolder")}❌❌";
-        string b = "--" + string.Concat(Enumerable.Repeat("❌", a.Length/2 - 4)) + "--\n";
+        string b = "--" + string.Concat(Enumerable.Repeat("❌", a.Length / 2 - 4)) + "--\n";
         H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", b);
         H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", a);
         H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", b);
@@ -314,15 +364,17 @@ namespace SmartBid
                      isHtml: true);
 
 
-        DBtools.UpdateCallRegistry(callID, "FAILED", ex.Message); // MODIFICADO: Asegurarse de actualizar el estado en caso de error
+        DBtools.UpdateCallRegistry(callID, "FAILED", ex.Message);
       }
       finally
       {
-        TC.ID.Value?.DisarmTimeout();    // ⭐ Ensure watchdog is off
-        TC.UnregisterCurrent();          // ⭐ Remove from registry so no stray cancels target this
-        TC.ID.Value?.Dispose();          // ⭐ Cleanup CTS/timer
+        TC.ID.Value?.DisarmTimeout();
+        TC.UnregisterCurrent();
+        TC.ID.Value?.Dispose();
       }
     }
+
+    // ... (el resto de la clase no necesita cambios)
 
     private static DataMaster CreateDataMaster(XmlDocument xmlCall, List<ToolData> targets)
     {
@@ -344,8 +396,8 @@ namespace SmartBid
         {
           string fileName = $"{DateTime.Now:yyMMdd-HHmmss}_{Path.GetFileName(callFile)}";
           string targetDir = Path.Combine(H.GetSProperty("processPath"), "", "calls");
-          string finalTargetDir = Path.Combine(targetDir, oppFolder); // Added this to create the subfolder
-          _ = Directory.CreateDirectory(finalTargetDir); // Ensure the directory exists
+          string finalTargetDir = Path.Combine(targetDir, oppFolder);
+          _ = Directory.CreateDirectory(finalTargetDir);
           File.Move(callFile, Path.Combine(finalTargetDir, fileName));
           H.PrintLog(4, TC.ID.Value!.Time(), TC.ID.Value!.User, "StoreCallFile", $"Call File '{Path.GetFileName(callFile)}' moved to '{finalTargetDir}'.");
         }
@@ -381,7 +433,7 @@ namespace SmartBid
 
       if (H.GetBProperty("returnTools"))
       {
-        if (Directory.Exists(processedToolsPath)) // Check if directory exists
+        if (Directory.Exists(processedToolsPath))
         {
           foreach (string file in Directory.GetFiles(processedToolsPath))
           {
@@ -393,7 +445,7 @@ namespace SmartBid
 
       if (!H.GetBProperty("storeTools"))
       {
-        if (Directory.Exists(processedToolsPath)) // Check if directory exists
+        if (Directory.Exists(processedToolsPath))
         {
           foreach (string file in Directory.GetFiles(processedToolsPath))
             File.Delete(file);
@@ -402,7 +454,7 @@ namespace SmartBid
 
       if (H.GetBProperty("returnDeliveries"))
       {
-        if (Directory.Exists(processedOutputsPath)) // Check if directory exists
+        if (Directory.Exists(processedOutputsPath))
         {
           foreach (string file in Directory.GetFiles(processedOutputsPath))
           {
@@ -414,7 +466,7 @@ namespace SmartBid
 
       if (!H.GetBProperty("storeDeliveries"))
       {
-        if (Directory.Exists(processedOutputsPath)) // Check if directory exists
+        if (Directory.Exists(processedOutputsPath))
         {
           foreach (string file in Directory.GetFiles(processedOutputsPath))
             File.Delete(file);
@@ -427,7 +479,7 @@ namespace SmartBid
         try
         {
           inputDocsXML = dm.DM.SelectSingleNode($"/dm/utils/{dm.SBidRevision}/inputDocs");
-          if (inputDocsXML != null) // Only proceed if node found
+          if (inputDocsXML != null)
           {
             XmlDocument aaa = new();
             aaa.LoadXml("<root></root>");
@@ -443,7 +495,7 @@ namespace SmartBid
         catch (Exception ex)
         {
           H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "ReturnRemoveFiles", $"Error creating inputDocs shortcut: {ex.Message}");
-          inputDocsXML = null; // Ensure it's null on error
+          inputDocsXML = null;
         }
 
         _ = Directory.CreateDirectory(processedDocsPath);
@@ -468,7 +520,7 @@ namespace SmartBid
 
       if (H.GetBProperty("returnDocsShortcuts"))
       {
-        if (Directory.Exists(processedDocsPath)) // Check if directory exists
+        if (Directory.Exists(processedDocsPath))
         {
           foreach (string file in Directory.GetFiles(processedDocsPath))
           {
@@ -480,7 +532,7 @@ namespace SmartBid
 
       if (H.GetBProperty("returnDataMaster"))
       {
-        _ = Directory.CreateDirectory(returnPath); // Ensure target directory exists
+        _ = Directory.CreateDirectory(returnPath);
         File.Copy(dm.FileName, Path.Combine(returnPath, Path.GetFileName(dm.FileName)), overwrite: true);
       }
     }
@@ -836,34 +888,25 @@ namespace SmartBid
     }
   }
 
-  /// Thread Context utilities. Exposes per-call context (user, callId, chrono),
-  /// cancellation & watchdog (timeout) support, and tracking of external processes
-  /// to kill on cancel/timeout.
   static class TC
   {
-    /// Per-call/thread info. Lives in AsyncLocal (flows across async).
     public class ThreadInfo : IDisposable
     {
       private readonly object _lock = new();
 
-      // --- chrono / identity (your original members) ---
       public Stopwatch chrono;
       public int ThreadId { get; }
       public string User { get; }
       public int? CallId { get; }
 
-      // --- cancellation ---
       public CancellationTokenSource Cts { get; } = new();
       public CancellationToken Token => Cts.Token;
 
-      // --- watchdog state ---
       private Timer? _watchdog;
       private TimeSpan _timeout = Timeout.InfiniteTimeSpan;
 
-      // --- external processes started by this call ---
       private readonly ConcurrentBag<Process> _children = new();
 
-      // --- utility disposable (reused for scoped restore) ---
       private sealed class Disposer : IDisposable
       {
         private readonly Action _dispose;
@@ -892,14 +935,6 @@ namespace SmartBid
         return $"{(int)elapsed.TotalMinutes:D2}:{elapsed.Seconds:D2}.{elapsed.Milliseconds:D3}";
       }
 
-      // ------------------------------
-      // Watchdog API (non-scoped)
-      // ------------------------------
-
-      /// <summary>
-      /// Arm (or re-arm) a watchdog that will request cancel (and optionally kill children)
-      /// after the given minutes. Subsequent calls replace the previous timer.
-      /// </summary>
       public void ArmTimeoutMinutes(int minutes, string? reason = null, bool killChildren = true)
       {
         if (minutes <= 0)
@@ -914,15 +949,10 @@ namespace SmartBid
             RequestCancel(reason ?? $"Watchdog timeout {minutes} min", killChildren);
           }, null, _timeout, Timeout.InfiniteTimeSpan);
 
-          // Your logger
           H.PrintLog(4, Time(), User, "Watchdog", $"Armed for {minutes} minute(s).");
         }
       }
 
-      /// <summary>
-      /// Reset (pet) the current watchdog to its configured timeout.
-      /// Does nothing if watchdog is not armed.
-      /// </summary>
       public void PetTimeout()
       {
         lock (_lock)
@@ -933,9 +963,6 @@ namespace SmartBid
         }
       }
 
-      /// <summary>
-      /// Completely disarm any active watchdog.
-      /// </summary>
       public void DisarmTimeout()
       {
         lock (_lock)
@@ -947,21 +974,12 @@ namespace SmartBid
         }
       }
 
-      // ------------------------------
-      // Scoped watchdog (no-op on 0)
-      // ------------------------------
-
-      /// <summary>
-      /// Arms a watchdog for the given minutes within a scope. When the returned IDisposable is disposed,
-      /// the previous watchdog state is restored. If minutes == 0, returns null and does nothing.
-      /// </summary>
       public IDisposable? ArmScopedTimeoutMinutes(int minutes, string? reason = null, bool killChildren = true)
       {
-        // Interpret 0 as "do not apply"
         if (minutes == 0)
         {
           H.PrintLog(3, Time(), User, "Watchdog", "ArmScopedTimeoutMinutes minutes==0 → no-op.");
-          return null; // caller should use "using var" to be null-safe
+          return null;
         }
 
         if (minutes < 0)
@@ -969,11 +987,9 @@ namespace SmartBid
 
         lock (_lock)
         {
-          // capture current state
           var prevTimeout = _timeout;
           var prevWatchdog = _watchdog;
 
-          // arm scoped watchdog
           var scoped = TimeSpan.FromMinutes(minutes);
           var localTimer = new Timer(_ =>
           {
@@ -985,19 +1001,18 @@ namespace SmartBid
 
           H.PrintLog(3, Time(), User, "Watchdog", $"Scoped armed for {minutes} minute(s).");
 
-          // disposer that restores previous watchdog setup
           return new Disposer(() =>
           {
             lock (_lock)
             {
-              try { _watchdog?.Dispose(); } catch { /* ignore */ }
+              try { _watchdog?.Dispose(); } catch { }
 
               _timeout = prevTimeout;
               _watchdog = prevWatchdog;
 
               if (_watchdog != null && _timeout != Timeout.InfiniteTimeSpan)
               {
-                try { _watchdog.Change(_timeout, Timeout.InfiniteTimeSpan); } catch { /* ignore */ }
+                try { _watchdog.Change(_timeout, Timeout.InfiniteTimeSpan); } catch { }
                 H.PrintLog(3, Time(), User, "Watchdog", "Scoped disposed → previous watchdog restored.");
               }
               else
@@ -1009,34 +1024,23 @@ namespace SmartBid
         }
       }
 
-      // ------------------------------
-      // Cancellation / External Procs
-      // ------------------------------
-
-      /// <summary>
-      /// Trip cancellation for this call. Optionally kill registered child processes (entire tree).
-      /// </summary>
       public void RequestCancel(string? reason = null, bool killChildren = true)
       {
         if (!Cts.IsCancellationRequested)
         {
           H.PrintLog(2, Time(), User, "Cancel", $"Cancellation requested. Reason: {reason ?? "(none)"}");
-          try { Cts.Cancel(); } catch { /* ignore */ }
+          try { Cts.Cancel(); } catch { }
 
           if (killChildren)
             KillChildren();
         }
       }
 
-      /// <summary>
-      /// Register an external Process so it can be killed when this call is cancelled/times out.
-      /// </summary>
       public void RegisterProcess(Process p)
       {
         if (p is null) return;
         _children.Add(p);
 
-        // If already cancelled, kill immediately
         if (Cts.IsCancellationRequested) SafeKill(p);
 
         try
@@ -1048,10 +1052,10 @@ namespace SmartBid
             {
               H.PrintLog(2, Time(), User, "RegisterProcess", $"Exited: {p.StartInfo?.FileName} {p.StartInfo?.Arguments}");
             }
-            catch { /* ignore logging exceptions */ }
+            catch { }
           };
         }
-        catch { /* some Process impls may throw if not fully started */ }
+        catch { }
       }
 
       private void KillChildren()
@@ -1066,12 +1070,12 @@ namespace SmartBid
         {
           if (!p.HasExited)
           {
-            try { p.Kill(entireProcessTree: true); } // .NET Core/5+/6+
-            catch { p.Kill(); }                      // Fallback for .NET Framework
+            try { p.Kill(entireProcessTree: true); }
+            catch { p.Kill(); }
             try { p.WaitForExit(5000); } catch { }
           }
         }
-        catch { /* ignore */ }
+        catch { }
       }
 
       public void Dispose()
@@ -1086,16 +1090,10 @@ namespace SmartBid
       }
     }
 
-    // ✅ Per-async-flow context (this is what you already had)
     public static AsyncLocal<ThreadInfo> ID = new();
 
-    // --- Registry to control running calls by CallId ---
     private static readonly ConcurrentDictionary<int, ThreadInfo> _byCallId = new();
 
-    /// <summary>
-    /// Register the current AsyncLocal ThreadInfo into the CallId registry.
-    /// Call once after creating TC.ID.Value with a valid CallId.
-    /// </summary>
     public static void RegisterCurrent()
     {
       var info = ID.Value;
@@ -1103,10 +1101,6 @@ namespace SmartBid
         _byCallId[callId] = info;
     }
 
-    /// <summary>
-    /// Remove current ThreadInfo from the CallId registry.
-    /// Call in finally when the call finishes.
-    /// </summary>
     public static void UnregisterCurrent()
     {
       var info = ID.Value;
@@ -1114,9 +1108,6 @@ namespace SmartBid
         _byCallId.TryRemove(callId, out _);
     }
 
-    /// <summary>
-    /// External cancel by CallId. Returns false if not found.
-    /// </summary>
     public static bool CancelCall(int callId, string? reason = null, bool killChildren = true)
     {
       if (_byCallId.TryGetValue(callId, out var info))
@@ -1127,9 +1118,6 @@ namespace SmartBid
       return false;
     }
 
-    /// <summary>
-    /// Arm/Reset a call-level watchdog for a given CallId. Returns false if not found.
-    /// </summary>
     public static bool ArmTimeoutFor(int callId, int minutes, string? reason = null, bool killChildren = true)
     {
       if (_byCallId.TryGetValue(callId, out var info))
@@ -1140,9 +1128,6 @@ namespace SmartBid
       return false;
     }
 
-    /// <summary>
-    /// Pet the call-level watchdog by CallId. Returns false if not found or watchdog not armed.
-    /// </summary>
     public static bool PetTimeoutFor(int callId)
     {
       if (_byCallId.TryGetValue(callId, out var info))
@@ -1153,9 +1138,6 @@ namespace SmartBid
       return false;
     }
 
-    /// <summary>
-    /// Disarm any call-level watchdog by CallId. Returns false if not found.
-    /// </summary>
     public static bool DisarmTimeoutFor(int callId)
     {
       if (_byCallId.TryGetValue(callId, out var info))
@@ -1167,4 +1149,3 @@ namespace SmartBid
     }
   }
 }
-

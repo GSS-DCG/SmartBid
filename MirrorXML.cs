@@ -206,7 +206,7 @@ namespace SmartBid
             string fieldCode = field.Code.Text.Trim();
 
             if (!string.IsNullOrWhiteSpace(fieldCode) &&
-                fieldCode.StartsWith(tool.InPrefix, StringComparison.OrdinalIgnoreCase))
+                fieldCode.StartsWith(tool.InPrefix.ToLower(), StringComparison.OrdinalIgnoreCase))
             {
               string cleaned = fieldCode
                   .Replace(tool.InPrefix, "")
@@ -322,12 +322,15 @@ namespace SmartBid
         varNames = GetAllRangeNames(workbookPart);
       }
 
-
       //normalizo la lista (añado Call1_ donde no existe para trabajar con la lista de variables normalizada
 
       string inToolPrefix = H.GetSProperty("IN_VarPrefix").ToLower();
       string outToolPrefix = H.GetSProperty("OUT_VarPrefix").ToLower();
       string inTemplatePrefix = H.GetSProperty("VarPrefix").ToLower();
+
+      //añadimos la variable indexer para herramientas iterativas
+      if (tool.IsIterative)
+        varNames.Insert(0, $"{inToolPrefix}{tool.Code}.indexer");
 
       varNames = varNames.Select(name =>
       {
@@ -353,12 +356,12 @@ namespace SmartBid
 
         string[] value = ["", "", "1", ""];
 
-        if (varName.ToLower().StartsWith(tool.InPrefix))
+        if (varName.ToLower().StartsWith(tool.InPrefix.ToLower()))
         {
           value[1] = "in";
           varName = varName[tool.InPrefix.Length..];
         }
-        else if (varName.ToLower().StartsWith(tool.OutPrefix))
+        else if (varName.ToLower().StartsWith(tool.OutPrefix.ToLower()))
         {
           value[1] = "out";
           varName = varName[tool.OutPrefix.Length..];

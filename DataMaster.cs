@@ -317,11 +317,10 @@ namespace SmartBid
         {
           revisionIndex = _dm.CreateElement("revision");
           variableDMNode.AppendChild(revisionIndex);
-
         }
+
         // for now: adding the value to the set element. for now creating a new set, later: seeking for the right set, if not exists create
         revisionIndex.AppendChild(CreateDmElement(SBidRevision, $"set{BidRevision.ToString("D2")}"));
-
 
         // for now: creating the set node without looking for an existing set with the same value. Later: seek for the right set, if not exists create
         XmlElement setNode = _dm.CreateElement($"set{BidRevision.ToString("D2")}");
@@ -384,7 +383,7 @@ namespace SmartBid
         List<string> itemList = new();
 
         if (string.IsNullOrWhiteSpace(xmlString))
-          return null;
+          return new List<string>();
 
         XmlDocument tempDoc = new();
         try

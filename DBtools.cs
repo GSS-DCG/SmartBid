@@ -81,6 +81,53 @@ namespace SmartBid
         H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - DBtools-UpdateCallRegistry", $"❌❌ Error ❌❌  updating callsTracker registry: " + ex.Message);
       }
     }
+
+    // whenever the app finish leaving calls "in progress" set all to FAILED so the list is reset and no "in progress" process is left
+    public static void ResetAllCallRegistries()
+    {
+      using var conn = DBConnectionFactory.CreateConnection();
+      using var cmd = conn.CreateCommand();
+      try
+      {
+        cmd.CommandText = @"
+                UPDATE callsTracker SET
+                    CD_Status = 'FAILED',
+                    CD_result = 'Reset to FAILED automatically'
+                WHERE CD_Status = 'In progress';";
+        _ = cmd.ExecuteNonQuery();
+      }
+      catch (Exception ex)
+      {
+        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - DBtools-UpdateCallRegistry", $"❌❌ Error ❌❌  updating callsTracker registry: " + ex.Message);
+      }
+      try
+      {
+        cmd.CommandText = @"
+          UPDATE `smartbid`.`routeprogress`
+          SET
+          `RP_status` = 'FAILED'
+          WHERE `RP_status` = 'Running';
+          ";
+        _ = cmd.ExecuteNonQuery();
+      }
+      catch (Exception ex)
+      {
+        string time;
+        string user;
+        try
+        { 
+          time = TC.ID.Value.Time();
+          user = TC.ID.Value.User;
+        }
+        catch
+        {
+          time = DateTime.Now.ToString("HH:mm:ss");
+          user = "Main";
+        }
+
+          H.PrintLog(5, time, user, $"❌❌ Error ❌❌  - DBtools-UpdateCallRegistry", $"❌❌ Error ❌❌  updating callsTracker registry: " + ex.Message);
+      }
+    }
     public static void CreateRouteProgress(int callID, List<string> route)
     {
       using var conn = DBConnectionFactory.CreateConnection();

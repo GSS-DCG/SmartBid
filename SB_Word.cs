@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
 using System.Xml;
 using Microsoft.Office.Interop.Word;
 
@@ -73,9 +72,9 @@ namespace SmartBid
       foreach (Field field in doc.Fields) //each mark in the word document
       {
         string fieldText = field.Code.Text.Trim();
-        if ((field.Type == WdFieldType.wdFieldRef || field.Type == WdFieldType.wdFieldEmpty)  && fieldText.StartsWith(prefix)) // when the mark is an insert mark if (a)
+        if ((field.Type == WdFieldType.wdFieldRef || field.Type == WdFieldType.wdFieldEmpty) && fieldText.StartsWith(prefix)) // when the mark is an insert mark if (a)
         {
-         
+
           //string variableID = fieldText[prefix.Length..];
           string variableID = fieldText.StartsWith(prefix) ? fieldText.Substring(prefix.Length).Split('\\')[0] : fieldText;
 
@@ -85,9 +84,10 @@ namespace SmartBid
           {
             if (varList[variableID].Type == "table") // If the variable is a table
             {
-             
+
               XmlDocument xmlDoc = new();
-              try { 
+              try
+              {
                 xmlDoc.LoadXml(varList[variableID].Value);
               }
               catch (XmlException ex)
@@ -124,21 +124,37 @@ namespace SmartBid
               // 📌 Apply "MyStyle" formatting
               table.set_Style(H.GetSProperty("tableStyle"));
 
-              
+
               field.Unlink(); // Convierte la referencia en texto estático
 
               H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "GenerateOuputWord", $"Tabla insertada y referencia '{variableID}' eliminada correctamente.");
             }
-            else if(varList[variableID].Type == "list<str>" || varList[variableID].Type == "list<num>")
+            else if (varList[variableID].Type == "list<str>" || varList[variableID].Type == "list<num>")
             {
               //if list<num> isNumber set to true, if list<str> isNumber set to false
               bool isNumber = varList[variableID].Type == "list<num>";
 
               List<string> listData = dm.GetValueList(variableID, isNumber);
 
+              if (fieldText.Contains('\\'))
+              {
+                int index = int.Parse(fieldText.Split('\\')[1]);
+                if (index < listData.Count)
+                {
+                  fieldRange.Text = listData[index];
+                  field.Unlink(); // Convierte la referencia en texto estático
+                }
+                else
+                {
+                  fieldRange.Text = "";
+                  field.Unlink(); // Convierte la referencia en texto estático
 
-              fieldRange.Text = listData[int.Parse(fieldText.Split('\\')[1])];
-              field.Unlink(); // Convierte la referencia en texto estático
+                  H.PrintLog(4, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Word.ReplaceFieldMarks", @$"⚠️ Warning ⚠️ : Index: {index} of {fieldText} was out of range. Size of Data list is: {listData.Count}.");
+                  continue;
+                }
+              }
+              else
+                throw new Exception($"Variable {variableID} is of type {varList[variableID].Type}. It needs the \\x point to the value.");
             }
             else
             {

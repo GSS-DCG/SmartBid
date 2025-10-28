@@ -47,9 +47,17 @@ namespace SmartBid
       //Generate files structure and move input files
       //Call each toolD in the list of targets and update the DataMaster with the results
 
+      int i = 0;
+      List<string> route = calcRoute.Select(tool => tool.Code).ToList();
+      ToolData tool;
+
+
+
       //CALCULATE
-      foreach (ToolData tool in calcRoute)
+      while (i < route.Count) 
       {
+        tool = calcRoute[i++];
+
         // por el momento nos saltamos PREP porque la ejecutamos manualmente antes de entrar en calculations
         if (tool.Code == "PREP")
           break;
@@ -61,13 +69,14 @@ namespace SmartBid
           {
             H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Calling Tool: {tool.Code} - threadSafe: {tool.IsThreadSafe}");
 
-            DBtools.UpdateRouteProgress(TC.ID.Value!.CallId!.Value, tool.Code, "Running");
+            DBtools.UpdateRouteProgress(TC.ID.Value!.CallId!.Value, tool.Code, "RUNNING");
 
             int callID = (int)TC.ID.Value.CallId!;
             //Call calculation
 
             if (!tool.IsThreadSafe)
             {
+              DBtools.UpdateRouteProgress(TC.ID.Value!.CallId!.Value, tool.Code, "WAITING");
 
               Stopwatch sw = Stopwatch.StartNew();
               int order, newOrder = 0;

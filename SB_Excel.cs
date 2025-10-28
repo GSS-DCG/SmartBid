@@ -29,24 +29,27 @@ namespace SmartBid
       H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Excel.FillUpValue", $"Procesando celda '{rangeName}'...");
 
       Excel.Range? range = null;
-      try
-      {
-        if (!Regex.IsMatch(rangeName, @"(?i)Call1_"))
-          range = workbook!.Names.Item(rangeName).RefersToRange;
-        else
-          range = workbook!.Names.Item(Regex.Replace(rangeName, @"(?i)Call1_", "")).RefersToRange;
-      }
-      catch (Exception)
-      {
-        //if rangeName is type list (it ends with '/n' where n is a number then do not throw and print out a message the the value is not filled up in the spreadsheet
-        if (rangeName.Contains(@"\"))
+
+      string rangeNameCleaned = Regex.Replace(rangeName, @"(?i)Call1_", "");
+
+        try
         {
-          H.PrintLog(3, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Excel.FillUpValue", $"List Cell: '{rangeName}' does not exist, List is longer than expected. Value has not been set.");
-           return false;
+          if (!Regex.IsMatch(rangeName, @"(?i)Call1_"))
+            range = workbook!.Names.Item(rangeName).RefersToRange;
+          else
+            range = workbook!.Names.Item(rangeNameCleaned).RefersToRange;
         }
-        else 
-          throw;
-      }
+        catch (Exception)
+        {
+          //if rangeName is type list (it ends with '/n' where n is a number then do not throw and print out a message the the value is not filled up in the spreadsheet
+          if (rangeName.Contains(@"\"))
+          {
+            H.PrintLog(3, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Excel.FillUpValue", $"List Cell: '{rangeName}' does not exist, List is longer than expected. Value has not been set.");
+            return false;
+          }
+          else
+            throw;
+        }
 
       bool validationCheck = H.GetBProperty("ExcelValidationCheck");
       if (!validationCheck)

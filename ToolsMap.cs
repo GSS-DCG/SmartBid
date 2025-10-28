@@ -3,9 +3,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
-using DocumentFormat.OpenXml.Drawing.Diagrams;
 using ExcelDataReader;
-using Org.BouncyCastle.Asn1.Cmp;
 using Exception = System.Exception;
 using File = System.IO.File;
 
@@ -24,18 +22,19 @@ namespace SmartBid
     public int Call { get; }
     public string Name { get; }
     public string FileType { get; }
-    public bool IsThreadSafe { get; set; } = true;
-    public int TimeoutMinutes { get; set; } = 0;
+    public bool IsThreadSafe { get; } = true;
+    public int TimeoutMinutes { get; } = 0;
+    public bool IsIterative { get; } = false;
     public string Interpreter { get; }
     public string Version { get; }
     public string Language { get; }
     public string Description { get; }
     public string FileName { get; }
-    public string InPrefix {get; }
+    public string InPrefix { get; }
     public string OutPrefix { get; }
-    
 
-    public ToolData(string resource, string code, int call, string name, string filetype, bool isThreadSafe, int timeoutMinutes, string interpreter, string version, string language, string description)
+
+    public ToolData(string resource, string code, int call, string name, string filetype, bool isThreadSafe, int timeoutMinutes, bool isIterative, string interpreter, string version, string language, string description)
     {
       Resource = resource;
       Code = code;
@@ -44,6 +43,7 @@ namespace SmartBid
       FileType = filetype.ToLowerInvariant(); // aquí se normaliza
       IsThreadSafe = isThreadSafe;
       TimeoutMinutes = timeoutMinutes;
+      IsIterative = isIterative;
       Interpreter = interpreter;
       Version = version;
       Language = language;
@@ -51,23 +51,23 @@ namespace SmartBid
       FileName = $"{name}.{FileType}"; // usa el valor ya normalizado
 
       string prefix = string.Empty;
-      if ((Resource == "TOOL"))
+      if (Resource == "TOOL")
         prefix = H.GetSProperty("IN_VarPrefix") + $"call{Call}_";
-      else if ((Resource == "TEMPLATE"))
+      else if (Resource == "TEMPLATE")
         prefix = H.GetSProperty("VarPrefix");
       else
       {
         H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ToolData", $"Resource not defined for tool {Name}");
       }
 
-      InPrefix = prefix.ToLower();
+      InPrefix = prefix;
 
       prefix = string.Empty;
-      if ((Resource == "TOOL"))
+      if (Resource == "TOOL")
         prefix = H.GetSProperty("OUT_VarPrefix") + $"call{Call}_";
-      else if ((Resource == "TEMPLATE"))
+      else if (Resource == "TEMPLATE")
         prefix = "";
-      OutPrefix = prefix.ToLower();
+      OutPrefix = prefix;
 
     }
 
@@ -88,6 +88,7 @@ namespace SmartBid
       toolElement.SetAttribute("interpreter", Interpreter);
       toolElement.SetAttribute("fileType", FileType);
       toolElement.SetAttribute("isThreadSafe", IsThreadSafe.ToString());
+      toolElement.SetAttribute("isIterative", IsIterative.ToString());
       toolElement.SetAttribute("timeoutMinutes", TimeoutMinutes.ToString());
       toolElement.SetAttribute("version", Version);
       toolElement.SetAttribute("language", Language);
@@ -228,11 +229,12 @@ namespace SmartBid
         ToolData data = new(
             node.Attributes["resource"]!.InnerText ?? string.Empty,
             node.Attributes["code"]!.InnerText ?? string.Empty,
-            int.TryParse(node.Attributes["call"]!.InnerText, out int callValue) ? callValue : 1, // Call
+            int.TryParse(node.Attributes["call"]!.InnerText, out int callValue) ? callValue : 1,
             node.Attributes["name"]!.InnerText ?? string.Empty,
             node.Attributes["fileType"]!.InnerText ?? string.Empty,
             bool.TryParse(node.Attributes["isThreadSafe"]?.InnerText, out var val) ? val : true,
             int.TryParse(node.Attributes["timeoutMinutes"]?.InnerText, out int timeoutValue) ? timeoutValue : 0, // Timeout Minutes
+            bool.TryParse(node.Attributes["isIterative"]?.InnerText, out var iterVal) ? iterVal : false,
             node.Attributes["interpreter"]!.InnerText ?? string.Empty,
             node.Attributes["version"]!.InnerText ?? string.Empty,
             node.Attributes["language"]!.InnerText ?? string.Empty,
@@ -309,21 +311,32 @@ namespace SmartBid
         if (row.IsNull("RESOURCE"))
           break;
 
-        ToolData data = new(
-            row["RESOURCE"]?.ToString() ?? string.Empty,
-            row["CODE"]?.ToString() ?? string.Empty,
-            int.TryParse(row["CALL"]?.ToString(), out int callValue) ? callValue : 1,
-            row["name"]?.ToString() ?? string.Empty,
-            row["FILE TYPE"]?.ToString() ?? string.Empty,
-            bool.TryParse(row["THREAD_SAFE"]?.ToString(), out bool isThreadSafe) ? isThreadSafe : true,
-            int.TryParse(row["TIMEOUT"]?.ToString(), out int timeoutValue) ? timeoutValue : 0,
-            row["INTERPRETER"]?.ToString() ?? string.Empty,
-            int.TryParse(row["VERSION"]?.ToString(), out int value) ? value.ToString("D3") : "000",
-            row["LANGUAGE"]?.ToString() ?? string.Empty,
-            row["DESCRIPTION"]?.ToString() ?? string.Empty
-        );
+        try
+        {
+          ToolData data = new(
+          row["RESOURCE"]?.ToString() ?? string.Empty,
+          row["CODE"]?.ToString() ?? string.Empty,
+          int.TryParse(row["CALL"]?.ToString(), out int call) ? call : 1,
+          row["NAME"]?.ToString() ?? string.Empty,
+          row["FILE TYPE"]?.ToString() ?? string.Empty,
+          bool.TryParse(row["THREAD_SAFE"]?.ToString(), out bool isThreadSafe) ? isThreadSafe : true,
+          int.TryParse(row["TIMEOUT"]?.ToString(), out int timeoutValue) ? timeoutValue : 0,
+          bool.TryParse(row["ITERATIVE"]?.ToString(), out bool isIterative) ? isIterative : false,
+          row["INTERPRETER"]?.ToString() ?? string.Empty,
+          int.TryParse(row["VERSION"]?.ToString(), out int value) ? value.ToString("D3") : "000",
+          row["LANGUAGE"]?.ToString() ?? string.Empty,
+          row["DESCRIPTION"]?.ToString() ?? string.Empty
+      );
 
-        Tools.Add(data);
+          Tools.Add(data);
+
+        }
+        catch (Exception)
+        {
+
+          throw new Exception("Error de lectura de los parámetros de las herramientas en ToolMap excel");
+        }
+
       }
 
       //Delivery Docs Pack
@@ -415,248 +428,373 @@ namespace SmartBid
           tool.FileName
       );
 
-      string toolPath = Path.Combine(
-          H.GetSProperty("processPath"),
-          dm.GetInnerText($@"dm/utils/utilsData/opportunityFolder"),
-          dm.SBidRevision,
-          "TOOLS",
-          tool.FileName
-      );
+      string toolPath = "";
+      List<string> indexer = tool.IsIterative ? indexer = dm.GetValueList($"{tool.Code}.indexer", false) : new() { "" };
+      int i = -1;
+      string timestamp;
+      List<string> varTracking = new(); //list to keep track of the variables already created in the results xml (to avoid duplicates in iterative tools)
 
-      //create folder if not exists and copy the tool to process folder
-      _ = Directory.CreateDirectory(Path.GetDirectoryName(toolPath)!);
-
-      //copy tool template only for first call
-      if (!File.Exists(toolPath) || tool.Call == 1)
-        File.Copy(originalToolPath, toolPath, true);
-
-      H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"  Calling tool {tool.Code}");
-
-      SB_Excel? workbook = null;
       XmlDocument results = new(); // Declarado fuera del try para asegurar retorno
 
-      try
+
+      XmlElement answer = results.CreateElement("answer");
+      _ = results.AppendChild(answer);
+      XmlElement varNode = results.CreateElement("variables");
+      _ = answer.AppendChild(varNode);
+
+
+      while (++i < indexer.Count)
       {
-        workbook = new SB_Excel(toolPath);
-
-        // Escribir valores en las celdas
-        foreach (var entry in variableMap)
         {
-          if (mirror.GetVarCallLevel(entry.Key) == tool.Call)
+          toolPath = Path.Combine(
+            H.GetSProperty("processPath"),
+            dm.GetInnerText($@"dm/utils/utilsData/opportunityFolder"),
+            dm.SBidRevision,
+            "TOOLS",
+            Path.GetFileNameWithoutExtension(tool.FileName) + (tool.IsIterative ? $"_{i + 1}-{indexer[i]}" : "") + Path.GetExtension(tool.FileName));
+
+          //create folder (if does not exists) and copy the tool to process folder
+          _ = Directory.CreateDirectory(Path.GetDirectoryName(toolPath)!);
+
+          //copy tool template only for first call
+          //if (!File.Exists(toolPath) || i == 0)
+          if (!File.Exists(toolPath) || i == 0)
+            File.Copy(originalToolPath, toolPath, true);
+
+          H.PrintLog(2,
+            TC.ID.Value!.Time(),
+            TC.ID.Value!.User,
+            "CalculateExcel",
+            $"  Calling tool {tool.Code} {(tool.IsIterative ? $" <iteration: {i + 1}-{indexer[i]}  " : "")}");
+
+          SB_Excel? workbook = null;
+
+          try
           {
-            string variableID = entry.Key;
-            string direction = entry.Value[1];
+            workbook = new SB_Excel(toolPath);
 
-            if (direction == "in")
+            // Escribir valores en las celdas
+            foreach (var entry in variableMap)
             {
-              string rangeName = tool.InPrefix + variableID;
-              string type = _variablesMap.GetVariableData(variableID).Type;
-
-              if (type == "table")
+              if (mirror.GetVarCallLevel(entry.Key) == tool.Call)
               {
-                XmlNode tableData = dm.GetValueXmlNode(variableID);
-                if (tableData.Name == "t" && tableData.HasChildNodes)
+                string variableID = entry.Key;
+                string direction = entry.Value[1];
+
+                if (direction == "in")
                 {
-                  workbook.WriteTable(rangeName, tableData);
-                }
-                else
-                {
-                  H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"No table data found for variable '{variableID}'.");
-                }
-              }
-              else if (type == "list<num>" || type == "list<str>")
-              {
-                //if list<num> isNumber set to true, if list<str> isNumber set to false
-                bool isNumber = type == "list<num>";
+                  string rangeName = tool.InPrefix + variableID;
+                  string type = _variablesMap.GetVariableData(variableID).Type;
 
-                List<string> listData = dm.GetValueList(variableID, isNumber);
-
-                // call fillupValue for each item in the listData
-                foreach (var (item, index) in listData.Select((value, i) => (value, i)))
-                {
-                  _ = workbook.FillUpValue($"{rangeName}\\{index}", item);
-                }
-              }
-              else
-              {
-                _ = workbook.FillUpValue(rangeName, dm.GetValueString(variableID));
-              }
-            }
-          }
-        }
-
-        workbook.Calculate();
-
-        XmlElement answer = results.CreateElement("answer");
-        _ = results.AppendChild(answer);
-        XmlElement varNode = results.CreateElement("variables");
-        _ = answer.AppendChild(varNode);
-
-
-        string timestamp = DateTime.Now.ToString("dd-HH:mm");
-
-        foreach (var entry in variableMap)
-        {
-          string variableID = entry.Key;
-          string direction = entry.Value[1];
-          string type = _variablesMap.GetVariableData(variableID).Type;
-
-          if (direction == "out")
-          {
-            XmlElement varElement = results.CreateElement(variableID);
-            string rangeName = tool.OutPrefix + variableID;
-
-            if (Regex.IsMatch(rangeName, @"(?i)Call1_"))
-              rangeName = Regex.Replace(rangeName, @"(?i)Call1_", "");
-
-            try
-            {
-
-              XmlElement value = results.CreateElement("value");
-              value.SetAttribute("type", type);
-              _ = varElement.AppendChild(value);
-
-              XmlElement note = results.CreateElement("note");
-              _ = varElement.AppendChild(note);
-              _ = varElement.AppendChild(H.CreateElement(results, "origin", $"{tool.Code}+{timestamp}"));
-
-              if (type == "table")
-              {
-                XmlNode tableXmlValue = results.ImportNode(workbook.GetTValue(rangeName), true);
-
-                if (tableXmlValue != null && tableXmlValue.HasChildNodes)
-                {
-                  _ = value.AppendChild(tableXmlValue);
-                  note.InnerText = "Calculated Value";
-                }
-                else
-                {
-                  value.InnerText = "No data found in table.";
-                }
-              }
-              else if (type == "list<num>" || type == "list<str>")
-              {
-                //we cannot read all list values at once, we're going to store the values in a  <List<string> by searching for values in cellRanges named rangeName\0, rangeName\1, rangeName\2... until we find no more values. Then with the list complete we will create the <l><li>item1</li><li>item2</li>...</l> structure to be added to the <value>
-
-                bool isNumber = type == "list<num>";
-                List<string> listValues = new List<string>();
-                int index = 0;
-                while (true)
-                {
-                  // check the existance of the range name before calling to get the value
-
-                  List<string> namedRanges = workbook.ListNamedRanges();
-                  string namedRangeToFind = $"{rangeName}\\{index}";
-                  string? cellValue = null;
-
-                  if (namedRanges is not null)
+                  if (type == "table")
                   {
-                    var match = namedRanges
-                        .FirstOrDefault(n => string.Equals(n, namedRangeToFind, StringComparison.OrdinalIgnoreCase));
-
-                    if (match is not null)
+                    XmlNode tableData = dm.GetValueXmlNode(variableID);
+                    if (tableData.Name == "t" && tableData.HasChildNodes)
                     {
-                      // Use the matched original-casing name
-                      cellValue = workbook.GetSValue(match, isNumber);
+                      workbook.WriteTable(rangeName, tableData);
+                    }
+                    else
+                    {
+                      H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"No table data found for variable '{variableID}'.");
                     }
                   }
-                  if (cellValue != null && cellValue != string.Empty)
+                  else if (type == "list<num>" || type == "list<str>")
                   {
-                    listValues.Add(cellValue);
-                    index++;
+                    //lists in iterative tools are used to provide values for each iteration. Funcionality of lists are modified
+
+                    if (!tool.IsIterative)//Is Not Iterative
+                    {
+                      //in non iterative tools all the values of the list are written to the workbook
+                      List<string> listData = dm.GetValueList(variableID, type == "list<num>");
+
+                      // call fillupValue for each item in the listData
+                      foreach (var (item, index) in listData.Select((value, j) => (value, j)))
+                      {
+                        _ = workbook.FillUpValue($"{rangeName}\\{index}", item);
+                      }
+
+                    }
+                    else //Is Iterative
+                    {
+                      //in iterative tools only one value of the list is used for each iteration
+                      string? cellValue = dm.GetValueList(variableID, type == "list<num>").ElementAtOrDefault(i);
+                      if (cellValue != null)
+                      {
+                        try
+                        {
+                          _ = workbook.FillUpValue(rangeName, cellValue);
+                        }
+                        catch (Exception ex)
+                        {
+                          if (rangeName.Contains(tool.Code + ".indexer"))
+                          {
+                            //for the indexer variable of iterative tools do nothing, this var is only to tracking the iterations
+                            continue;
+                          }
+                          else
+                          {
+                            throw new Exception($"Error filling value for variable '{variableID}' at iteration {i}.", ex);
+                          }
+                        }
+                      }
+                      else
+                      {
+                        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"No list data found for variable '{variableID}' at iteration {i}.");
+                      }
+                    }
                   }
                   else
                   {
-                    break;
+                    _ = workbook.FillUpValue(rangeName, dm.GetValueString(variableID));
                   }
                 }
-
-                if (listValues.Count > 0)
-                {
-
-                  value.SetAttribute("type", type);
-                  XmlElement listElement = results.CreateElement("l");
-                  foreach (string item in listValues)
-                  {
-                    _ = listElement.AppendChild(H.CreateElement(results, "li", item));
-                  }
-                  _ = value.AppendChild(listElement);
-                  note.InnerText = "Calculated Value";
-
-                }
               }
-              else
-              {
-                string cellValue = workbook.GetSValue(rangeName, type == "num");
-
-                if (cellValue != null && cellValue != string.Empty)
-                {
-                  value.InnerText = cellValue;
-                  note.InnerText = "Calculated Value";
-                }
-                else
-                {
-                  value.InnerText = _variablesMap.GetVariableData(variableID).Default ?? string.Empty;
-                  note.InnerText = "Default Value";
-
-                  H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"❌ Named range '{rangeName}' is empty or not found in the workbook '{toolPath}'. Default value used");
-                }
-              }
-              answer.SetAttribute("result", "OK");
             }
-            catch (Exception ex)
+
+            workbook.Calculate();
+
+            // Leer valores de las celdas de salida
+            foreach (var entry in variableMap)
             {
-              answer.SetAttribute("result", "NO OK");
-              H.PrintLog(4, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"❌Error❌ reading range '{rangeName}': {ex.Message}");
+              string variableID = entry.Key;
+              string direction = entry.Value[1];
+              string type = _variablesMap.GetVariableData(variableID).Type;
+
+
+              if (direction == "out")
+              {
+                string rangeName = tool.OutPrefix + variableID;
+                XmlElement? varElement = null;
+                XmlElement value;
+                XmlElement note;
+                try
+                {
+                  //for the call1 variables remove the added Call1_ prefix (added for normalization)
+                  if (Regex.IsMatch(rangeName, @"(?i)Call1_"))
+                    rangeName = Regex.Replace(rangeName, @"(?i)Call1_", "");
+
+
+
+                  //Keep tracking of the variables already created for avoid duplicates in iterative tools
+                  if (!varTracking.Contains(variableID))
+                  {
+                    varElement = results.CreateElement(variableID);
+                    value = results.CreateElement("value");
+                    value.SetAttribute("type", type);
+                    _ = varElement.AppendChild(value);
+                    note = results.CreateElement("note");
+                    note.InnerText = "Calculated Value";
+                    _ = varElement.AppendChild(note);
+                    _ = varElement.AppendChild(H.CreateElement(results, "origin", $"{tool.Code}+{DateTime.Now.ToString("dd-HH:mm")}"));
+
+                    varTracking.Add(variableID);
+                  }
+                  else
+                  {
+                    varElement = (XmlElement)results.SelectSingleNode($"//answer/variables/{variableID}")!;
+                    value = (XmlElement)varElement.SelectSingleNode("value")!;
+                    note = (XmlElement)varElement.SelectSingleNode("note")!;
+                  }
+
+
+                  if (type == "table")
+                  {
+                    XmlNode tableXmlValue = results.ImportNode(workbook.GetTValue(rangeName), true);
+
+                    if (tableXmlValue != null && tableXmlValue.HasChildNodes)
+                    {
+                      _ = value.AppendChild(tableXmlValue);
+                      note.InnerText = "Calculated Value";
+                    }
+                    else
+                    {
+                      value.InnerText = "No data found in table.";
+                    }
+                  }
+                  else if (type == "list<num>" || type == "list<str>")
+                  {
+                    if (!tool.IsIterative)
+                    {
+                      //we cannot read all list values at once, we're going to store the values in a  <List<string> by searching for values in cellRanges named rangeName\0, rangeName\1, rangeName\2... until we find no more values. Then with the list complete we will create the <l><li>item1</li><li>item2</li>...</l> structure to be added to the <value>
+
+                      bool isNumber = type == "list<num>";
+                      List<string> listValues = new List<string>();
+                      int index = 0;
+                      while (true)
+                      {
+                        // check the existance of the range name before calling to get the value
+
+                        List<string> namedRanges = workbook.ListNamedRanges();
+                        string namedRangeToFind = $"{rangeName}\\{index}";
+                        string? cellValue = null;
+
+                        if (namedRanges is not null)
+                        {
+                          var match = namedRanges
+                              .FirstOrDefault(n => string.Equals(n, namedRangeToFind, StringComparison.OrdinalIgnoreCase));
+
+                          if (match is not null)
+                          {
+                            // Use the matched original-casing name
+                            cellValue = workbook.GetSValue(match, isNumber);
+                          }
+                        }
+                        if (cellValue != null && cellValue != string.Empty)
+                        {
+                          listValues.Add(cellValue);
+                          index++;
+                        }
+                        else
+                        {
+                          break;
+                        }
+                      }
+
+                      if (listValues.Count > 0)
+                      {
+
+                        value.SetAttribute("type", type);
+                        XmlElement listElement = results.CreateElement("l");
+                        foreach (string item in listValues)
+                        {
+                          _ = listElement.AppendChild(H.CreateElement(results, "li", item));
+                        }
+                        _ = value.AppendChild(listElement);
+                        note.InnerText = "Calculated Value";
+
+                      }
+                    }
+                    else //IsIterative
+                    {
+                      //Si es iterativo tratamos cada valor de la lista como un valor único
+                      if (rangeName.Contains(tool.Code + ".indexer"))
+                      {
+                        //for the indexer variable of iterative tools do nothing, this var is only to tracking the iterations
+                        continue;
+                      }
+
+                      string cellValue = workbook.GetSValue(rangeName, type == "list<num>");
+
+                      if (cellValue != null && cellValue != string.Empty)
+                      {
+                        //for iterative tools values type list should be stored as xml lists like <l><li>value</li></l> according to the index (i) of the iteration.
+                        // first get the actual value as xmlNode, if it's empty create a new list <l>
+                        // create a new element to add <li/>
+                        // add the value to this element
+                        // insert the li element to the l element
+
+                        XmlElement listElement;
+                        if (value.HasChildNodes)
+                        {
+                          listElement = (XmlElement)value.SelectSingleNode("l")!;
+                        }
+                        else
+                        {
+                          listElement = results.CreateElement("l");
+                          _ = value.AppendChild(listElement);
+                        }
+                        XmlElement listItem = results.CreateElement("li");
+                        listItem.InnerText = cellValue;
+                        _ = listElement.AppendChild(listItem);
+
+                      }
+                      else
+                      {
+                        value.InnerText = _variablesMap.GetVariableData(variableID).Default ?? string.Empty;
+                        note.InnerText = "Default Value";
+
+                        H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"❌ Named range '{rangeName}' is empty or not found in the workbook '{toolPath}'. Default value used");
+                      }
+
+                    }
+                  }
+                  else
+                  {
+                    string cellValue = workbook.GetSValue(rangeName, type == "num");
+
+                    if (cellValue != null && cellValue != string.Empty)
+                    {
+                      value.InnerText = cellValue;
+                      note.InnerText = "Calculated Value";
+                    }
+                    else
+                    {
+                      value.InnerText = _variablesMap.GetVariableData(variableID).Default ?? string.Empty;
+                      note.InnerText = "Default Value";
+
+                      H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"❌ Named range '{rangeName}' is empty or not found in the workbook '{toolPath}'. Default value used");
+                    }
+                  }
+                  answer.SetAttribute("result", "OK");
+                }
+                catch (Exception ex)
+                {
+                  answer.SetAttribute("result", "NO OK");
+                  H.PrintLog(4, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"❌Error❌ reading range '{rangeName}': {ex.Message}");
+                }
+
+                _ = varNode.AppendChild(varElement);
+              }
             }
 
-            _ = varNode.AppendChild(varElement);
+
+            H.PrintLog(3, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"Values returned from {tool.Code} calculation", results);
+          }
+          catch { throw; }
+          finally
+          {
+            workbook?.Close();
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
           }
         }
-        H.PrintLog(3, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExcel", $"Values returned from {tool.Code} calculation", results);
-      }
-      finally
-      {
-        workbook?.Close();
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-      }
 
-      // Adding informtion for Utils
-      // Check whether <utils> exists in results and append the <utils> node if it doesn't
-      XmlElement utilsNode = (XmlElement)results.SelectSingleNode("//root/utils");
-      if (utilsNode == null)
-      {
-        utilsNode = results.CreateElement("utils");
-        _ = results.DocumentElement.AppendChild(utilsNode);
-      }
-
-      // Check whether <tools> exists in <utils>  and append the <tools> node if it doesn't
-      XmlElement toolsNode = (XmlElement)utilsNode.SelectSingleNode("tools");
-      if (toolsNode == null)
-      {
-        toolsNode = results.CreateElement("tools");
-        _ = utilsNode.AppendChild(toolsNode);
-      }
-
-      XmlElement toolNode = tool.ToXML(results);
-      string newNodeName = toolNode.GetAttribute("code");
-
-      XmlElement newToolNode = results.CreateElement(newNodeName);
-      foreach (XmlAttribute attr in toolNode.Attributes)
-      {
-        if (attr.Name != "code")
+        // Adding information for Utils
+        // Check whether <utils> exists in results and append the <utils> node if it doesn't
+        XmlElement utilsNode = (XmlElement)results.SelectSingleNode("//answer/utils");
+        if (utilsNode == null)
         {
-          if (attr.Name != "fileName")
-            newToolNode.SetAttribute(attr.Name, attr.Value);
-          else
-            newToolNode.SetAttribute(attr.Name, toolPath);
+          utilsNode = results.CreateElement("utils");
+          _ = results.DocumentElement.AppendChild(utilsNode);
         }
-      }
-      _ = toolsNode.AppendChild(newToolNode);
 
+        // Check whether <tools> exists in <utils>  and append the <tools> node if it doesn't
+        XmlElement toolsNode = (XmlElement)utilsNode.SelectSingleNode("tools");
+        if (toolsNode == null)
+        {
+          toolsNode = results.CreateElement("tools");
+          _ = utilsNode.AppendChild(toolsNode);
+        }
+
+        XmlElement toolNode = (XmlElement)toolsNode.SelectSingleNode(tool.Code);
+        if (toolNode == null)
+        {
+          XmlElement _toolInfo = tool.ToXML(results);
+
+          toolNode = results.CreateElement(tool.Code);
+          foreach (XmlAttribute attr in _toolInfo.Attributes)
+          {
+            if (attr.Name != "code")
+            {
+              if (attr.Name != "fileName")
+                toolNode.SetAttribute(attr.Name, attr.Value);
+              else
+                toolNode.SetAttribute(attr.Name, toolPath);
+            }
+          }
+          _ = toolsNode.AppendChild(toolNode);
+        }
+
+        if (tool.IsIterative)
+        {
+          _ = toolNode.AppendChild(H.CreateElement(results, "note", $"Iterative call: {dm.GetValueList($"{tool.Code}.indexer", false)[i]}"));
+        }
+
+
+      }
       return results;
     }
+
 
     private XmlDocument CalculateExe(ToolData tool, DataMaster dm)
     {
@@ -1074,7 +1212,7 @@ namespace SmartBid
 
         SB_Excel? doc = null;
 
-        // 8. Open the Word document using SB_Word class
+
         try
         {
           H.PrintLog(4, TC.ID.Value!.Time(), TC.ID.Value!.User, "GenerateOutputWord", $"Generating output - Open file: {template.Code}");

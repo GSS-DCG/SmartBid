@@ -128,7 +128,7 @@ namespace SmartBid
           H.PrintLog(5, time, user, $"❌❌ Error ❌❌  - DBtools-UpdateCallRegistry", $"❌❌ Error ❌❌  updating callsTracker registry: " + ex.Message);
       }
     }
-    public static void CreateRouteProgress(int callID, List<string> route)
+    public static void CreateRouteProgress(int callID, List<string> route, List<string> status)
     {
       using var conn = DBConnectionFactory.CreateConnection();
       using var cmd = conn.CreateCommand();
@@ -148,9 +148,8 @@ namespace SmartBid
       {
         H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - DBtools-CreateRouteProgress", $"❌❌ Error ❌❌  deleting existing route progress: " + ex.Message);
       }
-
-      foreach (var tool in route)
-      {
+      int i = -1;
+      while (++i < route.Count) {
         try
         {
           cmd.CommandText = @"
@@ -164,12 +163,13 @@ namespace SmartBid
           ( @RP_callID,
             @RP_order,
             @RP_tool,
-            'Ready'
+            @RP_status
           );
          ";
           cmd.Parameters.AddWithValue("@RP_callID", callID);
-          cmd.Parameters.AddWithValue("@RP_order", route.IndexOf(tool) + 1);
-          cmd.Parameters.AddWithValue("@RP_tool", tool);
+          cmd.Parameters.AddWithValue("@RP_order", i);
+          cmd.Parameters.AddWithValue("@RP_tool", route[i]);
+          cmd.Parameters.AddWithValue("@RP_status", status[i]);
           cmd.ExecuteNonQuery();
         }
         catch (Exception ex)
@@ -179,7 +179,7 @@ namespace SmartBid
         cmd.Parameters.Clear();
       }
     }
-    public static void UpdateRouteProgress(int callID, string tool, string status)
+    public static void UpdateRouteProgress(int callID, int tool, string status)
     {
       using var conn = DBConnectionFactory.CreateConnection();
       using var cmd = conn.CreateCommand();
@@ -188,7 +188,7 @@ namespace SmartBid
         SET
         `RP_status` = @Status
         WHERE `RP_callID` = @CallID
-          AND `RP_tool` = @Tool;
+          AND `RP_order` = @Tool;
        ";
 
       _ = cmd.Parameters.AddWithValue("@CallID", callID);

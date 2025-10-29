@@ -1,20 +1,14 @@
-﻿using System.Collections.Immutable;
-using System.Diagnostics;
-using System.Text;
-using System.Text.RegularExpressions;
+﻿using System.Diagnostics;
 using System.Xml;
-using DocumentFormat.OpenXml.Drawing.Diagrams;
-using Microsoft.Office.Interop.Word;
-using Org.BouncyCastle.Asn1.X509;
-using Org.BouncyCastle.Cms;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace SmartBid
 {
   internal class Calculator
   {
     private List<ToolData> targets;
-    private List<ToolData> calcRoute = [];
+    private List<ToolData?> calcRoute;
+    private List<string> statusList;
+
     public ToolsMap? tm;
     public DataMaster dm;
 
@@ -33,34 +27,48 @@ namespace SmartBid
       //Find the list of variable to get from Preparation Tool
       string xmlPrepVarList = GetRouteMap(targets).OuterXml;
 
+      List<string> route = (calcRoute ?? Enumerable.Empty<ToolData?>())
+            .Select(tool => tool?.Code ?? "")
+            .ToList();
+      route[0] = "PREP";
+
       H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"***  CALCULATE  *** ");
-      H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Calculate rute: {string.Join(" >> ", calcRoute.Select(tool => tool.Code))} ");
+      H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Calculate rute: {string.Join(" >> ", route.Select(tool => tool))} ");
 
 
-      //Buscamos los datos necesarios con la PreparationTool y los guardamos en el DataMaster
-      DBtools.UpdateRouteProgress(TC.ID.Value!.CallId!.Value, "PREP", "Running");
-      dm.UpdateData(CallPrepTool(xmlPrepVarList));
-      dm.CheckMandatoryValues(); // thows and exception if not all Mandatory values are present in the DataMaster
-      dm.SaveDataMaster(); //Save the DataMaster after preparation
-      DBtools.UpdateRouteProgress(TC.ID.Value!.CallId!.Value, "PREP", "DONE");
 
-      //Generate files structure and move input files
-      //Call each toolD in the list of targets and update the DataMaster with the results
+      int i = -1;
+      bool printEndCalc = true;
+      string status = "Ready";
 
-      int i = 0;
-      List<string> route = calcRoute.Select(tool => tool.Code).ToList();
+      //create a new list status to store the status of the tools while there are run. it should be a list of the same size of route with "Ready" as all values
+
       ToolData tool;
 
-
-
       //CALCULATE
-      while (i < route.Count) 
+      while (++i < calcRoute.Count)
       {
-        tool = calcRoute[i++];
 
-        // por el momento nos saltamos PREP porque la ejecutamos manualmente antes de entrar en calculations
-        if (tool.Code == "PREP")
-          break;
+        statusList[i] = "RUNNING"; //Updating the status list
+        DBtools.UpdateRouteProgress(TC.ID.Value!.CallId!.Value, i, "RUNNING");
+
+        if (i == 0) // PREP
+        {
+          //Buscamos los datos necesarios con la PreparationTool y los guardamos en el DataMaster
+
+          XmlDocument prepAnswer = CallPrepTool(xmlPrepVarList);
+
+          dm.UpdateData(prepAnswer);
+          dm.CheckMandatoryValues(); // thows and exception if not all Mandatory values are present in the DataMaster
+          dm.SaveDataMaster(); //Save the DataMaster after preparation
+
+          statusList[0] = "DONE"; //Updating the status list for PREP as done.
+          DBtools.UpdateRouteProgress(TC.ID.Value!.CallId!.Value, 0, "DONE");
+
+          continue;
+        }
+
+        tool = calcRoute[i];
 
         if (tm.Tools.Exists(tool => tool.Code == tool.Code))
         {
@@ -69,22 +77,20 @@ namespace SmartBid
           {
             H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Calling Tool: {tool.Code} - threadSafe: {tool.IsThreadSafe}");
 
-            DBtools.UpdateRouteProgress(TC.ID.Value!.CallId!.Value, tool.Code, "RUNNING");
-
             int callID = (int)TC.ID.Value.CallId!;
             //Call calculation
 
             if (!tool.IsThreadSafe)
             {
-              DBtools.UpdateRouteProgress(TC.ID.Value!.CallId!.Value, tool.Code, "WAITING");
+              DBtools.UpdateRouteProgress(TC.ID.Value!.CallId!.Value, i, "WAITING");
 
               Stopwatch sw = Stopwatch.StartNew();
               int order, newOrder = 0;
-              double timeout = 60*24;
+              double timeout = 60 * 24;
 
               while (!tm.CheckForGreenLight(tool.Code, callID, out order))
               {
-                if ((sw.Elapsed.TotalMinutes + order * 60) < timeout) timeout = sw.Elapsed.TotalMinutes + order * 60; //Adjusting timeout to the position in the queue
+                if ((sw.Elapsed.TotalMinutes + (order * 60)) < timeout) timeout = sw.Elapsed.TotalMinutes + (order * 60); //Adjusting timeout to the position in the queue
                 if (sw.Elapsed.TotalMinutes > timeout)
                 {
                   throw new TimeoutException($"Timeout para {tool.Code} after {sw.Elapsed.TotalMinutes:F1} minutes");
@@ -106,6 +112,51 @@ namespace SmartBid
 
             XmlDocument CalcResults = tm.Calculate(tool, dm);
 
+            //Check if there is update in the route:
+            //--find if there is a variable call __execute__ in CalcResults
+            //--read the values from the variable and insert one by one in the route after the current tool
+            //--remove the variable from CalcResults
+            //--update the DB route progress with the new tools added
+            XmlNode? executeNode = CalcResults.SelectSingleNode("/answer/variables/__execute__/value");
+            if (executeNode != null)
+            {
+              string executeValue = executeNode.InnerText;
+              List<string> newToolsCodes = executeValue.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                  .Select(code => code.Trim())
+                  .ToList();
+              if (newToolsCodes.Count > 0)
+              {
+                H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"New tools to execute after {tool.Code} found: {string.Join(", ", newToolsCodes)}");
+                List<ToolData> newTools = new();
+                List<string> newStatus = new();
+                foreach (string code in newToolsCodes)
+                {
+                  ToolData newTool = tm.getToolDataByCode(code);
+                  newTools.Add(newTool);
+                  newStatus.Add("Ready");
+                }
+                //Insert the new tools in the route after the current tool
+                calcRoute.InsertRange(i + 1, newTools);
+                statusList.InsertRange(i + 1, newStatus);
+                //Update the DB route progress with the new tools added
+
+                route = (calcRoute ?? Enumerable.Empty<ToolData?>())
+                .Select(tool => tool?.Code ?? "")
+                .ToList();
+                route[0] = "PREP";
+
+                DBtools.CreateRouteProgress(TC.ID.Value!.CallId!.Value, route, statusList);
+                H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Updated calculation route: {string.Join(" >> ", route)}");
+              }
+              //Remove the __execute__ variable from CalcResults
+
+              var node = CalcResults.SelectSingleNode("/answer/variables/__execute__");
+              if (node != null && node.ParentNode != null)
+              {
+                node.ParentNode.RemoveChild(node);
+              }
+            }
+
             //Once the tool is finished, we release the lock if it is not threadSafe
             if (!tool.IsThreadSafe)
               tm.ReleaseProcess(tool.Code, callID);
@@ -123,12 +174,9 @@ namespace SmartBid
               var answerNode = CalcResults.DocumentElement; // expects <answer ...> as the root
               var resultRaw = answerNode?.GetAttribute("result") ?? string.Empty;
 
-              string status = answerNode?.GetAttribute("result")?.Equals("OK", StringComparison.OrdinalIgnoreCase) == true
+              status = answerNode?.GetAttribute("result")?.Equals("OK", StringComparison.OrdinalIgnoreCase) == true
                   ? "DONE"
                   : "FAIL";
-
-              // Report to DB
-              DBtools.UpdateRouteProgress(TC.ID.Value!.CallId!.Value, tool.Code, status);
             }
             catch (Exception ex)
             {
@@ -137,37 +185,41 @@ namespace SmartBid
                   "❌❌ Error ❌❌  reading result from XML or updating DB: " + ex.Message);
             }
           }
+
+          else if (tool.Resource == "TEMPLATE")
+          {       //GENERATE DOCUMENTS
+
+            if (printEndCalc)
+            {
+              printEndCalc = false;
+              H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"- Calculate Done - ");
+              H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"***   GENERATE DOCUMENTS   *** ");
+            }
+
+            H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Populating Template: {tool.Code} - {tool.Description} ");
+
+            tm.GenerateOuput(tool, dm);
+            //
+            if (true)
+            {  //Here we could check if the generation was OK or not
+              statusList[i] = "DONE"; //Updating the status list
+              DBtools.UpdateRouteProgress(TC.ID.Value!.CallId!.Value, i, "DONE");
+              // GENERATE INFO ABOUT TEMPLATES GENERATED (PENDIENTE)
+              // dm.UpdateData(NEW_INFO); //Update the DataMaster with the information about generated documents
+            }
+          }
+          else
+          {
+            H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - RunCalculations", $"Tool {tool} not found in ToolsMap. ");
+          }
+
+          status = "DONE";
         }
-        else
-        {
-          H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - RunCalculations", $"Tool {tool} not found in ToolsMap. ");
-        }
+        // Report to DB
+        statusList[i] = status; //Updating the status list
+        DBtools.UpdateRouteProgress(TC.ID.Value!.CallId!.Value, i, status);
       }
-      H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"- Calculate Done - ");
-      H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"***   GENERATE DOCUMENTS   *** ");
-      H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Generation rute: {string.Join(" >> ", targets.Select(tool => tool.Code))} ");
 
-      //GENERATE DOCUMENTS
-      foreach (ToolData target in targets)
-      {
-        if (target.Resource == "TEMPLATE")
-        {
-          H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "RunCalculations", $"Populating Template: {target.Code} - {target.Description} ");
-
-          DBtools.UpdateRouteProgress(TC.ID.Value!.CallId!.Value, target.Code, "Running");
-
-          tm.GenerateOuput(target, dm);
-          //
-          if (true) //Here we could check if the generation was OK or not
-            DBtools.UpdateRouteProgress(TC.ID.Value!.CallId!.Value, target.Code, "DONE");
-
-
-          // GENERATE INFO ABOUT TEMPLATES GENERATED (PENDIENTE)
-          // dm.UpdateData(NEW_INFO); //Update the DataMaster with the information about generated documents
-        }
-      }
-
-      _ = DBtools.InsertNewProjectWithBid(dm);
 
     }
     private XmlDocument CallPrepTool(string xmlVarListString)
@@ -212,6 +264,9 @@ namespace SmartBid
       // Build up the list of calls to tools in order
       calcRoute = [];
       HashSet<ToolData> uniqueElements = new(calcRoute);
+
+      calcRoute.Add(null); //Adding a empty element to represent PREP
+
       for (int i = calcTools.Count - 1; i >= 0; i--) // Iterate backwards through calcTools
       {
         foreach (var element in calcTools[i])
@@ -222,8 +277,6 @@ namespace SmartBid
           }
         }
       }
-
-      targets = calcRoute; // Update targets with the ordered list of calculation tools
 
       _ = prepVarList.RemoveAll(item => !(item.Source == "PREP")); //Remove all non-preparation source variables
 
@@ -237,11 +290,18 @@ namespace SmartBid
       if (dmInputDocs != null)
         prepCallXML.DocumentElement.AppendChild(prepCallXML.ImportNode(dmInputDocs, true));
 
-      List<string> route = calcRoute.Select(tool => tool.Code).ToList();
-      route.Insert(0, "PREP");
+
+      List<string> route =
+          (calcRoute ?? Enumerable.Empty<ToolData?>())
+          .Select(tool => tool?.Code ?? string.Empty)
+          .ToList();
+
+      route[0] = "PREP";
 
 
-      DBtools.CreateRouteProgress(TC.ID.Value!.CallId!.Value, route);
+      statusList = route.Select(_ => "Ready").ToList();
+
+      DBtools.CreateRouteProgress(TC.ID.Value!.CallId!.Value, route, statusList);
 
       H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "GetRouteMap", $"- Calculated Route Map: \n {string.Join(" >> ", route)} ");
 

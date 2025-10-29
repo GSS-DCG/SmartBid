@@ -298,6 +298,9 @@ namespace SmartBid
 
         calculator.RunCalculations();
 
+        // after success ending the calculations will record the project in the DB
+        _ = DBtools.InsertNewProjectWithBid(dm);
+
         if (xmlCall.SelectSingleNode("/request/requestInfo")!.Attributes!["type"]?.Value == "create"
             && H.GetBProperty("createOppsFoldersStructure"))
           createOppsFoldersStructure(dm.GetInnerText("dm/projectData/opportunityID"),

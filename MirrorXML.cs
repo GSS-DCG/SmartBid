@@ -335,8 +335,8 @@ namespace SmartBid
       varNames = varNames.Select(name =>
       {
         if (!Regex.IsMatch(name.ToLower(), @"(?i)call\d+_")) {
-          if (name.ToLower().StartsWith(inToolPrefix)) name = inToolPrefix + "call1_" + name[inToolPrefix.Length..];
-          if (name.ToLower().StartsWith(outToolPrefix)) name = outToolPrefix + "call1_" + name[outToolPrefix.Length..];
+          if (name.ToLower().StartsWith(inToolPrefix)) name = inToolPrefix.ToLower() + "call1_" + name[inToolPrefix.Length..];
+          if (name.ToLower().StartsWith(outToolPrefix)) name = outToolPrefix.ToLower() + "call1_" + name[outToolPrefix.Length..];
         }
         return name;
       }).ToList();

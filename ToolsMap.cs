@@ -476,8 +476,6 @@ namespace SmartBid
             // Escribir valores en las celdas
             foreach (var entry in variableMap)
             {
-              if (mirror.GetVarCallLevel(entry.Key) == tool.Call)
-              {
                 string variableID = entry.Key;
                 string direction = entry.Value[1];
 
@@ -548,7 +546,7 @@ namespace SmartBid
                     _ = workbook.FillUpValue(rangeName, dm.GetValueString(variableID));
                   }
                 }
-              }
+             
             }
 
             workbook.Calculate();
@@ -789,8 +787,6 @@ namespace SmartBid
         {
           _ = toolNode.AppendChild(H.CreateElement(results, "note", $"Iterative call: {dm.GetValueList($"{tool.Code}.indexer", false)[i]}"));
         }
-
-
       }
       return results;
     }

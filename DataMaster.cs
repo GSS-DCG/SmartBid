@@ -310,24 +310,33 @@ namespace SmartBid
           _dataNode.AppendChild(variableDMNode);
         }
 
-
         //Create the revision index
-        XmlNode? revisionIndex = variableDMNode.SelectSingleNode("revision");
-        if (revisionIndex == null)
+        XmlNode? revisions = variableDMNode.SelectSingleNode("revision");
+        if (revisions == null)
         {
-          revisionIndex = _dm.CreateElement("revision");
-          variableDMNode.AppendChild(revisionIndex);
+          revisions = _dm.CreateElement("revision");
+          variableDMNode.AppendChild(revisions);
         }
 
-        // for now: adding the value to the set element. for now creating a new set, later: seeking for the right set, if not exists create
-        revisionIndex.AppendChild(CreateDmElement(SBidRevision, $"set{BidRevision.ToString("D2")}"));
+        XmlNode? rev = revisions.SelectSingleNode(SBidRevision);
+        if (rev == null) {
+          rev = revisions.AppendChild(CreateDmElement(SBidRevision, $"set{BidRevision.ToString("D2")}"));
+        }
+        string sSet = rev!.InnerText;
 
-        // for now: creating the set node without looking for an existing set with the same value. Later: seek for the right set, if not exists create
-        XmlElement setNode = _dm.CreateElement($"set{BidRevision.ToString("D2")}");
-        variableDMNode.AppendChild(setNode);
-        setNode.AppendChild(CreateDmElement("value", var.Value));
-        setNode.AppendChild(CreateDmElement("origin", var.Origen));
-        setNode.AppendChild(CreateDmElement("Note", var.Note));
+        XmlElement? setNode = (XmlElement)variableDMNode.SelectSingleNode(sSet);
+        if (setNode == null)
+        {
+          setNode = _dm.CreateElement(sSet);
+          setNode.AppendChild(CreateDmElement("value", var.Value));
+          setNode.AppendChild(CreateDmElement("origin", var.Origen));
+          setNode.AppendChild(CreateDmElement("Note", var.Note));
+          variableDMNode.AppendChild(setNode);
+        } else {
+          setNode.SelectSingleNode("value").InnerText = var.Value;
+          setNode.AppendChild(CreateDmElement("origin", $" Modified: {var.Origen}"));
+          setNode.AppendChild(CreateDmElement("Note", $" Modified: {var.Note}"));
+        }
       }
     }
     public void SaveDataMaster()

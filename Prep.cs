@@ -189,6 +189,8 @@ namespace SmartBid
             // Keep empty value node; origin/note not added if we didn't apply anything
             if (string.IsNullOrEmpty(valueEl.InnerText))
               valueEl.InnerText = string.Empty;
+            SetChildText(outVar, "origin", "PREP_DEFAULT");
+            SetChildText(outVar, "note", "Non Default value exists");
           }
           continue;
         }

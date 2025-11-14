@@ -45,6 +45,29 @@ namespace SmartBid
 
       ToolData tool;
 
+      // remove all files from TOOLs and TEMPLATEs previous to calculation
+      string outputFolder = Path.Combine(H.GetSProperty("processPath"),
+                                              dm.GetInnerText($@"dm/utils/utilsData/opportunityFolder"),
+                                              dm.SBidRevision,
+                                              "TOOLS");
+      DirectoryInfo di = new DirectoryInfo(Path.Combine(outputFolder, "TOOLS"));
+      if (Directory.Exists(Path.Combine(outputFolder, "TOOLS")))
+      {
+        foreach (FileInfo file in di.GetFiles())
+        {
+          file.Delete();
+        }
+      }
+      di = new DirectoryInfo(Path.Combine(outputFolder, "TEMPLATES"));
+      if (Directory.Exists(Path.Combine(outputFolder, "TEMPLATES")))
+      {
+        
+        foreach (FileInfo file in di.GetFiles())
+        {
+          file.Delete();
+        }
+      }
+
       //CALCULATE
       while (++i < calcRoute.Count)
       {

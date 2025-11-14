@@ -456,9 +456,8 @@ namespace SmartBid
           //create folder (if does not exists) and copy the tool to process folder
           _ = Directory.CreateDirectory(Path.GetDirectoryName(toolPath)!);
 
-          //copy tool template only for first call
-          //if (!File.Exists(toolPath) || i == 0)
-          if (!File.Exists(toolPath) || i == 0)
+          //copy tool template only for first call, check for the existance of the file toolPath
+          if (!File.Exists(toolPath))
             File.Copy(originalToolPath, toolPath, true);
 
           H.PrintLog(2,

@@ -187,17 +187,30 @@ namespace SmartBid
       doc.Load(xmlPath);
       foreach (XmlNode node in doc.SelectNodes("//variable")!)
       {
-        VariableData data = new(
-            node.Attributes["id"]!.InnerText ?? string.Empty,
-            node.Attributes["varName"]?.InnerText ?? string.Empty,
-            node.Attributes["area"]!.InnerText ?? string.Empty,
-            node.Attributes["source"]!.InnerText ?? string.Empty,
-            Convert.ToBoolean(node.Attributes["critic"]!.InnerText ?? "false"),
-            Convert.ToBoolean(node.Attributes["mandatory"]!.InnerText ?? "false"),
-            node.Attributes["type"]!.InnerText ?? string.Empty,
-            node.Attributes["unit"]?.InnerText ?? string.Empty
-        );
+        VariableData data;
+        try
+        {
+          data = new(
+          node.Attributes["id"]!.InnerText ?? string.Empty,
+          node.Attributes["varName"]?.InnerText ?? string.Empty,
+          node.Attributes["area"]?.InnerText ?? string.Empty,
+          node.Attributes["source"]!.InnerText ?? string.Empty,
+          Convert.ToBoolean(node.Attributes["critic"]!.InnerText ?? "false"),
+          Convert.ToBoolean(node.Attributes["mandatory"]!.InnerText ?? "false"),
+          node.Attributes["type"]!.InnerText ?? string.Empty,
+          node.Attributes["unit"]?.InnerText ?? string.Empty
+          );
 
+        }
+        catch (Exception)
+        {
+          H.PrintLog(5,
+              TC.ID.Value!.Time(),
+              TC.ID.Value!.User,
+              "VariablesMap.LoadFromXml",
+              $"❌❌ Error ❌❌ Alguno de los valores obligatorios de la variable (id, source, critic, mandatory or type) {node.Attributes["id"]?.InnerText} no han sido declarados en VarMap");
+          throw;
+        }
         data.Default = node.SelectSingleNode("default")?.InnerText ?? "";
         data.Description = node.SelectSingleNode("description")?.InnerText ?? "";
         data.Prompt = node.SelectSingleNode("prompt")?.InnerText ?? "";

@@ -180,7 +180,14 @@ namespace SmartBid
 
           if (!string.IsNullOrEmpty(defaultVal))
           {
-            valueEl.InnerText = defaultVal;
+            try
+            {
+              valueEl.InnerXml = defaultVal;
+            }
+            catch (System.Xml.XmlException)
+            {
+              valueEl.InnerText = defaultVal;
+            }
             SetChildText(outVar, "origin", "PREP_DEFAULT");
             SetChildText(outVar, "note", "Default value applied");
           }

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8" ?> 
 <root>
 	<!-- String de conexión a la base de datos -->
-	<DBConnextion>server=localhost;port=3306;database=SmartBid;user=SB_superuser;password=_0000_</DBConnextion>
-	<DBConnextion>server=10.25.4.155;port=3306;database=SmartBid;user=SB_user01;password=_0000_</DBConnextion>
-	<DBConnextion>server=10.25.3.189;port=3306;database=SmartBid;user=SB_user01;password=_0000_</DBConnextion>
+	<DBConnection>server=localhost;port=3306;database=SmartBid;user=SB_superuser;password=_0000_</DBConnection>
+	<DBConnection>server=10.25.4.155;port=3306;database=SmartBid;user=SB_user01;password=_0000_</DBConnection>
+	<DBConnection>server=10.25.3.189;port=3306;database=SmartBid;user=SB_user01;password=_0000_</DBConnection>
 
 	<!-- Mapa de directorios -->
 	<callsPath>C:\InSync\SmartBid\files\calls_temp</callsPath>	<!-- Directorio de escucha para generación de oferta-->
@@ -56,7 +56,7 @@
 	<mailCreatedBy>true</mailCreatedBy><!-- Envía mail al kam al usuario que inció la generación -->
 	
 	<logLevel>2</logLevel>  <!-- Nivel de anotaciones en el Log: 0-Todo 5-Mínimo -->
-	<printLevel>2</printLevel>  <!-- Nivel de printouts en consola: 0-Todo 5-Mínimo -->
+	<printLevel>0</printLevel>  <!-- Nivel de printouts en consola: 0-Todo 5-Mínimo -->
 
 	<autorun>C:\InSync\SmartBid\files\calls\pasteFiles.bat</autorun> <!-- Script que se ejecuta al iniciar el programa para desarrollo-->
 	<processDWG>false</processDWG><!-- Activar/desactivar el procesamiento de DWG -->

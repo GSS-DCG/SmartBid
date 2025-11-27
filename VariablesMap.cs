@@ -388,7 +388,7 @@ $"❌❌ Error ❌❌ -- Unexpected title in VariableMap/VarMap table \n{ex}");
       {
         if (varData == null)
         {
-          Console.WriteLine($"VariableData with ID '{id}' was not found");
+          Console.WriteLine($"VariableData with ID '{id}' was not found in Variable Map");
 
           return null;
         }

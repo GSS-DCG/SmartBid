@@ -226,12 +226,48 @@ namespace SmartBid
 
       return newInputDocs;
     }
+
     private XmlElement CreateDmElement(string name, string value)
     {
+      if (string.IsNullOrEmpty(name))
+        throw new ArgumentException("El nombre del elemento no puede ser nulo ni vacío.", nameof(name));
+
       XmlElement element = _dm.CreateElement(name);
-      element.InnerText = value;
+
+      if (string.IsNullOrEmpty(value))
+      {
+        element.InnerText = string.Empty;
+        return element;
+      }
+
+      if (IsWellFormedXml(value))
+      {
+        element.InnerXml = value;
+      }
+      else
+      {
+        element.InnerText = value;
+      }
+
       return element;
     }
+
+    private bool IsWellFormedXml(string xml)
+    {
+      if (!xml.TrimStart().StartsWith("<"))
+        return false;
+      try
+      {
+        var doc = new XmlDocument();
+        doc.LoadXml(xml); // Si falla, lanza excepción
+        return true;
+      }
+      catch
+      {
+        return false;
+      }
+    }
+
     private VariableData StoreValue(string id, string value, string origin = "", string notes = "")
     {
       // Log con InstanceId de DataMaster y HashCode del diccionario

@@ -8,7 +8,7 @@ namespace SmartBid
 
   public static class DBConnectionFactory
   {
-    private static readonly string ConnectionString = H.GetSProperty("DBConnextion");
+    private static readonly string ConnectionString = H.GetSProperty("DBConnection");
 
     public static MySqlConnection CreateConnection()
     {

@@ -1,9 +1,6 @@
-using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Xml;
-using DocumentFormat.OpenXml.Drawing;
-using DocumentFormat.OpenXml.EMMA;
-using Microsoft.Office.Interop.Word;
+using System.Xml.Linq;
 using Path = System.IO.Path;
 
 namespace SmartBid
@@ -12,7 +9,7 @@ namespace SmartBid
   {
     private readonly XmlDocument _dm;
     private readonly VariablesMap _vm;
-    private readonly Dictionary<string, VariableData> _data; 
+    private readonly Dictionary<string, VariableData> _data;
     private readonly XmlNode _projectDataNode;
     private readonly XmlNode _utilsNode;
     private readonly XmlNode _dataNode;
@@ -74,9 +71,9 @@ namespace SmartBid
         XmlNode utilsData = _utilsNode!.AppendChild(DM.CreateElement("utilsData"))!; // _utilsNode ya debe estar inicializado
         _ = utilsData.AppendChild(CreateDmElement("dataMasterFileName", FileName));
         _ = utilsData.AppendChild(GetImportedElement(xmlRequest, "//requestInfo/opportunityFolder"));
-        StoreValue("opportunityFolder", initialOpportunityFolder); // Usar el valor capturado
-        StoreValue("createdBy", GetImportedElement(xmlRequest, "//requestInfo/createdBy").InnerText);
-        StoreValue("requestTimestamp", GetImportedElement(xmlRequest, "//requestInfo/requestTimestamp").InnerText);
+        _ = StoreValue("opportunityFolder", initialOpportunityFolder); // Usar el valor capturado
+        _ = StoreValue("createdBy", GetImportedElement(xmlRequest, "//requestInfo/createdBy").InnerText);
+        _ = StoreValue("requestTimestamp", GetImportedElement(xmlRequest, "//requestInfo/requestTimestamp").InnerText);
         // --- FIN OPERACIONES MOVIDAS ---
 
 
@@ -97,7 +94,7 @@ namespace SmartBid
             XmlNode element = GetImportedElement(xmlRequest, @$"//projectData/{variable.ID}");
             _ = _projectDataNode.AppendChild(element);
 
-            StoreValue(variable.ID, element.InnerText);//Extraer el valor para almacenar en _data.
+            _ = StoreValue(variable.ID, element.InnerText);//Extraer el valor para almacenar en _data.
           }
 
           // Load CONFIG Init Data
@@ -120,7 +117,7 @@ namespace SmartBid
         UpdateData(configDataXML); // Ahora, cuando UpdateData llame a GetValueString, "opportunityFolder" debería estar disponible.
 
         XmlElement revision = CreateRevisionElement(1, xmlRequest, targets, initialOpportunityFolder); // Pasar initialOpportunityFolder
-        _utilsNode.AppendChild(revision);
+        _ = _utilsNode.AppendChild(revision);
       }
       else if (((XmlElement)xmlRequest.SelectSingleNode("/request/requestInfo")!).GetAttribute("Type") == "modify")
       {
@@ -171,7 +168,7 @@ namespace SmartBid
 
       // Adding Processed InputDocs
       // checks that all files exits and stores the checksum of the fileName for comparison
-      revision.AppendChild(ProcessInputFiles((XmlElement)xmlRequest.SelectSingleNode("//requestInfo/inputDocs")!));
+      _ = revision.AppendChild(ProcessInputFiles((XmlElement)xmlRequest.SelectSingleNode("//requestInfo/inputDocs")!));
 
       //Adding deliveryDocs from either Call or Default Delivery Docs
       newNode = H.CreateElement(_dm, "deliveryDocs", "");
@@ -181,7 +178,7 @@ namespace SmartBid
         XmlElement newChild = CreateDmElement("doc", target.FileName);
         newChild.SetAttribute("code", target.Code);
         newChild.SetAttribute("version", target.Version);
-        newNode.AppendChild(newChild);
+        _ = newNode.AppendChild(newChild);
       }
       _ = newNode != null ? revision.AppendChild(_dm.ImportNode(newNode, true)) : null;
 
@@ -204,14 +201,14 @@ namespace SmartBid
 
         if (!File.Exists(filePath))
         {
-          H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌ - ProcessFile", $"⚠️ File: '{filePath}' is not found. ");
+          H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌ - ProcessFile", $"⚠️ File: '{filePath}' is not found. ");
           continue; // Saltar este documento y seguir con los demás
         }
 
         string hash = H.GetFileMD5(filePath); // Calculate MD5 hash for the fileName
         string lastModified = File.GetLastWriteTime(filePath).ToString("yyyy-MM-dd HH:mm:ss");
 
-        newInputDocs.AppendChild(H.CreateElement(_dm, fileType, filePath, new Dictionary<string, string>
+        _ = newInputDocs.AppendChild(H.CreateElement(_dm, fileType, filePath, new Dictionary<string, string>
         {
           { "hash", hash },
           { "lastModified", lastModified }
@@ -226,7 +223,6 @@ namespace SmartBid
 
       return newInputDocs;
     }
-
     private XmlElement CreateDmElement(string name, string value)
     {
       if (string.IsNullOrEmpty(name))
@@ -251,7 +247,6 @@ namespace SmartBid
 
       return element;
     }
-
     private bool IsWellFormedXml(string xml)
     {
       if (!xml.TrimStart().StartsWith("<"))
@@ -267,20 +262,229 @@ namespace SmartBid
         return false;
       }
     }
+    private static bool TryNormalizeNumber(string original, out string corrected)
+    {
+      corrected = string.Empty;
 
+      if (original == null || string.IsNullOrWhiteSpace(original))
+      {
+        // Empty allowed
+        return true;
+      }
+
+      string s = original.Trim();
+
+      // Handle negative numbers in accounting format: (123) -> -123
+      bool parenNegative = false;
+      if (s.StartsWith("(") && s.EndsWith(")"))
+      {
+        parenNegative = true;
+        s = s.Substring(1, s.Length - 2).Trim();
+      }
+
+      // Remove common thousands separators
+      s = s.Replace("'", "").Replace(" ", "").Replace("\u00A0", "").Replace("_", "");
+
+      // Detect decimal separator
+      int lastComma = s.LastIndexOf(',');
+      int lastDot = s.LastIndexOf('.');
+      bool hasComma = lastComma >= 0;
+      bool hasDot = lastDot >= 0;
+
+      bool hadDecimalSeparator = false;
+
+      if (hasComma && hasDot)
+      {
+        int lastPos = Math.Max(lastComma, lastDot);
+        char decimalSep = s[lastPos];
+        hadDecimalSeparator = true;
+
+        if (decimalSep == ',')
+        {
+          s = s.Replace(".", "");
+          s = s.Replace(',', '.');
+        }
+        else
+        {
+          s = s.Replace(",", "");
+        }
+      }
+      else if (hasComma)
+      {
+        hadDecimalSeparator = true;
+        s = s.Replace(',', '.');
+      }
+      else if (hasDot)
+      {
+        hadDecimalSeparator = true;
+      }
+
+      if (parenNegative)
+        s = "-" + s;
+
+      // Validate and parse
+      if (!double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out double num))
+        return false;
+
+      // Format final corrected value
+      const double EPS = 1e-12;
+      if (!hadDecimalSeparator)
+      {
+        if (Math.Abs(num - Math.Round(num)) < EPS)
+          corrected = ((long)Math.Round(num)).ToString(CultureInfo.InvariantCulture);
+        else
+          corrected = num.ToString(CultureInfo.InvariantCulture);
+      }
+      else
+      {
+        corrected = num.ToString(CultureInfo.InvariantCulture);
+      }
+
+      return true;
+    }
     private VariableData StoreValue(string id, string value, string origin = "", string notes = "")
     {
-      // Log con InstanceId de DataMaster y HashCode del diccionario
       H.PrintLog(1, TC.ID.Value!.Time(), User, "StoreValue", $"  - variable ||{id}: {value}|| added/updated to DataMaster data");
-      VariableData? varData = _vm.GetNewVariableData(id); 
+      VariableData? varData = _vm.GetNewVariableData(id);
 
-      // Log con InstanceId de VariableData clonada
+
       H.PrintLog(1, TC.ID.Value!.Time(), User, "StoreValue", $"  ->  for key '{id}'. Original Value (before update): '{varData.Value}'. ()");
 
-      varData.Value = (varData.Type != "num") ? value : value.Replace(',', '.');
+      //make sure value is valid according to type (bool, num, xml)
 
+      if (varData != null)
+      {
+        if (varData.Type == "bool")
+        {
+          // Normalizar valores booleanos
+          value = value.Trim().ToLower();
+          if (value == "1") value = "true";
+          else if (value == "0") value = "false";
+
+          if (!bool.TryParse(value, out _))
+          {
+            H.PrintLog(6, TC.ID.Value!.Time(), User, "StoreValue",
+                $"❌❌ Error ❌❌ - Invalid boolean value '{value}' for variable '{id}'.");
+          }
+        }
+
+        else if (varData.Type == "num")
+        {
+          if (TryNormalizeNumber(value, out string corrected))
+          {
+            value = corrected; // empty or normalized
+          }
+          else if (!string.IsNullOrEmpty(value))
+          {
+            H.PrintLog(6, TC.ID.Value!.Time(), User, "StoreValue",
+                $"❌❌ Error ❌❌ - Invalid numeric value '{value}' for variable '{id}'.");
+          }
+        }
+
+        else if (varData.Type == "list<str>" || varData.Type == "table")
+        {
+          // Step 1: Minimal fix for inverted replacements
+          value = value.Replace("&amp;lt;", "&lt;").Replace("&amp;gt;", "&gt;");
+
+          if (!IsWellFormedXml(value))
+          {
+            try
+            {
+              var doc = XDocument.Parse(value);
+
+              Func<string, string> escapeXmlText = text =>
+              {
+                return text.Replace("&", "&amp;")
+                           .Replace("<", "&lt;")
+                           .Replace(">", "&gt;")
+                           .Replace("\"", "&quot;")
+                           .Replace("'", "&apos;");
+              };
+
+              if (varData.Type == "list<str>")
+              {
+                foreach (var li in doc.Descendants("li"))
+                {
+                  if (!string.IsNullOrEmpty(li.Value))
+                    li.Value = escapeXmlText(li.Value);
+                }
+              }
+              else if (varData.Type == "table")
+              {
+                foreach (var cell in doc.Descendants("c"))
+                {
+                  if (!string.IsNullOrEmpty(cell.Value))
+                    cell.Value = escapeXmlText(cell.Value);
+                }
+              }
+
+              // Rebuild XML
+              value = doc.ToString(SaveOptions.DisableFormatting);
+
+              // Validate again
+              if (!IsWellFormedXml(value))
+              {
+                H.PrintLog(6, TC.ID.Value!.Time(), User, "StoreValue",
+                    $"❌❌ Error ❌❌ - Invalid XML value after normalization for variable '{id}'.");
+              }
+            }
+            catch (Exception ex)
+            {
+              H.PrintLog(6, TC.ID.Value!.Time(), User, "StoreValue",
+                  $"❌❌ Error ❌❌ - Failed to process {varData.Type} for variable '{id}': {ex.Message}");
+            }
+          }
+        }
+
+        else if (varData.Type == "list<num>")
+        {
+          if (value.Contains("&lt;") || value.Contains("&gt;"))
+            value = value.Replace("&lt;", "<").Replace("&gt;", ">");
+
+          if (!IsWellFormedXml(value))
+          {
+            H.PrintLog(6, TC.ID.Value!.Time(), User, "StoreValue",
+                $"❌❌ Error ❌❌ - Invalid XML value '{value}' for variable '{id}'.");
+          }
+          else
+          {
+            try
+            {
+              var doc = XDocument.Parse(value);
+              foreach (var item in doc.Descendants("li"))
+              {
+                if (string.IsNullOrWhiteSpace(item.Value))
+                {
+                  item.Value = string.Empty;
+                  continue;
+                }
+
+                if (TryNormalizeNumber(item.Value, out string corrected))
+                {
+                  item.Value = corrected;
+                }
+                else
+                {
+                  H.PrintLog(6, TC.ID.Value!.Time(), User, "StoreValue",
+                      $"❌❌ Error ❌❌ - Invalid numeric value '{item.Value}' in list for variable '{id}'.");
+                }
+              }
+              value = doc.ToString(SaveOptions.DisableFormatting);
+            }
+            catch (Exception ex)
+            {
+              H.PrintLog(6, TC.ID.Value!.Time(), User, "StoreValue",
+                  $"❌❌ Error ❌❌ - Failed to process list<num> for variable '{id}': {ex.Message}");
+            }
+          }
+        }
+
+      }
+
+
+
+      varData.Value = value;
       varData.Origen = origin;
-
       varData.Note = notes;
 
       if (_data.ContainsKey(id))
@@ -297,10 +501,8 @@ namespace SmartBid
     }
     private void StoreValue(string id, VariableData varData)
     {
-      // Log con InstanceId de DataMaster y HashCode del diccionario
       H.PrintLog(1, TC.ID.Value!.Time(), User, "StoreValue", $"  - variable ||{id}|| added/updated to DataMaster data (from existing VariableData instance)");
 
-      // Log con InstanceId de VariableData (la que se está pasando)
       H.PrintLog(1, TC.ID.Value!.Time(), User, "StoreValue", $"  -> VariableData for key '{id}'. Value: '{varData.Value}'. ()");
 
       if (_data.ContainsKey(id))
@@ -326,7 +528,7 @@ namespace SmartBid
     public void UpdateData(XmlDocument newData)
     {
       // Log con InstanceId de DataMaster y HashCode del diccionario
-      H.PrintLog(5, TC.ID.Value!.Time(), User, "DataMaster.UpdateData", $"Actualizando   para '{GetValueString("opportunityFolder")}' con nueva data.");
+      H.PrintLog(5, TC.ID.Value!.Time(), User, "DataMaster.UpdateData", $"Actualizando DM y mapa de variables");
       H.MergeXmlNodes(newData, _dm, "/*/utils", $"/dm/utils/{SBidRevision}");
 
       XmlNode variablesNode = newData.SelectSingleNode("//*/variables")!;
@@ -343,7 +545,7 @@ namespace SmartBid
         if (variableDMNode == null)
         {
           variableDMNode = _dm.CreateElement(XmlConvert.EncodeName(var.ID));
-          _dataNode.AppendChild(variableDMNode);
+          _ = _dataNode.AppendChild(variableDMNode);
         }
 
         //Create the revision index
@@ -351,11 +553,12 @@ namespace SmartBid
         if (revisions == null)
         {
           revisions = _dm.CreateElement("revision");
-          variableDMNode.AppendChild(revisions);
+          _ = variableDMNode.AppendChild(revisions);
         }
 
         XmlNode? rev = revisions.SelectSingleNode(SBidRevision);
-        if (rev == null) {
+        if (rev == null)
+        {
           rev = revisions.AppendChild(CreateDmElement(SBidRevision, $"set{BidRevision.ToString("D2")}"));
         }
         string sSet = rev!.InnerText;
@@ -364,14 +567,16 @@ namespace SmartBid
         if (setNode == null)
         {
           setNode = _dm.CreateElement(sSet);
-          setNode.AppendChild(CreateDmElement("value", var.Value));
-          setNode.AppendChild(CreateDmElement("origin", var.Origen));
-          setNode.AppendChild(CreateDmElement("Note", var.Note));
-          variableDMNode.AppendChild(setNode);
-        } else {
+          _ = setNode.AppendChild(CreateDmElement("value", var.Value));
+          _ = setNode.AppendChild(CreateDmElement("origin", var.Origen));
+          _ = setNode.AppendChild(CreateDmElement("Note", var.Note));
+          _ = variableDMNode.AppendChild(setNode);
+        }
+        else
+        {
           setNode.SelectSingleNode("value").InnerText = var.Value;
-          setNode.AppendChild(CreateDmElement("origin", $" Modified: {var.Origen}"));
-          setNode.AppendChild(CreateDmElement("Note", $" Modified: {var.Note}"));
+          _ = setNode.AppendChild(CreateDmElement("origin", $" Modified: {var.Origen}"));
+          _ = setNode.AppendChild(CreateDmElement("Note", $" Modified: {var.Note}"));
         }
       }
     }
@@ -408,7 +613,7 @@ namespace SmartBid
           }
         }
 
-        H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌ - DM.GetValueString ", $"Key '{key}' not found in Dictionary");
+        H.PrintLog(6, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌ - DM.GetValueString ", $"Key '{key}' not found in Dictionary");
         return string.Empty;
       }
     }
@@ -424,9 +629,10 @@ namespace SmartBid
     {
       if (_data.TryGetValue(key, out VariableData? value))
       {
-        string xmlString = value?.Value ?? string.Empty;
-        List<string> itemList = new();
 
+        string xmlString = value?.Value ?? string.Empty;
+
+        List<string> itemList = new();
         if (string.IsNullOrWhiteSpace(xmlString))
           return new List<string>();
 
@@ -454,11 +660,11 @@ namespace SmartBid
         }
         catch
         {
-          H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM.GetValueList", $"Key '{key}' found in, but value is not valid XML: '{xmlString}'.");
+          H.PrintLog(6, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM.GetValueList", $"Key '{key}' found in, but value is not valid XML: '{xmlString}'.");
           return null; // returns NULL when the Value has not XML format
         }
       }
-      H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM", $"Key '{key}' not found in . ");
+      H.PrintLog(6, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM", $"Key '{key}' not found in . ");
       throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
     }
     public XmlNode GetValueXmlNode(string key)
@@ -478,7 +684,7 @@ namespace SmartBid
         }
         catch
         {
-          H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM.GetValueXmlNode", $"Key '{key}' found in  , but value is not valid XML: '{xmlString}'.");
+          H.PrintLog(6, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM.GetValueXmlNode", $"Key '{key}' found in  , but value is not valid XML: '{xmlString}'.");
           return null; // returns NULL when the Value has not XML format
         }
       }
@@ -490,7 +696,7 @@ namespace SmartBid
           return _dm.SelectSingleNode($"/dm/utils/{SBidRevision}/{key}");
         }
       }
-      H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM", $"Key '{key}' not found in . ");
+      H.PrintLog(6, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM", $"Key '{key}' not found in . ");
       throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
     }
     public string GetValueUnit(string key)
@@ -512,7 +718,7 @@ namespace SmartBid
       }
       else
       {
-        H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM.GetVariableData", $"Key '{key}' not found in . ");
+        H.PrintLog(6, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM.GetVariableData", $"Key '{key}' not found in . ");
         throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
       }
     }
@@ -525,7 +731,7 @@ namespace SmartBid
       }
       else
       {
-        H.PrintLog(5, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM.GetInnerText", $"Node not found for XPath: {xpath} in . ");
+        H.PrintLog(6, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM.GetInnerText", $"Node not found for XPath: {xpath} in . ");
         throw new XmlException($"Node not found for XPath: {xpath}");
       }
     }
@@ -546,7 +752,7 @@ namespace SmartBid
 
       if (missingValues.Count > 0)
       {
-        H.PrintLog(5, TC.ID.Value!.Time(), User, "CheckMandatoryValues", $"❌Error❌: Mandatory values not found in . Cannot continue with calculations. Faltan: {string.Join(", ", missingValues)}");
+        H.PrintLog(6, TC.ID.Value!.Time(), User, "CheckMandatoryValues", $"❌Error❌: Mandatory values not found in . Cannot continue with calculations. Faltan: {string.Join(", ", missingValues)}");
         throw new InvalidOperationException("MandatoryValues missing");
       }
     }

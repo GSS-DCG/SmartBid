@@ -899,15 +899,103 @@ namespace SmartBid
       string output;
       string error;
 
+      //// Use the current call's CancellationToken (from TC.ThreadInfo)
+      //var ct = TC.ID.Value?.Token ?? CancellationToken.None;
+
+      //Stopwatch sw = Stopwatch.StartNew();
+
+      //using (Process process = new() { StartInfo = psi })
+      //{
+      //  //take the timestamp when the process starts to print out the total time spent in the process
+
+
+      //  _ = process.Start();
+
+      //  // Register this external process to be auto-killed on cancel/timeout
+      //  TC.ID.Value?.RegisterProcess(process);
+
+      //  // If the call is cancelled, kill the process (and its tree)
+      //  using var cancelReg = ct.Register(() =>
+      //  {
+      //    try
+      //    {
+      //      if (!process.HasExited)
+      //      {
+      //        try { process.Kill(true); } catch { process.Kill(); }
+      //      }
+      //    }
+      //    catch { /* ignore */ }
+      //  });
+
+      //  using var _scoped = TC.ID.Value!.ArmScopedTimeoutMinutes(
+      //      tool.TimeoutMinutes,
+      //      reason: $"Timeout Tool {tool.Code}",
+      //      killChildren: true
+      //  );
+
+      //  // Send input and read outputs (same as you already do)
+      //  using (StreamWriter writer = process.StandardInput)
+      //  {
+      //    writer.Write(xmlVarList);
+      //    writer.Flush();
+      //    writer.Close();
+      //  }
+
+      //  // NOTE: These ReadToEnd() calls will now unblock if the process is killed by cancel/timeout
+      //  output = process.StandardOutput.ReadToEnd();
+      //  error = process.StandardError.ReadToEnd();
+
+      //  // Wait for exit (fast returns if already killed)
+      //  process.WaitForExit();
+      //}
+
+      //sw.Stop();
+
+      //ReleaseProcess(tool.Code, (int)TC.ID.Value.CallId!);
+
+
+      //// If cancelled, surface a meaningful error
+      ///
+
+
+      //if (ct.IsCancellationRequested)
+      //{     
+      //  //show a canellation exception telling the total time spent until cancellation and the time since the tool calling (whenever the watchdog started)
+      //  throw new OperationCanceledException($"Tool {tool.Code} was timeout after {sw.Elapsed.Minutes} min.");
+      //}
+
+      /////////////////////////////////////////////////////////////////////////////////////////////
+      ///
+      ///
+      ///
+      ///
+      ///
+      ///
+      ///
+
       // Use the current call's CancellationToken (from TC.ThreadInfo)
       var ct = TC.ID.Value?.Token ?? CancellationToken.None;
 
       Stopwatch sw = Stopwatch.StartNew();
 
+        var manualCts = new CancellationTokenSource();
+        var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, manualCts.Token);
+        var effectiveCt = linkedCts.Token;
+
+        if(tool.TimeoutMinutes != 0 ) Task.Delay(TimeSpan.FromMinutes(tool.TimeoutMinutes - 2))
+            .ContinueWith(_ =>
+            {
+                if (!ct.IsCancellationRequested) // solo si aún no se disparó el timeout
+                {
+                    H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", "Cancelando ejecucion manualmente. 2 minutos para el timeout", callXml);
+                    manualCts.Cancel();
+                }
+            });
+
+
       using (Process process = new() { StartInfo = psi })
       {
         //take the timestamp when the process starts to print out the total time spent in the process
-
 
         _ = process.Start();
 
@@ -915,7 +1003,7 @@ namespace SmartBid
         TC.ID.Value?.RegisterProcess(process);
 
         // If the call is cancelled, kill the process (and its tree)
-        using var cancelReg = ct.Register(() =>
+        using var cancelReg = effectiveCt.Register(() =>
         {
           try
           {
@@ -954,13 +1042,26 @@ namespace SmartBid
       ReleaseProcess(tool.Code, (int)TC.ID.Value.CallId!);
 
 
-      // If cancelled, surface a meaningful error
-      if (ct.IsCancellationRequested)
-      {
-        //show a canellation exception telling the total time spent until cancellation and the time since the tool calling (whenever the watchdog started)
-        throw new OperationCanceledException($"Tool {tool.Code} was timeout after {sw.Elapsed.Minutes} min.");
-      }
+        // If cancelled, surface a meaningful error
+        if (ct.IsCancellationRequested && !manualCts.IsCancellationRequested)
+        {
+            // Timeout real
+            throw new OperationCanceledException(
+                $"Tool {tool.Code} timed out after {sw.Elapsed.Minutes} min.");
+        }
+        else if (manualCts.IsCancellationRequested)
+        {
+                H.PrintLog(2, TC.ID.Value!.Time(), TC.ID.Value!.User, "CalculateExe", "Intentnado continuar con la ejecucion.", callXml);
+            }
 
+        ///
+        ///
+        ///
+        ///
+        ///
+        ///
+        ///
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
       // Validate output to avoid XML parse crash after a forced kill
       if (string.IsNullOrWhiteSpace(output))

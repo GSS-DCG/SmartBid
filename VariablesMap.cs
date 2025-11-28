@@ -204,7 +204,7 @@ namespace SmartBid
         }
         catch (Exception)
         {
-          H.PrintLog(5,
+          H.PrintLog(6,
               TC.ID.Value!.Time(),
               TC.ID.Value!.User,
               "VariablesMap.LoadFromXml",
@@ -306,7 +306,7 @@ namespace SmartBid
         }
         catch (Exception ex)
         {
-          H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "VariablesMap.LoadFromXLS",
+          H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, "VariablesMap.LoadFromXLS",
 $"❌❌ Error ❌❌ -- Unexpected title in VariableMap/VarMap table \n{ex}");
           throw;
         }

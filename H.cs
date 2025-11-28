@@ -129,6 +129,9 @@ namespace SmartBid
           case 4:
             Console.ForegroundColor = ConsoleColor.Yellow;
             break;
+          case 6:
+            Console.ForegroundColor = ConsoleColor.Red;
+            break;
           default:
             Console.ForegroundColor = ConsoleColor.White;
             break;

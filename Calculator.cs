@@ -203,7 +203,7 @@ namespace SmartBid
             }
             catch (Exception ex)
             {
-              H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User,
+              H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User,
                   "RunCalculations",
                   "❌❌ Error ❌❌  reading result from XML or updating DB: " + ex.Message);
             }
@@ -233,7 +233,7 @@ namespace SmartBid
           }
           else
           {
-            H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - RunCalculations", $"Tool {tool} not found in ToolsMap. ");
+            H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - RunCalculations", $"Tool {tool} not found in ToolsMap. ");
           }
 
           status = "DONE";

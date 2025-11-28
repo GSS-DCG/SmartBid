@@ -343,9 +343,9 @@ namespace SmartBid
         H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", b);
         H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", a);
         H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", b);
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"--❌❌ 🧨  Excepción: {ex.GetType().Name} ");
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"--❌❌ 📄    Mensaje: {ex.Message} ");
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"--❌❌ 🧭 StackTrace:\n{ex.StackTrace} ");
+        H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"--❌❌ 🧨  Excepción: {ex.GetType().Name} ");
+        H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"--❌❌ 📄    Mensaje: {ex.Message} ");
+        H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", $"--❌❌ 🧭 StackTrace:\n{ex.StackTrace} ");
         H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ProcessFile", a);
 
         string bodyHtml = $@"
@@ -406,7 +406,7 @@ namespace SmartBid
         }
         catch (Exception ex)
         {
-          H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌ - StoreCallFile", $"❌Error❌ al mover '{callFile}': {ex.Message}");
+          H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌ - StoreCallFile", $"❌Error❌ al mover '{callFile}': {ex.Message}");
         }
       }
       else
@@ -613,7 +613,7 @@ namespace SmartBid
             }
             catch (Exception ex)
             {
-              H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "SYSTEM", name, $"❌ Error handling '{e.FullPath}': {ex.Message}");
+              H.PrintLog(6, DateTime.Now.ToString("HH:mm:ss"), "SYSTEM", name, $"❌ Error handling '{e.FullPath}': {ex.Message}");
             }
           }, token);
         };
@@ -742,11 +742,11 @@ namespace SmartBid
         if (sent)
           H.PrintLog(4, DateTime.Now.ToString("HH:mm:ss"), "SYSTEM", "DoStuff1", $"DWG enviado a {recipient}: {Path.GetFileName(lyotPath)}");
         else
-          H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "SYSTEM", "DoStuff1", $"❌ Error al enviar DWG a {recipient}: {Path.GetFileName(lyotPath)}");
+          H.PrintLog(6, DateTime.Now.ToString("HH:mm:ss"), "SYSTEM", "DoStuff1", $"❌ Error al enviar DWG a {recipient}: {Path.GetFileName(lyotPath)}");
       }
       catch (Exception ex)
       {
-        H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "SYSTEM", "DoStuff1", $"❌ Excepción: {ex.GetType().Name} - {ex.Message}");
+        H.PrintLog(6, DateTime.Now.ToString("HH:mm:ss"), "SYSTEM", "DoStuff1", $"❌ Excepción: {ex.GetType().Name} - {ex.Message}");
         try { MoveDirectToCallsPath(); } catch { }
       }
     }
@@ -886,7 +886,7 @@ namespace SmartBid
       }
       catch (Exception ex)
       {
-        H.PrintLog(5, DateTime.Now.ToString("HH:mm:ss"), "SYSTEM", "DoStuff2", $"❌ Excepción: {ex.GetType().Name} - {ex.Message}");
+        H.PrintLog(6, DateTime.Now.ToString("HH:mm:ss"), "SYSTEM", "DoStuff2", $"❌ Excepción: {ex.GetType().Name} - {ex.Message}");
       }
     }
   }

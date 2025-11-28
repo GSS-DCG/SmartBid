@@ -1232,7 +1232,7 @@ namespace SmartBid
       }
       catch (Exception)
       {
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "** Error - GenerateOutputWord", $"Cannot copy template {filePath}");
+        H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, "** Error - GenerateOutputWord", $"Cannot copy template {filePath}");
         throw;
       }
 
@@ -1283,8 +1283,8 @@ namespace SmartBid
         }
         catch (Exception ex)
         {
-          H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "** Error - GenerateOuputWord", $"❌Error❌ con el documento {Path.GetFileName(filePath)}");
-          H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "GenerateOuputWord", $"❌❌ Error ❌❌ : " + ex.Message);
+          H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, "** Error - GenerateOuputWord", $"❌Error❌ con el documento {Path.GetFileName(filePath)}");
+          H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, "GenerateOuputWord", $"❌❌ Error ❌❌ : " + ex.Message);
           H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "", "       " + ex.StackTrace);
         }
         finally
@@ -1363,8 +1363,8 @@ namespace SmartBid
         }
         catch (Exception ex)
         {
-          H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "** Error - GenerateOuputWord", $"❌Error❌ con el documento {Path.GetFileName(filePath)}");
-          H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "GenerateOuputWord", $"❌❌ Error ❌❌ : " + ex.Message);
+          H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, "** Error - GenerateOuputWord", $"❌Error❌ con el documento {Path.GetFileName(filePath)}");
+          H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, "GenerateOuputWord", $"❌❌ Error ❌❌ : " + ex.Message);
           H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "", "       " + ex.StackTrace);
         }
         finally

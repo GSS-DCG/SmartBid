@@ -159,7 +159,7 @@ namespace SmartBid
       }
       catch (Exception ex)
       {
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Excel.WriteTable", $"❌❌ Error ❌❌ :  writing table to Excel: " + ex.Message);
+        H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Excel.WriteTable", $"❌❌ Error ❌❌ :  writing table to Excel: " + ex.Message);
       }
     }
 
@@ -271,7 +271,7 @@ namespace SmartBid
       }
       catch (Exception ex)
       {
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Excel.Close", $"❌ Error closing workbook '{filePath}': {ex.Message}");
+        H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Excel.Close", $"❌ Error closing workbook '{filePath}': {ex.Message}");
       }
     }
 
@@ -289,7 +289,7 @@ namespace SmartBid
       }
       catch (Exception ex)
       {
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Excel.Save", $"❌ Error saving workbook '{filePath}': {ex.Message}");
+        H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Excel.Save", $"❌ Error saving workbook '{filePath}': {ex.Message}");
         throw;
       }
     }
@@ -312,7 +312,7 @@ namespace SmartBid
       }
       catch (Exception ex)
       {
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Excel.Calculate", $"❌ Error calculating or saving workbook '{filePath}': {ex.Message}");
+        H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Excel.Calculate", $"❌ Error calculating or saving workbook '{filePath}': {ex.Message}");
         throw;
       }
     }
@@ -325,7 +325,7 @@ namespace SmartBid
       {
         if (workbook == null)
         {
-          H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ListNamedRanges", "❌ Workbook is null.");
+          H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, "ListNamedRanges", "❌ Workbook is null.");
           return namedRanges;
         }
 
@@ -337,7 +337,7 @@ namespace SmartBid
       }
       catch (Exception ex)
       {
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "ListNamedRanges", $"❌ Error listing named ranges: {ex.Message}");
+        H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, "ListNamedRanges", $"❌ Error listing named ranges: {ex.Message}");
       }
 
       return namedRanges;

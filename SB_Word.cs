@@ -92,7 +92,7 @@ namespace SmartBid
               }
               catch (XmlException ex)
               {
-                H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌Error❌❌ - GenerateOuputWord", $"Invalid XML format for (table) variable {variableID}:found text: {varList[variableID].Value}\n   {ex.Message}");
+                H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌Error❌❌ - GenerateOuputWord", $"Invalid XML format for (table) variable {variableID}:found text: {varList[variableID].Value}\n   {ex.Message}");
                 return;
               }
               xmlDoc.LoadXml(varList[variableID].Value);
@@ -100,7 +100,7 @@ namespace SmartBid
               XmlNode tableNode = xmlDoc.DocumentElement;
               if (tableNode == null)
               {
-                H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - GenerateOuputWord", $"No valid XML data found for variable {variableID}.");
+                H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - GenerateOuputWord", $"No valid XML data found for variable {variableID}.");
                 return;
               }
 
@@ -192,7 +192,7 @@ namespace SmartBid
       }
       catch
       {
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Word.SaveAsPDF", @$"❌Error❌ al Convertir el archivo {doc.Name} a PDF.");
+        H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, "SB_Word.SaveAsPDF", @$"❌Error❌ al Convertir el archivo {doc.Name} a PDF.");
         return false;
       }
 

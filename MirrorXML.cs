@@ -65,7 +65,7 @@ namespace SmartBid
       }
       if (!Path.Exists(directoryPath))
       {
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - LoadData", $"Tool Resource not found for file: {tool.Code}:{tool.Resource}");
+        H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - LoadData", $"Tool Resource not found for file: {tool.Code}:{tool.Resource}");
         return;
       }
 
@@ -85,7 +85,7 @@ namespace SmartBid
         }
         else
         {
-          H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "LoadData", $"❌❌ Error ❌❌  - {ToolFilePath} does not exist.");
+          H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, "LoadData", $"❌❌ Error ❌❌  - {ToolFilePath} does not exist.");
           return;
         }
       }
@@ -267,7 +267,7 @@ namespace SmartBid
 
         if (nonDeclaredVars.Count > 0)
         {
-          H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "❌❌ Error ❌❌  - ExtractVariablesFromDocx", "Declaration Error");
+          H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, "❌❌ Error ❌❌  - ExtractVariablesFromDocx", "Declaration Error");
           throw new InvalidOperationException(
               $"{nonDeclaredVars.Count} variables found in {FileName} are not declared in VariableMap:\n\n{string.Join("\n", nonDeclaredVars)}\n");
         }
@@ -276,7 +276,7 @@ namespace SmartBid
       }
       catch (Exception ex)
       {
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, "❌❌ Error ❌❌  - ExtractVariablesFromDocx", $"❌ Error reading DOCX: {ex.Message}");
+        H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, "❌❌ Error ❌❌  - ExtractVariablesFromDocx", $"❌ Error reading DOCX: {ex.Message}");
         return [];
       }
       finally
@@ -386,7 +386,7 @@ namespace SmartBid
 
       if (nonDeclaredVars.Count > 0)
       {
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - ExtractVariablesFromXlsx", $"Declaration Error");
+        H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - ExtractVariablesFromXlsx", $"Declaration Error");
         throw new InvalidOperationException(
             $"{nonDeclaredVars.Count} variables found in {Path.GetFileName(FileName)} are not declared in VariableMap:\n\n{string.Join("\n", nonDeclaredVars)}\n"
         );

@@ -54,7 +54,7 @@ namespace SmartBid
       }
       catch (Exception ex)
       {
-        H.PrintLog(5, "00:00.000", "DBtools", $"❌❌ Error ❌❌  - InsertCallStart", $"❌❌ Error ❌❌  inserting callsTracker registry: " + ex.Message);
+        H.PrintLog(6, "00:00.000", "DBtools", $"❌❌ Error ❌❌  - InsertCallStart", $"❌❌ Error ❌❌  inserting callsTracker registry: " + ex.Message);
         return -1;
       }
     }
@@ -78,7 +78,7 @@ namespace SmartBid
       }
       catch (Exception ex)
       {
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - DBtools-UpdateCallRegistry", $"❌❌ Error ❌❌  updating callsTracker registry: " + ex.Message);
+        H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - DBtools-UpdateCallRegistry", $"❌❌ Error ❌❌  updating callsTracker registry: " + ex.Message);
       }
     }
 
@@ -98,7 +98,7 @@ namespace SmartBid
       }
       catch (Exception ex)
       {
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - DBtools-UpdateCallRegistry", $"❌❌ Error ❌❌  updating callsTracker registry: " + ex.Message);
+        H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - DBtools-UpdateCallRegistry", $"❌❌ Error ❌❌  updating callsTracker registry: " + ex.Message);
       }
       try
       {
@@ -125,7 +125,7 @@ namespace SmartBid
           user = "Main";
         }
 
-          H.PrintLog(5, time, user, $"❌❌ Error ❌❌  - DBtools-UpdateCallRegistry", $"❌❌ Error ❌❌  updating callsTracker registry: " + ex.Message);
+          H.PrintLog(6, time, user, $"❌❌ Error ❌❌  - DBtools-UpdateCallRegistry", $"❌❌ Error ❌❌  updating callsTracker registry: " + ex.Message);
       }
     }
     public static void CreateRouteProgress(int callID, List<string> route, List<string> status)
@@ -146,7 +146,7 @@ namespace SmartBid
       }
       catch (Exception ex)
       {
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - DBtools-CreateRouteProgress", $"❌❌ Error ❌❌  deleting existing route progress: " + ex.Message);
+        H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - DBtools-CreateRouteProgress", $"❌❌ Error ❌❌  deleting existing route progress: " + ex.Message);
       }
       int i = -1;
       while (++i < route.Count) {
@@ -174,7 +174,7 @@ namespace SmartBid
         }
         catch (Exception ex)
         {
-          H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - DBtools-CreateRouteProgress", $"❌❌ Error ❌❌  creating route progress: " + ex.Message);
+          H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - DBtools-CreateRouteProgress", $"❌❌ Error ❌❌  creating route progress: " + ex.Message);
         }
         cmd.Parameters.Clear();
       }
@@ -201,7 +201,7 @@ namespace SmartBid
       }
       catch (Exception ex)
       {
-        H.PrintLog(5, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - DBtools-UpdateCallRegistry", $"❌❌ Error ❌❌  updating callsTracker registry: " + ex.Message);
+        H.PrintLog(6, TC.ID.Value!.Time(), TC.ID.Value!.User, $"❌❌ Error ❌❌  - DBtools-UpdateCallRegistry", $"❌❌ Error ❌❌  updating callsTracker registry: " + ex.Message);
       }
     }
     public static int InsertNewProjectWithBid(DataMaster dm)
@@ -302,7 +302,7 @@ namespace SmartBid
       catch (Exception ex)
       {
         transaction.Rollback();
-        H.PrintLog(5, TC.ID.Value!.Time(), "DBtools", $"❌❌ Error ❌❌  - InsertNewProjectWithBid", $"❌❌ Error ❌❌  during insert: " + ex.Message);
+        H.PrintLog(6, TC.ID.Value!.Time(), "DBtools", $"❌❌ Error ❌❌  - InsertNewProjectWithBid", $"❌❌ Error ❌❌  during insert: " + ex.Message);
         return -1;
       }
     }
@@ -360,7 +360,7 @@ namespace SmartBid
       {
         // NOTA: Se asume que TC.ID.Value estará disponible aquí. Si este método pudiera ser llamado
         // desde un contexto sin TC.ID.Value, deberías añadir una comprobación similar a la de H.MailTo.
-        H.PrintLog(5, TC.ID.Value!.Time(), "DBtools", $"❌❌ Error ❌❌  - InsertFileHash", $"❌❌ Error ❌❌  during insert inputFileHashs: " + ex.Message);
+        H.PrintLog(6, TC.ID.Value!.Time(), "DBtools", $"❌❌ Error ❌❌  - InsertFileHash", $"❌❌ Error ❌❌  during insert inputFileHashs: " + ex.Message);
       }
     }
   }

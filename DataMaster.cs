@@ -1,6 +1,10 @@
 using System.Globalization;
 using System.Xml;
 using System.Xml.Linq;
+using System.Xml.Schema;
+using DocumentFormat.OpenXml.Office.CoverPageProps;
+using Microsoft.Office.Interop.Access;
+using Org.BouncyCastle.Asn1.Pkcs;
 using Path = System.IO.Path;
 
 namespace SmartBid
@@ -149,6 +153,101 @@ namespace SmartBid
       element.InnerText = value;
       return element;
     }
+    private static bool IsWellFormedXml(string xml)
+    {
+      if (!xml.TrimStart().StartsWith("<"))
+        return false;
+      try
+      {
+        var doc = new XmlDocument();
+        doc.LoadXml(xml); // Si falla, lanza excepción
+        return true;
+      }
+      catch
+      {
+        return false;
+      }
+    }
+    private static bool TryNormalizeNumber(string original, out string corrected)
+    {
+      corrected = string.Empty;
+
+      if (original == null || string.IsNullOrWhiteSpace(original))
+      {
+        // Empty allowed
+        return true;
+      }
+
+      string s = original.Trim();
+
+      // Handle negative numbers in accounting format: (123) -> -123
+      bool parenNegative = false;
+      if (s.StartsWith("(") && s.EndsWith(")"))
+      {
+        parenNegative = true;
+        s = s.Substring(1, s.Length - 2).Trim();
+      }
+
+      // Remove common thousands separators
+      s = s.Replace("'", "").Replace(" ", "").Replace("\u00A0", "").Replace("_", "");
+
+      // Detect decimal separator
+      int lastComma = s.LastIndexOf(',');
+      int lastDot = s.LastIndexOf('.');
+      bool hasComma = lastComma >= 0;
+      bool hasDot = lastDot >= 0;
+
+      bool hadDecimalSeparator = false;
+
+      if (hasComma && hasDot)
+      {
+        int lastPos = Math.Max(lastComma, lastDot);
+        char decimalSep = s[lastPos];
+        hadDecimalSeparator = true;
+
+        if (decimalSep == ',')
+        {
+          s = s.Replace(".", "");
+          s = s.Replace(',', '.');
+        }
+        else
+        {
+          s = s.Replace(",", "");
+        }
+      }
+      else if (hasComma)
+      {
+        hadDecimalSeparator = true;
+        s = s.Replace(',', '.');
+      }
+      else if (hasDot)
+      {
+        hadDecimalSeparator = true;
+      }
+
+      if (parenNegative)
+        s = "-" + s;
+
+      // Validate and parse
+      if (!double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out double num))
+        return false;
+
+      // Format final corrected value
+      const double EPS = 1e-12;
+      if (!hadDecimalSeparator)
+      {
+        if (Math.Abs(num - Math.Round(num)) < EPS)
+          corrected = ((long)Math.Round(num)).ToString(CultureInfo.InvariantCulture);
+        else
+          corrected = num.ToString(CultureInfo.InvariantCulture);
+      }
+      else
+      {
+        corrected = num.ToString(CultureInfo.InvariantCulture);
+      }
+
+      return true;
+    }
     private XmlElement CreateRevisionElement(int revisionNo, XmlDocument xmlRequest, List<ToolData> targets, string opportunityFolder)
     {
       //Add first revision element
@@ -247,101 +346,6 @@ namespace SmartBid
 
       return element;
     }
-    private bool IsWellFormedXml(string xml)
-    {
-      if (!xml.TrimStart().StartsWith("<"))
-        return false;
-      try
-      {
-        var doc = new XmlDocument();
-        doc.LoadXml(xml); // Si falla, lanza excepción
-        return true;
-      }
-      catch
-      {
-        return false;
-      }
-    }
-    private static bool TryNormalizeNumber(string original, out string corrected)
-    {
-      corrected = string.Empty;
-
-      if (original == null || string.IsNullOrWhiteSpace(original))
-      {
-        // Empty allowed
-        return true;
-      }
-
-      string s = original.Trim();
-
-      // Handle negative numbers in accounting format: (123) -> -123
-      bool parenNegative = false;
-      if (s.StartsWith("(") && s.EndsWith(")"))
-      {
-        parenNegative = true;
-        s = s.Substring(1, s.Length - 2).Trim();
-      }
-
-      // Remove common thousands separators
-      s = s.Replace("'", "").Replace(" ", "").Replace("\u00A0", "").Replace("_", "");
-
-      // Detect decimal separator
-      int lastComma = s.LastIndexOf(',');
-      int lastDot = s.LastIndexOf('.');
-      bool hasComma = lastComma >= 0;
-      bool hasDot = lastDot >= 0;
-
-      bool hadDecimalSeparator = false;
-
-      if (hasComma && hasDot)
-      {
-        int lastPos = Math.Max(lastComma, lastDot);
-        char decimalSep = s[lastPos];
-        hadDecimalSeparator = true;
-
-        if (decimalSep == ',')
-        {
-          s = s.Replace(".", "");
-          s = s.Replace(',', '.');
-        }
-        else
-        {
-          s = s.Replace(",", "");
-        }
-      }
-      else if (hasComma)
-      {
-        hadDecimalSeparator = true;
-        s = s.Replace(',', '.');
-      }
-      else if (hasDot)
-      {
-        hadDecimalSeparator = true;
-      }
-
-      if (parenNegative)
-        s = "-" + s;
-
-      // Validate and parse
-      if (!double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out double num))
-        return false;
-
-      // Format final corrected value
-      const double EPS = 1e-12;
-      if (!hadDecimalSeparator)
-      {
-        if (Math.Abs(num - Math.Round(num)) < EPS)
-          corrected = ((long)Math.Round(num)).ToString(CultureInfo.InvariantCulture);
-        else
-          corrected = num.ToString(CultureInfo.InvariantCulture);
-      }
-      else
-      {
-        corrected = num.ToString(CultureInfo.InvariantCulture);
-      }
-
-      return true;
-    }
     private VariableData StoreValue(string id, string value, string origin = "", string notes = "")
     {
       H.PrintLog(1, TC.ID.Value!.Time(), User, "StoreValue", $"  - variable ||{id}: {value}|| added/updated to DataMaster data");
@@ -383,68 +387,19 @@ namespace SmartBid
 
         else if (varData.Type == "list<str>" || varData.Type == "table")
         {
-          // Step 1: Minimal fix for inverted replacements
-          value = value.Replace("&amp;lt;", "&lt;").Replace("&amp;gt;", "&gt;");
-
           if (!IsWellFormedXml(value))
           {
-            try
-            {
-              var doc = XDocument.Parse(value);
-
-              Func<string, string> escapeXmlText = text =>
-              {
-                return text.Replace("&", "&amp;")
-                           .Replace("<", "&lt;")
-                           .Replace(">", "&gt;")
-                           .Replace("\"", "&quot;")
-                           .Replace("'", "&apos;");
-              };
-
-              if (varData.Type == "list<str>")
-              {
-                foreach (var li in doc.Descendants("li"))
-                {
-                  if (!string.IsNullOrEmpty(li.Value))
-                    li.Value = escapeXmlText(li.Value);
-                }
-              }
-              else if (varData.Type == "table")
-              {
-                foreach (var cell in doc.Descendants("c"))
-                {
-                  if (!string.IsNullOrEmpty(cell.Value))
-                    cell.Value = escapeXmlText(cell.Value);
-                }
-              }
-
-              // Rebuild XML
-              value = doc.ToString(SaveOptions.DisableFormatting);
-
-              // Validate again
-              if (!IsWellFormedXml(value))
-              {
-                H.PrintLog(6, TC.ID.Value!.Time(), User, "StoreValue",
-                    $"❌❌ Error ❌❌ - Invalid XML value after normalization for variable '{id}'.");
-              }
-            }
-            catch (Exception ex)
-            {
-              H.PrintLog(6, TC.ID.Value!.Time(), User, "StoreValue",
-                  $"❌❌ Error ❌❌ - Failed to process {varData.Type} for variable '{id}': {ex.Message}");
-            }
+            H.PrintLog(6, TC.ID.Value!.Time(), User, "StoreValue",
+                $"❌❌ Error ❌❌ - Invalid XML value for variable '{id}':\n {value}");
           }
         }
 
         else if (varData.Type == "list<num>")
         {
-          if (value.Contains("&lt;") || value.Contains("&gt;"))
-            value = value.Replace("&lt;", "<").Replace("&gt;", ">");
-
           if (!IsWellFormedXml(value))
           {
             H.PrintLog(6, TC.ID.Value!.Time(), User, "StoreValue",
-                $"❌❌ Error ❌❌ - Invalid XML value '{value}' for variable '{id}'.");
+                $"❌❌ Error ❌❌ - Invalid XML value for variable '{id}':\n {value}");
           }
           else
           {
@@ -499,6 +454,14 @@ namespace SmartBid
       }
       return varData;
     }
+    private XmlElement GetImportedElement(XmlDocument sourceDoc, string elementName)
+    {
+      XmlElement?
+        sourceElement = (XmlElement)sourceDoc.DocumentElement!.SelectSingleNode(elementName)! ??
+        throw new XmlException($"Element '{elementName}' not found in the source document.");
+      XmlElement importedElement = (XmlElement)_dm.ImportNode(sourceElement, true);
+      return importedElement;
+    }
     private void StoreValue(string id, VariableData varData)
     {
       H.PrintLog(1, TC.ID.Value!.Time(), User, "StoreValue", $"  - variable ||{id}|| added/updated to DataMaster data (from existing VariableData instance)");
@@ -516,13 +479,18 @@ namespace SmartBid
         H.PrintLog(1, TC.ID.Value!.Time(), User, "StoreValue", $"  -> Added key '{id}' to _data with passed VariableData. New VariableData  Value: '{varData.Value}'. ()");
       }
     }
-    private XmlElement GetImportedElement(XmlDocument sourceDoc, string elementName)
+    private static string listToXmlList(List<string> list)
     {
-      XmlElement?
-        sourceElement = (XmlElement)sourceDoc.DocumentElement!.SelectSingleNode(elementName)! ??
-        throw new XmlException($"Element '{elementName}' not found in the source document.");
-      XmlElement importedElement = (XmlElement)_dm.ImportNode(sourceElement, true);
-      return importedElement;
+      XmlDocument tempDoc = new();
+      XmlElement root = tempDoc.CreateElement("l");
+      _ = tempDoc.AppendChild(root);
+      foreach (string item in list)
+      {
+        XmlElement li = tempDoc.CreateElement("li");
+        li.InnerText = item;
+        _ = root.AppendChild(li);
+      }
+      return root.InnerXml;
     }
     // public Methods
     public void UpdateData(XmlDocument newData)
@@ -567,7 +535,8 @@ namespace SmartBid
         if (setNode == null)
         {
           setNode = _dm.CreateElement(sSet);
-          _ = setNode.AppendChild(CreateDmElement("value", var.Value));
+
+          _ = setNode.AppendChild(CreateDmElement("value", variableNode.SelectSingleNode("value").InnerXml));
           _ = setNode.AppendChild(CreateDmElement("origin", var.Origen));
           _ = setNode.AppendChild(CreateDmElement("Note", var.Note));
           _ = variableDMNode.AppendChild(setNode);
@@ -587,6 +556,12 @@ namespace SmartBid
     }
     public string GetValueString(string key)
     {
+      VariableData varData = _vm.GetVariableData(key);
+      if (varData.Type.StartsWith("list") || varData.Type.StartsWith("table"))
+      {
+        throw new InvalidOperationException($"Key '{key}' is of type {varData.Type}: Cannot be retrieved as String. Use 'GetValueList' instead ");
+      }
+
       if (_data.TryGetValue(key, out VariableData? value))
       {
         H.PrintLog(0, TC.ID.Value!.Time(), User, "GetValueString", $"- Reading key '{key}'. Value: '{value!.Value}'");
@@ -594,8 +569,9 @@ namespace SmartBid
       }
       else
       {
-        if (_vm.GetVariableData(key).Source == "UTILS")
+        if (varData.Source == "UTILS")
         {
+
           key = key.Replace('.', '/');
           int dashIndex = key.IndexOf('-');
 
@@ -627,19 +603,26 @@ namespace SmartBid
     }
     public List<string> GetValueList(string key, bool isNumber = false)
     {
+      VariableData varData = _vm.GetVariableData(key);
+      //if varType is not list or table, throw exception
+      if (!(varData.Type.StartsWith("list") || varData.Type.StartsWith("table")))
+      {
+        throw new InvalidOperationException($"Key '{key}' is of type {varData.Type}: Cannot be retrieved as List, use GetStringValue instead.");
+      }
+
       if (_data.TryGetValue(key, out VariableData? value))
       {
 
         string xmlString = value?.Value ?? string.Empty;
 
-        List<string> itemList = new();
         if (string.IsNullOrWhiteSpace(xmlString))
           return new List<string>();
 
+        List<string> itemList = new();
         XmlDocument tempDoc = new();
         try
         {
-          tempDoc.LoadXml($"{xmlString}"); // Assuming the value is already a well-formed XML fragment as <l><li>item1</li><li>item2</li></l>
+          tempDoc.LoadXml(xmlString); // Assuming the value is already a well-formed XML fragment as <l><li>item1</li><li>item2</li></l>
 
           foreach (XmlNode item in tempDoc.DocumentElement.ChildNodes)
           {
@@ -664,8 +647,34 @@ namespace SmartBid
           return null; // returns NULL when the Value has not XML format
         }
       }
-      H.PrintLog(6, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM", $"Key '{key}' not found in . ");
-      throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
+      else //if key is not found in _data it may be a UTILS variable
+      {
+        if (varData.Source == "UTILS")
+        { 
+          //find the xPath for the nodes and iterate to get the list with all values
+          key = key.Replace('.', '/');
+          int dashIndex = key.IndexOf('-');
+          string attribute = dashIndex != -1 ? key[(dashIndex + 1)..] : string.Empty; // ensure attribute is set only if dashIndex is valid
+          List<string> list = new();
+
+          //key is the xPath, let's find all items in the xmlNode and fill the itemList with the ittem of each item or the attribute value in case "-" indicates so
+          XmlNodeList nodes = _dm.SelectNodes($"/dm/utils/{SBidRevision}/{key}");
+
+            for (int i = 0; i < nodes.Count; i++)
+           {
+
+            string item = dashIndex == -1
+                ? nodes[i]?.InnerText ?? string.Empty
+                : nodes[i].Attributes?[attribute]?.Value ?? string.Empty;
+
+            list.Add(item);
+            }
+            return list;
+          }
+
+        H.PrintLog(6, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM.GetValueList", $"Key '{key}' not found in . ");
+        throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
+      }
     }
     public XmlNode GetValueXmlNode(string key)
     {
@@ -712,14 +721,22 @@ namespace SmartBid
     }
     public VariableData GetVariableData(string key)
     {
+      VariableData varData = _vm.GetVariableData(key);
+
       if (_data.TryGetValue(key, out VariableData? value))
       {
         return value;
       }
       else
       {
-        H.PrintLog(6, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM.GetVariableData", $"Key '{key}' not found in . ");
-        throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
+        if (!(varData.Source == "UTILS"))
+        {
+          H.PrintLog(6, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM.GetVariableData", $"Key '{key}' not found in . ");
+          throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
+        }
+        varData.Value = listToXmlList(GetValueList(key, varData.Type == "list<num>"));
+
+        return varData;
       }
     }
     public string GetInnerText(string xpath)

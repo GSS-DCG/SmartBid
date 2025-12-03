@@ -846,7 +846,7 @@ namespace SmartBid
         if (direction == "in" && mirror.GetVarCallLevel(variableID) == tool.Call)
         {
           XmlElement varElement = callXml.CreateElement(variableID);
-          varElement.SetAttribute("unit", dm.GetValueUnit(variableID));
+          varElement.SetAttribute("unit", dm.GetUnit(variableID));
           varElement.InnerText = dm.GetValueString(variableID);
           _ = variablesIn.AppendChild(varElement);
         }

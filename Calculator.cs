@@ -61,7 +61,7 @@ namespace SmartBid
       di = new DirectoryInfo(Path.Combine(outputFolder, "TEMPLATES"));
       if (Directory.Exists(Path.Combine(outputFolder, "TEMPLATES")))
       {
-        
+
         foreach (FileInfo file in di.GetFiles())
         {
           file.Delete();
@@ -176,13 +176,41 @@ namespace SmartBid
               var node = CalcResults.SelectSingleNode("/answer/variables/__execute__");
               if (node != null && node.ParentNode != null)
               {
-                node.ParentNode.RemoveChild(node);
+                _ = node.ParentNode.RemoveChild(node);
               }
             }
 
             //Once the tool is finished, we release the lock if it is not threadSafe
             if (!tool.IsThreadSafe)
               tm.ReleaseProcess(tool.Code, callID);
+
+            //Updating the deliveryDocs information to the DataMaster and removing the auxiliar variable form CalcResults
+
+            // Find if there is a variable called __deliveryDocs__ in CalcResults
+            XmlNodeList? deliveryDocsNodes = CalcResults.SelectNodes("/answer/variables/__deliveryDocs__/value/l/li");
+
+
+            if (deliveryDocsNodes.Count > 0 )
+            {
+              // Iterate through each <li> element
+              foreach (XmlNode liNode in deliveryDocsNodes)
+              {
+                string filePath = liNode.InnerText.Trim();
+
+
+
+                if (!string.IsNullOrEmpty(filePath))
+                {
+                  // Insert each filePath into DataMaster using updateDeliveryDoc(filePath, "")
+                  dm.updateDeliveryDoc(filePath, tool.Code);
+                }
+              }
+              var node = CalcResults.SelectSingleNode("/answer/variables/__deliveryDocs__");
+              if (node != null && node.ParentNode != null)
+              {
+                _ = node.ParentNode.RemoveChild(node);
+              }
+            }
 
             //Update the DataMaster with the results from the toolD
             dm.UpdateData(CalcResults);
@@ -226,6 +254,10 @@ namespace SmartBid
             if (true)
             {  //Here we could check if the generation was OK or not
               statusList[i] = "DONE"; //Updating the status list
+
+              dm.updateDeliveryDoc(tool.FileName, "GenerateDocs", tool.Code, tool.Version);
+              dm.SaveDataMaster();
+
               DBtools.UpdateRouteProgress(TC.ID.Value!.CallId!.Value, i, "DONE");
               // GENERATE INFO ABOUT TEMPLATES GENERATED (PENDIENTE)
               // dm.UpdateData(NEW_INFO); //Update the DataMaster with the information about generated documents
@@ -278,9 +310,9 @@ namespace SmartBid
       List<List<ToolData>> calcTools = []; //List to keep track of the calculation tools used in the recursion
       XmlDocument prepCallXML = new();
       XmlDeclaration xmlDeclaration = prepCallXML.CreateXmlDeclaration("1.0", "UTF-8", null);
-      prepCallXML.AppendChild(xmlDeclaration);
+      _ = prepCallXML.AppendChild(xmlDeclaration);
       XmlElement root = prepCallXML.CreateElement("call");
-      prepCallXML.AppendChild(root);
+      _ = prepCallXML.AppendChild(root);
 
       prepVarList.AddRange(Get_PREP_Variables(targets, sourcesSearched, 0, calcTools));
 
@@ -311,7 +343,7 @@ namespace SmartBid
 
       XmlNode? dmInputDocs = dm.DM.SelectSingleNode(@$"dm/utils/rev_{dm.BidRevision.ToString("D2")}/inputDocs");
       if (dmInputDocs != null)
-        prepCallXML.DocumentElement.AppendChild(prepCallXML.ImportNode(dmInputDocs, true));
+        _ = prepCallXML.DocumentElement.AppendChild(prepCallXML.ImportNode(dmInputDocs, true));
 
 
       List<string> route =

@@ -271,17 +271,7 @@ namespace SmartBid
 
       //Adding deliveryDocs from either Call or Default Delivery Docs
       newNode = H.CreateElement(_dm, "deliveryDocs", "");
-      //add each one of the fileName in targets as a new element called "doc" to newNode
-      foreach (ToolData target in targets)
-      {
-        XmlElement newChild = CreateDmElement("doc", target.FileName);
-        newChild.SetAttribute("code", target.Code);
-        newChild.SetAttribute("version", target.Version);
-        _ = newNode.AppendChild(newChild);
-      }
       _ = newNode != null ? revision.AppendChild(_dm.ImportNode(newNode, true)) : null;
-
-
 
       //Adding node to store tools used in this revision
       newNode = H.CreateElement(_dm, "tools", "");
@@ -549,6 +539,38 @@ namespace SmartBid
         }
       }
     }
+    public void updateDeliveryDoc(string filePath, string origin, string? code = null, string? version = null)
+    {
+      XmlNode? deliveryDocsNode = (XmlElement)_dm.SelectSingleNode($"/dm/utils/{SBidRevision}/deliveryDocs");
+
+      if (deliveryDocsNode != null)
+      {
+        string fileName = Path.GetFileName(filePath);
+
+        // Check if a <doc> element with same fileName and origin exists
+        XmlNode existingDoc = deliveryDocsNode.SelectSingleNode($"doc[text()='{fileName}' and @origin='{origin}']");
+
+        if (existingDoc != null)
+        {
+          // Already exists with origin, do nothing
+          H.PrintLog(2, TC.ID.Value!.Time(), User, "DataMaster.updateDeliveryDoc", $"DeliveryDoc: {filePath} already registered with origin in DM");
+          return;
+        }
+
+        // If no existing doc, create new one
+        XmlElement docElement = CreateDmElement("doc", fileName);
+
+        if (!string.IsNullOrEmpty(origin))
+          docElement.SetAttribute("origin", origin);
+        if (!string.IsNullOrEmpty(code))
+          docElement.SetAttribute("code", code);
+        if (!string.IsNullOrEmpty(version))
+          docElement.SetAttribute("version", version);
+
+        deliveryDocsNode.AppendChild(docElement);
+        H.PrintLog(2, TC.ID.Value!.Time(), User, "DataMaster.updateDeliveryDoc", $"DeliveryDoc: {filePath} from Tool registered in DM");
+      }
+    }
     public void SaveDataMaster()
     {
       _dm.Save(FileName);
@@ -708,7 +730,7 @@ namespace SmartBid
       H.PrintLog(6, TC.ID.Value!.Time(), User, $"❌❌ Error ❌❌  - DM", $"Key '{key}' not found in . ");
       throw new KeyNotFoundException($"Key '{key}' not found in DataMaster.");
     }
-    public string GetValueUnit(string key)
+    public string GetUnit(string key)
     {
       if (_data.TryGetValue(key, out VariableData? value))
       {

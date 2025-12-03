@@ -469,6 +469,9 @@ namespace SmartBid
       H.PrintLog(4, TC.ID.Value!.Time(), TC.ID.Value!.User, "MakePrepCall", $"Ejecutando {Path.GetFileName(prepToolPath)} {arguments}");
       H.PrintLog(1, TC.ID.Value!.Time(), TC.ID.Value!.User, "MakePrepCall", $"Call sent to {area}\n", areaCall);
 
+      // Use UTF-8 without Byte Order Mark (BOM)
+      var utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
       ProcessStartInfo psi = new()
       {
         FileName = prepToolPath,
@@ -477,30 +480,37 @@ namespace SmartBid
         RedirectStandardOutput = true,
         RedirectStandardError = true,
         UseShellExecute = false,
-        CreateNoWindow = true,
-        StandardInputEncoding = Encoding.UTF8
+        CreateNoWindow = true
+        // DO NOT set StandardInputEncoding (Keeps 3rd party tools happy)
       };
+
+      // use UTF-8 for python tools
+      if (!psi.EnvironmentVariables.ContainsKey("PYTHONIOENCODING"))
+      {
+        psi.EnvironmentVariables.Add("PYTHONIOENCODING", "utf-8");
+      }
 
       string output;
       string error;
 
       using (Process process = new() { StartInfo = psi })
       {
-        _ = process.Start();
+        process.Start();
 
-        using (StreamWriter writer = process.StandardInput)
-        {
-          writer.Write(areaCall.OuterXml); // No usar WriteLine
-        }
+        // 1. Prepare UTF-8 Payload
+        var utf8 = new UTF8Encoding(false);
+        byte[] payload = utf8.GetBytes(areaCall.OuterXml);
+
+        // 2. Write RAW BYTES to the underlying stream
+        // This is the only way to bypass the IBM437 default behavior
+        process.StandardInput.BaseStream.Write(payload, 0, payload.Length);
+
+        // 3. FLUSH and CLOSE to signal EOF
+        process.StandardInput.BaseStream.Flush();
+        process.StandardInput.Close();
 
         output = process.StandardOutput.ReadToEnd();
         error = process.StandardError.ReadToEnd();
-
-        if (!string.IsNullOrEmpty(error))
-        {
-          Console.WriteLine("STDERR:");
-          Console.WriteLine(error);
-        }
 
         process.WaitForExit();
       }

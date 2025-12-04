@@ -24,7 +24,6 @@ namespace SmartBid
       AddDefaultValues();
       return _outputXML;
     }
-
     private void DoStuff()
     {
       var variableNodes = _inputXML.SelectNodes("//call/variables/variable"); // Acceso a campo de instancia
@@ -64,7 +63,6 @@ namespace SmartBid
 
       PlaySuccessBeep();
     }
-
     private XmlDocument CreateAreaCall(string area)
     {
       XmlDocument areaCall = new();
@@ -96,7 +94,6 @@ namespace SmartBid
       _ = root.AppendChild(inputDocs);
       return areaCall;
     }
-
     private void MergeResults(XmlDocument result)
     {
       XmlNodeList vars = result.SelectNodes("//answer/variables/*");
@@ -124,8 +121,6 @@ namespace SmartBid
           _ = outputUtils.AppendChild(_outputXML.ImportNode(util, true));
       }
     }
-
-
     private void AddDefaultValues()
     {
       // Log
@@ -248,7 +243,6 @@ namespace SmartBid
       }
     }
 
-
     // Helpers: output container and node creation
 
     /// <summary>
@@ -285,7 +279,6 @@ namespace SmartBid
       }
       return variables;
     }
-
     /// <summary>
     /// Finds the output variable by element name == id, using a direct path first,
     /// then a robust local-name() fallback for edge cases.
@@ -303,7 +296,6 @@ namespace SmartBid
       var ln = outDoc.SelectSingleNode($"//answer/variables/*[local-name()={lit}]") as XmlElement;
       return ln;
     }
-
     /// <summary>
     /// Builds a safe XPath string literal, even if it contains both ' and ".
     /// </summary>
@@ -323,7 +315,6 @@ namespace SmartBid
       _ = sb.Append(')');
       return sb.ToString();
     }
-
     private static XmlElement EnsureChildElement(XmlElement parent, string childName)
     {
       var child = parent.SelectSingleNode(childName) as XmlElement;
@@ -334,13 +325,11 @@ namespace SmartBid
       }
       return child;
     }
-
     private static void SetChildText(XmlElement parent, string childName, string text)
     {
       var child = EnsureChildElement(parent, childName);
       child.InnerText = text ?? string.Empty;
     }
-
 
     // Helpers: input reading and validation
 
@@ -348,7 +337,6 @@ namespace SmartBid
     {
       return candidates?.FirstOrDefault(s => !string.IsNullOrWhiteSpace(s));
     }
-
     /// <summary>
     /// Collects all &lt;allowableRange&gt;/&lt;value&gt; texts and joins them with ';'
     /// (e.g., "-90:+90; 180").
@@ -366,7 +354,6 @@ namespace SmartBid
 
       return string.Join(";", parts);
     }
-
     /// <summary>
     /// Validates currentValue against allowSpec:
     /// - ';' separates items
@@ -441,7 +428,6 @@ namespace SmartBid
 
       return false;
     }
-
     
     private XmlDocument MakePrepCall(string area, XmlDocument areaCall)
     {
@@ -541,19 +527,16 @@ namespace SmartBid
         return new XmlDocument(); // Retorna vacío si falla el parseo
       }
     }
-
     private void ShowError(string message) // YA NO ES STATIC
     {
       Console.WriteLine($"❌Error❌: {message}");
       Console.Beep(220, 1000);
       Thread.Sleep(5000);
     }
-
     private void PlaySuccessBeep() // YA NO ES STATIC
     {
       Console.Beep(880, 200);
     }
-
     private XmlDocument CreateOutputXml(out XmlElement utils)
     {
       XmlDocument outputXML = new();
@@ -572,7 +555,5 @@ namespace SmartBid
 
       return outputXML;
     }
-
-
   }
 }

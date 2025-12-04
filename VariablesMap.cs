@@ -203,8 +203,8 @@ namespace SmartBid
           node.Attributes["varName"]?.InnerText ?? string.Empty,
           node.Attributes["area"]?.InnerText ?? string.Empty,
           node.Attributes["source"]!.InnerText ?? string.Empty,
-          Convert.ToBoolean(node.Attributes["critic"]!.InnerText ?? "false"),
-          Convert.ToBoolean(node.Attributes["mandatory"]!.InnerText ?? "false"),
+          Convert.ToBoolean(H.ParseBoolean(node.Attributes["critic"]!.InnerText ?? "false")),
+          Convert.ToBoolean(H.ParseBoolean(node.Attributes["mandatory"]!.InnerText ?? "false")),
           node.Attributes["type"]!.InnerText ?? string.Empty,
           node.Attributes["unit"]?.InnerText ?? string.Empty
           );
@@ -219,7 +219,7 @@ namespace SmartBid
               $"❌❌ Error ❌❌ Alguno de los valores obligatorios de la variable (id, source, critic, mandatory or type) {node.Attributes["id"]?.InnerText} no han sido declarados en VarMap");
           throw;
         }
-        data.Default = node.SelectSingleNode("default")?.InnerText ?? "";
+        data.Default = H.IsWellFormedXml(node.SelectSingleNode("default")?.InnerXml)? node.SelectSingleNode("default")?.InnerXml: node.SelectSingleNode("default")?.InnerText ?? "";
         data.Description = node.SelectSingleNode("description")?.InnerText ?? "";
         data.Prompt = node.SelectSingleNode("prompt")?.InnerText ?? "";
         data.Deep = Convert.ToInt16(node.Attributes["deep"]?.InnerText ?? "0");

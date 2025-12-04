@@ -88,6 +88,9 @@ namespace SmartBid
     }
     public static bool IsWellFormedXml(string xml)
     {
+      if (xml == null) 
+        return false;
+
       if (!xml.TrimStart().StartsWith("<"))
         return false;
       try

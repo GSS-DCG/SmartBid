@@ -19,7 +19,6 @@ namespace SmartBid
       wordApp = new Microsoft.Office.Interop.Word.Application();
       doc = wordApp.Documents.Open(filePath, ReadOnly: false, Visible: false); ;
     }
-
     public void DeleteBookmarks(List<string> removeBkm)
     {
       string prefix = H.GetSProperty("VarPrefix").ToLower();
@@ -64,7 +63,6 @@ namespace SmartBid
         }
       }
     }
-
     public void ReplaceFieldMarks(Dictionary<string, VariableData> varList, DataMaster dm)
     {
       string prefix = H.GetSProperty("VarPrefix");
@@ -166,7 +164,6 @@ namespace SmartBid
       }
 
     }
-
     public bool SaveAsPDF(string? filePath = null)
     {
       try
@@ -197,12 +194,10 @@ namespace SmartBid
       }
 
     }
-
     public void Save()
     {
       doc.Save();
     }
-
     public void Close(bool saveDoc = true)
     {
       if (doc != null)
@@ -255,8 +250,6 @@ namespace SmartBid
         }
       }
     }
-
-
     private static bool WordAppDetection(Process[] wordProcesses)
     {
       if (wordProcesses.Length == 0)
@@ -266,7 +259,6 @@ namespace SmartBid
 
       return true;
     }
-
     private static void WordAppClose(Process[] wordProcesses)
     {
       foreach (Process proc in wordProcesses)

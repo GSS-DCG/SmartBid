@@ -48,7 +48,7 @@ namespace SmartBid
         prepCallTasks.Add(Task.Run(() =>
         {
           XmlDocument areaCall = CreateAreaCall(currentArea);
-          return MakePrepCall(currentArea, areaCall); // MakePrepCall ya devuelve un XmlDocument local
+          return MakePrepCall(currentArea, areaCall); // MakePrepCall returns a XmlDocument local
         }));
         Thread.Sleep(100);
       }
@@ -144,8 +144,6 @@ namespace SmartBid
       {
         // --- Read from input (ID is the ONLY matching key) ---
         string id = inVar.GetAttribute("id");          // REQUIRED for matching
-        if (string.IsNullOrWhiteSpace(id)) continue;     // Skip variables without ID
-
         string type = inVar.GetAttribute("type");        // e.g., num, code, route, text, ...
                                                          // varName is informational only; we ignore it for matching/output structure
                                                          // string varName = inVar.GetAttribute("varName");
@@ -153,7 +151,12 @@ namespace SmartBid
 
         // Default value (inner text of <default>)
         var defaultNode = inVar.SelectSingleNode("default") as XmlElement;
-        string defaultVal = defaultNode?.InnerText?.Trim() ?? string.Empty;
+
+        if (defaultNode == null) continue;
+
+        string defaultValue = H.IsWellFormedXml(defaultNode.InnerXml)? defaultNode.InnerXml : defaultNode.InnerText;
+        defaultValue = defaultValue.Trim() ?? string.Empty;
+
 
         // Unit: prefer @unit on <variable> then <default @unit>
         string unit = FirstNonEmpty(
@@ -178,16 +181,13 @@ namespace SmartBid
           if (!string.IsNullOrEmpty(type)) valueEl.SetAttribute("type", type);
           if (!string.IsNullOrEmpty(unit)) valueEl.SetAttribute("unit", unit);
 
-          if (!string.IsNullOrEmpty(defaultVal))
+          if (!string.IsNullOrEmpty(defaultValue))
           {
-            try
-            {
-              valueEl.InnerXml = defaultVal;
-            }
-            catch (System.Xml.XmlException)
-            {
-              valueEl.InnerText = defaultVal;
-            }
+            if (H.IsWellFormedXml(defaultValue))
+              valueEl.InnerXml = defaultValue;
+            else
+              valueEl.InnerText = defaultValue;
+
             SetChildText(outVar, "origin", "PREP_DEFAULT");
             SetChildText(outVar, "note", "Default value applied");
           }
@@ -217,9 +217,13 @@ namespace SmartBid
 
         if (string.IsNullOrEmpty(currentValue))
         {
-          if (!string.IsNullOrEmpty(defaultVal))
+          if (!string.IsNullOrEmpty(defaultValue))
           {
-            valEl.InnerText = defaultVal;
+            if (H.IsWellFormedXml(defaultValue))
+              valEl.InnerXml = defaultValue;
+            else
+              valEl.InnerText = defaultValue;
+
             SetChildText(outVar, "origin", "PREP_DEFAULT");
             SetChildText(outVar, "note", "Default value applied");
           }
@@ -228,9 +232,9 @@ namespace SmartBid
         {
           if (!ValueSatisfiesAllowSpec(currentValue, allowSpec, type))
           {
-            if (!string.IsNullOrEmpty(defaultVal))
+            if (!string.IsNullOrEmpty(defaultValue))
             {
-              valEl.InnerText = defaultVal;
+              valEl.InnerText = defaultValue;
               SetChildText(outVar, "origin", "PREP_DEFAULT");
               SetChildText(outVar, "note", "Corrected to default due to invalid value");
             }

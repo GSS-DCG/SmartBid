@@ -133,6 +133,8 @@ namespace SmartBid
         throw new InvalidOperationException("The XML is incomplete: missing or invalid 'Type' attribute in '//request/requestInfo'.");
       }
 
+      SaveDataMaster();
+
     }
 
     // Constructor público con nombre de archivo ==> para cargar un DataMaster existente
@@ -152,21 +154,6 @@ namespace SmartBid
       XmlElement element = doc.CreateElement(name);
       element.InnerText = value;
       return element;
-    }
-    private static bool IsWellFormedXml(string xml)
-    {
-      if (!xml.TrimStart().StartsWith("<"))
-        return false;
-      try
-      {
-        var doc = new XmlDocument();
-        doc.LoadXml(xml); // Si falla, lanza excepción
-        return true;
-      }
-      catch
-      {
-        return false;
-      }
     }
     private static bool TryNormalizeNumber(string original, out string corrected)
     {
@@ -325,7 +312,7 @@ namespace SmartBid
         return element;
       }
 
-      if (IsWellFormedXml(value))
+      if (H.IsWellFormedXml(value))
       {
         element.InnerXml = value;
       }
@@ -377,7 +364,7 @@ namespace SmartBid
 
         else if (varData.Type == "list<str>" || varData.Type == "table")
         {
-          if (!IsWellFormedXml(value))
+          if (!H.IsWellFormedXml(value))
           {
             H.PrintLog(6, TC.ID.Value!.Time(), User, "StoreValue",
                 $"❌❌ Error ❌❌ - Invalid XML value for variable '{id}':\n {value}");
@@ -386,7 +373,7 @@ namespace SmartBid
 
         else if (varData.Type == "list<num>")
         {
-          if (!IsWellFormedXml(value))
+          if (!H.IsWellFormedXml(value))
           {
             H.PrintLog(6, TC.ID.Value!.Time(), User, "StoreValue",
                 $"❌❌ Error ❌❌ - Invalid XML value for variable '{id}':\n {value}");
@@ -482,6 +469,11 @@ namespace SmartBid
       }
       return root.InnerXml;
     }
+    private void SaveDataMaster()
+    {
+      _dm.Save(FileName);
+      H.PrintLog(3, TC.ID.Value!.Time(), User, "DM", $"XML guardado en {FileName}.  ");
+    }
     // public Methods
     public void UpdateData(XmlDocument newData)
     {
@@ -538,6 +530,7 @@ namespace SmartBid
           _ = setNode.AppendChild(CreateDmElement("Note", $" Modified: {var.Note}"));
         }
       }
+      SaveDataMaster();
     }
     public void updateDeliveryDoc(string filePath, string origin, string? code = null, string? version = null)
     {
@@ -570,11 +563,7 @@ namespace SmartBid
         deliveryDocsNode.AppendChild(docElement);
         H.PrintLog(2, TC.ID.Value!.Time(), User, "DataMaster.updateDeliveryDoc", $"DeliveryDoc: {filePath} from Tool registered in DM");
       }
-    }
-    public void SaveDataMaster()
-    {
-      _dm.Save(FileName);
-      H.PrintLog(3, TC.ID.Value!.Time(), User, "DM", $"XML guardado en {FileName}.  ");
+      SaveDataMaster();
     }
     public string GetValueString(string key)
     {

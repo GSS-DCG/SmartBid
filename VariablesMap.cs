@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using System.Text;
 using System.Xml;
+using System.Xml.Linq;
 using ExcelDataReader;
 using DataTable = System.Data.DataTable;
 using File = System.IO.File;
@@ -106,7 +107,14 @@ namespace SmartBid
       if (!string.IsNullOrEmpty(Default))
       {
         var defaultElem = mainDoc.CreateElement("default");
-        defaultElem.InnerText = Default;
+        if (H.IsWellFormedXml(Default))
+        {
+          defaultElem.InnerXml = Default;
+        }
+        else
+        {
+          defaultElem.InnerText = Default;
+        }
         _ = varElem.AppendChild(defaultElem);
       }
 
@@ -284,8 +292,8 @@ namespace SmartBid
           row["NAME"]!.ToString()!,
           row["AREA"]!.ToString()!,
           row["SOURCE"]!.ToString()!,
-          Convert.ToBoolean(row["CRITICAL"]!.ToString()),
-          Convert.ToBoolean(row["MANDATORY"]!.ToString()),
+          Convert.ToBoolean(H.ParseBoolean(row["CRITICAL"]!.ToString())),
+          Convert.ToBoolean(H.ParseBoolean(row["MANDATORY"]!.ToString())),
           row["DATA TYPE"]?.ToString()!,
           row["UNIT"]?.ToString()!,
           row["DEFAULT VALUE"]?.ToString()!,

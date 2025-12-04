@@ -387,7 +387,6 @@ namespace SmartBid
                           dm.DM.SelectSingleNode(@"dm/utils/utilsData/opportunityFolder")?.InnerText ?? "");
       if (!Directory.Exists(projectFolder)) _ = Directory.CreateDirectory(projectFolder);
 
-      dm.SaveDataMaster();
       return dm;
     }
 

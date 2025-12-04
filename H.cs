@@ -2,9 +2,6 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Xml;
-using Microsoft.VisualBasic.ApplicationServices;
-using SmartBid;
-using static SmartBid.TC; // Esto ya debería estar ahí
 using Outlook = Microsoft.Office.Interop.Outlook;
 
 namespace SmartBid
@@ -52,7 +49,6 @@ namespace SmartBid
       propertyCache[name] = value;
       return value;
     }
-
     public static int? GetNProperty(string name, int? def = null)
     {
       //return the value from the properties file as an integer, or default if not found or invalid, otherwise return null
@@ -67,10 +63,9 @@ namespace SmartBid
         propertyCache[name] = def.Value;
         return def.Value;
       }
-      
+
       return null;
     }
-
     public static bool GetBProperty(string name)
     {
       string stringValue = GetSProperty(name);
@@ -81,7 +76,6 @@ namespace SmartBid
       }
       return false;
     }
-
     public static void SaveXML(int level, XmlDocument xmlDoc, string fileName)
     {
       if (GetNProperty("printLevel") <= level)
@@ -92,8 +86,21 @@ namespace SmartBid
       }
       return; // Only save if log level is sufficient
     }
-
-
+    public static bool IsWellFormedXml(string xml)
+    {
+      if (!xml.TrimStart().StartsWith("<"))
+        return false;
+      try
+      {
+        var doc = new XmlDocument();
+        doc.LoadXml(xml); // if fails it's not a well formed xml
+        return true;
+      }
+      catch
+      {
+        return false;
+      }
+    }
 
     public static void PrintLog(
         int level,
@@ -178,7 +185,6 @@ namespace SmartBid
         DBtools.LogMessage(level, user, eventLog, message, currentCallId, indentedXml);
       }
     }
-
     public static XmlElement CreateElement(XmlDocument doc, string name, string value, Dictionary<string, string>? attributes = null) // Made attributes nullable
     {
       XmlElement element = doc.CreateElement(name);
@@ -192,7 +198,6 @@ namespace SmartBid
       }
       return element;
     }
-
     public static void MergeXmlNodes(XmlDocument sourceDoc, XmlDocument targetDoc, string sourcePath, string targetPath)
     {
       XmlNode? sourceParent = sourceDoc.SelectSingleNode(sourcePath); // Made nullable
@@ -210,7 +215,7 @@ namespace SmartBid
         {
           // Si no existe, importar y añadir el nodo completo
           XmlNode imported = targetDoc.ImportNode(sourceChild, true);
-          targetParent.AppendChild(imported);
+          _ = targetParent.AppendChild(imported);
         }
         else
         {
@@ -218,13 +223,11 @@ namespace SmartBid
           foreach (XmlNode subNode in sourceChild.ChildNodes)
           {
             XmlNode importedSubNode = targetDoc.ImportNode(subNode, true);
-            targetChild.AppendChild(importedSubNode);
+            _ = targetChild.AppendChild(importedSubNode);
           }
         }
       }
     }
-
-
     public static bool MailTo(List<string> recipients, string subject, string body = "", string? attachmentPath = null, bool isHtml = false)
     {
       // Asegura logs sin depender de TC.ID.Value si no está establecido (ej. llamada desde el Main thread)
@@ -262,7 +265,7 @@ namespace SmartBid
         if (!string.IsNullOrWhiteSpace(attachmentPath) && File.Exists(attachmentPath))
         {
           // olByValue es el uso más común para adjuntar
-          mailItem.Attachments.Add(attachmentPath,
+          _ = mailItem.Attachments.Add(attachmentPath,
               Outlook.OlAttachmentType.olByValue,
               Type.Missing, Type.Missing);
         }
@@ -285,7 +288,6 @@ namespace SmartBid
         return false;
       }
     }
-
     public static string GetFileMD5(string path)
     {
       using var stream = File.OpenRead(path);
@@ -293,7 +295,6 @@ namespace SmartBid
       byte[] hash = md5.ComputeHash(stream);
       return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
     }
-
     public static string EliminarDiacriticos(string texto)
     {
       if (string.IsNullOrWhiteSpace(texto))
@@ -315,7 +316,6 @@ namespace SmartBid
 
       return stringBuilder.ToString().Normalize(NormalizationForm.FormC);
     }
-
     public static double CalculateSimilarity(string source, string target)
     {
       if (string.IsNullOrEmpty(source) || string.IsNullOrEmpty(target))
@@ -333,7 +333,6 @@ namespace SmartBid
       // Normalizamos la distancia para obtener un ratio de similitud
       return 1.0 - (distance / maxLength);
     }
-
     private static int LevenshteinDistance(string source, string target)
     {
       int n = source.Length;
@@ -365,6 +364,61 @@ namespace SmartBid
 
       return d[n, m];
     }
-  }
+    public static bool? ParseBoolean(string? input)
+    {
+      // Fast path for actual bools boxed as objects in some pipelines (optional but cheap)
+      if (input is null)
+        return null;
 
+      // Trim and lowercase invariant
+      string trimmedLower = input.Trim().ToLowerInvariant();
+      if (trimmedLower.Length == 0)
+        return null;
+
+      if (bool.TryParse(trimmedLower, out bool directParse))
+        return directParse;
+
+      // Remove diacritics (accents), e.g., "sí" -> "si"
+      string normalizedFormD = trimmedLower.Normalize(NormalizationForm.FormD);
+      var sb = new StringBuilder(normalizedFormD.Length);
+      foreach (char ch in normalizedFormD)
+      {
+        var cat = CharUnicodeInfo.GetUnicodeCategory(ch);
+        if (cat != UnicodeCategory.NonSpacingMark)
+          _ = sb.Append(ch);
+      }
+      string asciiLike = sb.ToString().Normalize(NormalizationForm.FormC);
+
+      // Collapse internal whitespace to single spaces (rare but safe)
+      string token = string.Join(" ", asciiLike.Split((char[])null, StringSplitOptions.RemoveEmptyEntries));
+
+      // Numeric shortcuts
+      if (token == "1") return true;
+      if (token == "0") return false;
+
+      // Truthy tokens (English + Spanish)
+      // true, t, yes, y, on, si, s, verdadero, v
+      if (token == "true" || token == "t" ||
+          token == "yes" || token == "y" ||
+          token == "on" ||
+          token == "si" || token == "s" ||
+          token == "verdadero" || token == "v")
+      {
+        return true;
+      }
+
+      // Falsey tokens (English + Spanish)
+      // false, f, no, n, off, falso
+      if (token == "false" || token == "f" ||
+          token == "no" || token == "n" ||
+          token == "off" ||
+          token == "falso")
+      {
+        return false;
+      }
+
+      // Not recognized -> return default
+      return null;
+    }
+  }
 }

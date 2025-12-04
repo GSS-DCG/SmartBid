@@ -83,7 +83,6 @@ namespace SmartBid
 
           dm.UpdateData(prepAnswer);
           dm.CheckMandatoryValues(); // thows and exception if not all Mandatory values are present in the DataMaster
-          dm.SaveDataMaster(); //Save the DataMaster after preparation
 
           statusList[0] = "DONE"; //Updating the status list for PREP as done.
           DBtools.UpdateRouteProgress(TC.ID.Value!.CallId!.Value, 0, "DONE");
@@ -215,9 +214,6 @@ namespace SmartBid
             //Update the DataMaster with the results from the toolD
             dm.UpdateData(CalcResults);
 
-            //Save the DataMaster after each calculation
-            dm.SaveDataMaster(); //Save the DataMaster after each calculation
-
             // Update the DB with the result from the tool calculation
             try
             {
@@ -256,7 +252,6 @@ namespace SmartBid
               statusList[i] = "DONE"; //Updating the status list
 
               dm.updateDeliveryDoc(tool.FileName, "GenerateDocs", tool.Code, tool.Version);
-              dm.SaveDataMaster();
 
               DBtools.UpdateRouteProgress(TC.ID.Value!.CallId!.Value, i, "DONE");
               // GENERATE INFO ABOUT TEMPLATES GENERATED (PENDIENTE)
